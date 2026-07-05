@@ -16,6 +16,7 @@ axum = "0.8"
 serde_json = "1"
 ohagent-core = { path = "../ohagent-core" }
 ohagent-gateway = { path = "../ohagent-gateway" }
+ohagent-memory = { path = "../ohagent-memory" }
 jcode-base = { path = "../../jcode/crates/jcode-base" }
 jcode-provider-core = { path = "../../jcode/crates/jcode-provider-core" }
 jcode-provider-openrouter-runtime = { path = "../../jcode/crates/jcode-provider-openrouter-runtime" }

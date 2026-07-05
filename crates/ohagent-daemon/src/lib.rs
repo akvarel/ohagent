@@ -14,6 +14,8 @@ use tracing_subscriber::EnvFilter;
 use ohagent_core::jcode_bridge::JcodeBridge;
 use ohagent_gateway::platforms::telegram::TelegramAdapter;
 use ohagent_gateway::adapter::PlatformAdapter;
+use ohagent_memory::engine::MemoryEngine;
+use ohagent_memory::models::MemoryConfig;
 use jcode_provider_core::Provider;
 
 /// Register external provider runtimes (OpenRouter, OpenAI-compatible profiles).
@@ -77,6 +79,7 @@ struct Daemon {
     enable_telegram: bool,
     shutdown: Arc<tokio::sync::Notify>,
     bridge: Arc<JcodeBridge>,
+    memory: Option<Arc<MemoryEngine>>,
 }
 
 impl Daemon {
@@ -116,11 +119,24 @@ impl Daemon {
 
         let bridge = Arc::new(JcodeBridge::new(provider));
 
+        // Initialize memory engine
+        let memory = match MemoryEngine::open(MemoryConfig::default()) {
+            Ok(engine) => {
+                info!("Memory engine initialized");
+                Some(Arc::new(engine))
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "Memory engine not available — running without memory");
+                None
+            }
+        };
+
         Ok(Self {
             health_port,
             enable_telegram,
             shutdown: Arc::new(tokio::sync::Notify::new()),
             bridge,
+            memory,
         })
     }
 

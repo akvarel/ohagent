@@ -3,7 +3,11 @@ name = "ohagent-memory"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Deep memory engine with pgvector for ohAgent"
+description = "Deep memory engine with vector search for ohAgent"
+
+[features]
+default = []
+embeddings = ["jcode-base/embeddings"]
 
 [dependencies]
 tokio = { workspace = true }
@@ -14,5 +18,7 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
-sqlx = { workspace = true }
+rusqlite = { workspace = true }
+shellexpand = { workspace = true }
 ohagent-core = { path = "../ohagent-core" }
+jcode-base = { path = "../../jcode/crates/jcode-base" }
