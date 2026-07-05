@@ -1,0 +1,3 @@
+[submodule "jcode"]
+	path = jcode
+	url = git@github.com:akvarel/jcode.git
