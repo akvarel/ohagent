@@ -1,0 +1,18 @@
+[package]
+name = "ohagent-memory"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Deep memory engine with pgvector for ohAgent"
+
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+sqlx = { workspace = true }
+ohagent-core = { path = "../ohagent-core" }

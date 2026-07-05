@@ -1,0 +1,15 @@
+[package]
+name = "ohagent-daemon"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "24/7 daemon process for ohAgent"
+
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+anyhow = { workspace = true }
+clap = { workspace = true }
+ohagent-core = { path = "../ohagent-core" }

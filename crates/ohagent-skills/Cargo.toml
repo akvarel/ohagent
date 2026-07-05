@@ -1,0 +1,18 @@
+[package]
+name = "ohagent-skills"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Self-learning skill creation and curator for ohAgent"
+
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+ohagent-core = { path = "../ohagent-core" }
+ohagent-memory = { path = "../ohagent-memory" }
