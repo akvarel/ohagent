@@ -140,6 +140,11 @@ impl JcodeBridge {
         }
     }
 
+    /// Human-readable name of the provider (e.g. "deepseek", "anthropic").
+    pub fn provider_name(&self) -> String {
+        self.provider.display_name()
+    }
+
     /// Create a new headless agent session.
     pub async fn create_session(
         &self,

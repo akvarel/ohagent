@@ -2,7 +2,9 @@
 //!
 //! Runs as a long-lived process (systemd service or background).
 //! Manages lifecycle, health checks, graceful shutdown,
-//! and hosts the messaging gateway.
+//! hosts the messaging gateway, and serves the REST API.
+
+mod api;
 
 use anyhow::Result;
 use clap::Parser;
@@ -83,6 +85,7 @@ struct Daemon {
     bridge: Arc<JcodeBridge>,
     memory: Option<Arc<MemoryEngine>>,
     skills: Option<Arc<SkillRegistry>>,
+    start_time: chrono::DateTime<chrono::Utc>,
 }
 
 impl Daemon {
@@ -153,38 +156,34 @@ impl Daemon {
             bridge,
             memory,
             skills,
+            start_time: chrono::Utc::now(),
         })
     }
 
-    /// Start the health check HTTP server.
-    async fn start_health_server(&self) -> Result<()> {
+    /// Start the API + health check HTTP server.
+    async fn start_api_server(&self) -> Result<()> {
         let port = self.health_port;
         let shutdown = Arc::clone(&self.shutdown);
 
+        let api_state = api::ApiState {
+            bridge: Arc::clone(&self.bridge),
+            memory: self.memory.clone(),
+            skills: self.skills.clone(),
+            start_time: self.start_time,
+        };
+
+        let app = api::router(api_state);
+
         tokio::spawn(async move {
-            use axum::{Router, routing::get, Json};
-            use serde_json::json;
             use std::net::SocketAddr;
-
-            let app = Router::new().route(
-                "/health",
-                get(|| async {
-                    Json(json!({
-                        "status": "ok",
-                        "service": "ohagent",
-                        "version": env!("CARGO_PKG_VERSION"),
-                    }))
-                }),
-            );
-
             let addr: SocketAddr = format!("127.0.0.1:{port}").parse().unwrap();
-            info!("Health check server listening on http://{addr}");
+            info!("API server listening on http://{addr}");
 
             let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
             axum::serve(listener, app)
                 .with_graceful_shutdown(async move {
                     shutdown.notified().await;
-                    info!("Health server shutting down");
+                    info!("API server shutting down");
                 })
                 .await
                 .unwrap();
@@ -225,8 +224,8 @@ impl Daemon {
             option_env!("CARGO_PKG_VERSION").unwrap_or("0.1.0")
         );
 
-        // Start health check server
-        self.start_health_server().await?;
+        // Start API server (health + REST)
+        self.start_api_server().await?;
 
         // Start Telegram gateway (if enabled)
         if self.enable_telegram {
