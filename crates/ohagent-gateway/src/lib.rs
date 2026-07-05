@@ -5,6 +5,7 @@
 
 pub mod adapter;
 pub mod dispatch;
+pub mod i18n;
 pub mod pairing;
 pub mod session;
 

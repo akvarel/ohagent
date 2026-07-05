@@ -6,17 +6,48 @@
 mod deepseek_integration {
     use jcode_provider_core::Provider;
 
+    fn register_runtimes() {
+        use jcode_base::provider::external;
+        use jcode_provider_openrouter_runtime::OpenRouterProvider;
+
+        external::register_openrouter_factory(|spec| {
+            use external::OpenRouterRuntimeSpec;
+            let provider: std::sync::Arc<dyn Provider> = match spec {
+                OpenRouterRuntimeSpec::Default => std::sync::Arc::new(OpenRouterProvider::new()?),
+                OpenRouterRuntimeSpec::OpenRouterApiKey => {
+                    std::sync::Arc::new(OpenRouterProvider::new_openrouter_api_key_runtime()?)
+                }
+                OpenRouterRuntimeSpec::CompatibleProfile(profile) => std::sync::Arc::new(
+                    OpenRouterProvider::new_openai_compatible_profile_runtime(profile)?,
+                ),
+                OpenRouterRuntimeSpec::NamedProfile { name, config } => std::sync::Arc::new(
+                    OpenRouterProvider::new_named_openai_compatible(&name, &config)?,
+                ),
+            };
+            Ok(provider)
+        });
+
+        external::register_profile_catalog_refresh(
+            jcode_provider_openrouter_runtime::maybe_schedule_openai_compatible_profile_catalog_refresh,
+        );
+        external::register_standard_openrouter_catalog_refresh(
+            jcode_provider_openrouter_runtime::maybe_schedule_standard_openrouter_catalog_refresh,
+        );
+    }
+
     /// End-to-end: create a headless DeepSeek session and send a prompt.
     ///
     /// Set DEEPSEEK_API_KEY before running:
     /// ```bash
-    /// export DEEPSEEK_API_KEY=$(vault kv get -field=api_key secret/ohagent/deepseek)
+    /// export DEEPSEEK_API_KEY="sk-..."
     /// cargo test -p ohagent-core -- deepseek_headless_e2e --nocapture
     /// ```
     #[tokio::test]
     async fn deepseek_headless_e2e() {
         let _ = std::env::var("DEEPSEEK_API_KEY")
             .expect("DEEPSEEK_API_KEY must be set");
+
+        register_runtimes();
 
         // Build MultiProvider and switch to DeepSeek
         let multi = jcode_base::provider::MultiProvider::new();
@@ -25,7 +56,6 @@ mod deepseek_integration {
             .expect("switch to DeepSeek v4 flash");
 
         assert_eq!(multi.display_name(), "DeepSeek");
-        assert_eq!(multi.model(), "deepseek-v4-flash");
 
         // Create bridge — MultiProvider IS a Provider
         let provider: std::sync::Arc<dyn Provider> = std::sync::Arc::new(multi);

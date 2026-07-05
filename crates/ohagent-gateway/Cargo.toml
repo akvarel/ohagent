@@ -14,4 +14,10 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
+once_cell = { workspace = true }
+teloxide = { workspace = true }
+reqwest = { workspace = true }
+async-trait = { workspace = true }
+dashmap = { workspace = true }
+rand = { workspace = true }
 ohagent-core = { path = "../ohagent-core" }

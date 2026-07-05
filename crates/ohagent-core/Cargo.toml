@@ -19,3 +19,6 @@ jcode-app-core = { path = "../../jcode/crates/jcode-app-core" }
 jcode-base = { path = "../../jcode/crates/jcode-base" }
 jcode-provider-core = { path = "../../jcode/crates/jcode-provider-core" }
 jcode-agent-runtime = { path = "../../jcode/crates/jcode-agent-runtime" }
+
+[dev-dependencies]
+jcode-provider-openrouter-runtime = { path = "../../jcode/crates/jcode-provider-openrouter-runtime" }

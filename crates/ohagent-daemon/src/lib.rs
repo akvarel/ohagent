@@ -1,7 +1,8 @@
 //! ohagent-daemon: 24/7 daemon process for ohAgent.
 //!
 //! Runs as a long-lived process (systemd service or background).
-//! Manages lifecycle, health checks, and graceful shutdown.
+//! Manages lifecycle, health checks, graceful shutdown,
+//! and hosts the messaging gateway.
 
 use anyhow::Result;
 use clap::Parser;
@@ -9,6 +10,45 @@ use std::sync::Arc;
 use tokio::signal;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
+
+use ohagent_core::jcode_bridge::JcodeBridge;
+use ohagent_gateway::platforms::telegram::TelegramAdapter;
+use ohagent_gateway::adapter::PlatformAdapter;
+use jcode_provider_core::Provider;
+
+/// Register external provider runtimes (OpenRouter, OpenAI-compatible profiles).
+///
+/// Must be called once at startup before creating any MultiProvider.
+fn setup_provider_runtimes() {
+    use jcode_base::provider::external;
+    use jcode_provider_openrouter_runtime::OpenRouterProvider;
+
+    external::register_openrouter_factory(|spec| {
+        use external::OpenRouterRuntimeSpec;
+        let provider: std::sync::Arc<dyn Provider> = match spec {
+            OpenRouterRuntimeSpec::Default => std::sync::Arc::new(OpenRouterProvider::new()?),
+            OpenRouterRuntimeSpec::OpenRouterApiKey => {
+                std::sync::Arc::new(OpenRouterProvider::new_openrouter_api_key_runtime()?)
+            }
+            OpenRouterRuntimeSpec::CompatibleProfile(profile) => std::sync::Arc::new(
+                OpenRouterProvider::new_openai_compatible_profile_runtime(profile)?,
+            ),
+            OpenRouterRuntimeSpec::NamedProfile { name, config } => std::sync::Arc::new(
+                OpenRouterProvider::new_named_openai_compatible(&name, &config)?,
+            ),
+        };
+        Ok(provider)
+    });
+
+    external::register_profile_catalog_refresh(
+        jcode_provider_openrouter_runtime::maybe_schedule_openai_compatible_profile_catalog_refresh,
+    );
+    external::register_standard_openrouter_catalog_refresh(
+        jcode_provider_openrouter_runtime::maybe_schedule_standard_openrouter_catalog_refresh,
+    );
+
+    tracing::info!("Provider runtimes registered (OpenRouter + compatible profiles)");
+}
 
 /// ohAgent — 24/7 personal AI agent built on Jcode.
 #[derive(Parser, Debug)]
@@ -25,20 +65,63 @@ struct Cli {
     /// Health check port
     #[arg(long, default_value = "9090")]
     health_port: u16,
+
+    /// Enable Telegram gateway
+    #[arg(long, default_value = "true")]
+    telegram: bool,
 }
 
 /// Main daemon state.
 struct Daemon {
     health_port: u16,
+    enable_telegram: bool,
     shutdown: Arc<tokio::sync::Notify>,
+    bridge: Arc<JcodeBridge>,
 }
 
 impl Daemon {
-    fn new(health_port: u16) -> Self {
-        Self {
+    fn new(health_port: u16, enable_telegram: bool) -> Result<Self> {
+        // Register provider runtimes before creating any provider
+        setup_provider_runtimes();
+
+        // Build the provider
+        let provider: Arc<dyn Provider> = {
+            let multi = jcode_base::provider::MultiProvider::new();
+
+            // Configure from environment / Vault
+            if let Ok(api_key) = std::env::var("DEEPSEEK_API_KEY") {
+                multi
+                    .set_model("deepseek:deepseek-v4-flash")
+                    .map_err(|e| anyhow::anyhow!("Failed to set DeepSeek model: {e}"))?;
+                info!(
+                    provider = %multi.display_name(),
+                    "Provider configured via DEEPSEEK_API_KEY"
+                );
+                let _ = api_key; // Already consumed by MultiProvider via env
+            } else if let Ok(api_key) = std::env::var("ANTHROPIC_API_KEY") {
+                multi
+                    .set_model("claude:claude-sonnet-4-6")
+                    .map_err(|e| anyhow::anyhow!("Failed to set Claude model: {e}"))?;
+                info!(
+                    provider = %multi.display_name(),
+                    "Provider configured via ANTHROPIC_API_KEY"
+                );
+                let _ = api_key;
+            } else {
+                info!("No provider API key found. Using default provider (may need /login).");
+            }
+
+            Arc::new(multi)
+        };
+
+        let bridge = Arc::new(JcodeBridge::new(provider));
+
+        Ok(Self {
             health_port,
+            enable_telegram,
             shutdown: Arc::new(tokio::sync::Notify::new()),
-        }
+            bridge,
+        })
     }
 
     /// Start the health check HTTP server.
@@ -78,6 +161,27 @@ impl Daemon {
         Ok(())
     }
 
+    /// Start the Telegram gateway.
+    async fn start_telegram(&self) -> Result<()> {
+        let adapter = TelegramAdapter::from_env().map_err(|e| {
+            anyhow::anyhow!(
+                "Failed to initialize Telegram adapter: {e}. \
+                 Set TELEGRAM_BOT_TOKEN or disable with --telegram=false."
+            )
+        })?;
+
+        info!("Telegram adapter configured, starting bot...");
+
+        let bridge = Arc::clone(&self.bridge);
+        tokio::spawn(async move {
+            if let Err(e) = adapter.start(bridge).await {
+                tracing::error!(error = %e, "Telegram gateway crashed");
+            }
+        });
+
+        Ok(())
+    }
+
     /// Run the daemon main loop.
     async fn run(self) -> Result<()> {
         info!(
@@ -88,9 +192,13 @@ impl Daemon {
         // Start health check server
         self.start_health_server().await?;
 
-        // TODO: Initialize JcodeBridge with configured provider
-        // TODO: Start Gateway (Telegram, Discord, ...)
-        // TODO: Start Cron Scheduler
+        // Start Telegram gateway (if enabled)
+        if self.enable_telegram {
+            match self.start_telegram().await {
+                Ok(()) => info!("Telegram gateway started"),
+                Err(e) => tracing::warn!(error = %e, "Telegram gateway not started"),
+            }
+        }
 
         info!("ohAgent daemon ready");
 
@@ -137,7 +245,7 @@ pub async fn run() -> Result<()> {
         )
         .init();
 
-    let daemon = Daemon::new(cli.health_port);
+    let daemon = Daemon::new(cli.health_port, cli.telegram)?;
     daemon.run().await
 }
 

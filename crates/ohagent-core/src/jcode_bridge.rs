@@ -46,9 +46,11 @@ pub struct SessionConfig {
 /// A handle to a running Jcode agent session.
 ///
 /// Created via `JcodeBridge::create_session()`.
+/// Clone is cheap — it clones the Arc inside.
+#[derive(Clone)]
 pub struct SessionHandle {
     pub session_id: String,
-    agent: Arc<Mutex<Agent>>,
+    pub agent: Arc<Mutex<Agent>>,
 }
 
 impl SessionHandle {
