@@ -4135,6 +4135,7 @@ dependencies = [
  "anyhow",
  "jcode-agent-runtime",
  "jcode-app-core",
+ "jcode-base",
  "jcode-provider-core",
  "serde",
  "serde_json",
