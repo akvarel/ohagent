@@ -72,7 +72,48 @@ ohAgent/
 
 | Phase | Component | Status |
 |---|---|---|
-| 1 | Daemon + Profiles + Session Storage | 🔲 Planned |
-| 2 | Gateway (Telegram) | 🔲 Planned |
+| 1 | Daemon + Profiles + Session Storage | ✅ Done |
+| 2 | Gateway (Telegram) | ✅ Done |
 | 3 | Deep Memory (pgvector) | 🔲 Planned |
 | 4 | Self-Learning Skills | 🔲 Planned |
+
+## Phase 1-2 Implementation Details
+
+### Jcode Integration
+- Jcode is embedded as a **git submodule** (`akvarel/jcode` fork, synced to v0.35.1+)
+- Headless sessions via `create_headless_session` + `process_message_streaming_mpsc`
+- `JcodeBridge` in `ohagent-core` wraps the API cleanly
+- **Two upstream fixes contributed:**
+  1. `fork()` preserves `openai_compatible_profiles` (DeepSeek runtime)
+  2. `set_model()` preserves active OpenAI-compatible profile on OpenRouter fallback
+
+### Gateway Architecture
+- `PlatformAdapter` trait — unified interface for messaging platforms
+- `PairingManager` — time-limited pairing codes (6 chars, 10 min TTL)
+- `SessionManager` — per-chat Jcode sessions via `DashMap`
+- `Dispatcher` — message routing with command handling
+- i18n: EN, LV, RU with `Lang::from_code()`
+
+### Telegram Bot
+- Built with **teloxide 0.13** (long-polling mode)
+- Commands: `/start`, `/pair`, `/confirm`, `/help`, `/new`, `/lang`, `/stop`, `/status`
+- Typing indicator during processing
+- Auto-pairs with tenant scoping (`telegram_{user_id}`)
+
+### Provider Setup
+- `setup_provider_runtimes()` registers OpenRouter + OpenAI-compatible profiles
+- DeepSeek V4 Flash as primary provider (via `DEEPSEEK_API_KEY`)
+- Claude/OpenAI fallback chain
+
+### Key Files
+| File | Purpose |
+|---|---|
+| `crates/ohagent-core/src/jcode_bridge.rs` | Headless session bridge |
+| `crates/ohagent-gateway/src/adapter.rs` | PlatformAdapter trait |
+| `crates/ohagent-gateway/src/i18n.rs` | Multi-language strings |
+| `crates/ohagent-gateway/src/pairing.rs` | User pairing/authorization |
+| `crates/ohagent-gateway/src/session.rs` | Per-chat session manager |
+| `crates/ohagent-gateway/src/dispatch.rs` | Message routing |
+| `crates/ohagent-gateway/src/platforms/telegram.rs` | Telegram bot adapter |
+| `crates/ohagent-daemon/src/lib.rs` | Daemon main loop |
+| `docs/MANUAL.md` | User manual |
