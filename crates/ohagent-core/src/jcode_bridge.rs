@@ -159,6 +159,7 @@ impl JcodeBridge {
             config.model.clone(),
             None, // provider_key_override
             None, // route_api_method_override
+            None, // effort_override
             None, // mcp_pool
             config.report_back_to.clone(),
         )
