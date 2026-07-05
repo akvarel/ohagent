@@ -21,3 +21,6 @@ Thumbs.db
 
 # Vault tokens (never commit!)
 .vault-token
+
+# Cargo (local)
+.cargo/config.toml

@@ -13,3 +13,8 @@ tracing = { workspace = true }
 anyhow = { workspace = true }
 thiserror = { workspace = true }
 uuid = { workspace = true }
+
+# Jcode integration — path deps into git submodule
+jcode-app-core = { path = "../../jcode/crates/jcode-app-core" }
+jcode-provider-core = { path = "../../jcode/crates/jcode-provider-core" }
+jcode-agent-runtime = { path = "../../jcode/crates/jcode-agent-runtime" }
