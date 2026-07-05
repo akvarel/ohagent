@@ -126,6 +126,34 @@ Every paired user gets a unique `tenant_id` in format `telegram_{user_id}`. All 
 
 ---
 
+## Deep Memory System (Phase 3)
+
+ohAgent remembers conversations across sessions. The memory engine stores:
+- **Conversation summaries** — key points and decisions from each session
+- **Semantic search** — find relevant past context via meaning, not keywords
+- **Proactive nudges** — the agent suggests relevant memories when they're useful
+
+Memory is stored in SQLite at `~/.ohagent/memory.db` by default.
+
+### Embeddings (optional)
+
+For best results, enable embeddings:
+```bash
+cargo build --features ohagent-memory/embeddings
+```
+This loads Jcode's ONNX model (all-MiniLM-L6-v2, ~90MB download on first run).
+Without embeddings, text-based keyword matching is used as a fallback.
+
+### Memory Commands (planned for Telegram bot)
+
+| Command | Description |
+|---|---|
+| `/remember <text>` | Explicitly save something to memory |
+| `/recall <query>` | Search past memories |
+| `/forget` | Clear memory for the current chat |
+
+---
+
 ## 4. Troubleshooting
 
 ### Common Errors

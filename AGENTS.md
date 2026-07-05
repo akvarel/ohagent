@@ -74,8 +74,38 @@ ohAgent/
 |---|---|---|
 | 1 | Daemon + Profiles + Session Storage | ✅ Done |
 | 2 | Gateway (Telegram) | ✅ Done |
-| 3 | Deep Memory (pgvector) | 🔲 Planned |
+| 3 | Deep Memory (SQLite + vector) | ✅ Done |
 | 4 | Self-Learning Skills | 🔲 Planned |
+
+## Phase 3 Implementation Details
+
+### Memory Architecture
+- **SQLite** with WAL mode for structured storage (entries, summaries, embeddings)
+- **Jcode ONNX embedder** (all-MiniLM-L6-v2) for vector embeddings — gated behind `embeddings` feature
+- Pure **Rust cosine similarity** fallback when embeddings are disabled
+- **Semantic + temporal scoring**: `combined = α*similarity + β*recency + γ*importance`
+
+### Memory Schema
+| Table | Purpose |
+|---|---|
+| `memory_entries` | Core memory records with tenant scoping |
+| `memory_embeddings` | 384-dim float vectors as BLOBs |
+| `conversation_summaries` | Structured summaries of completed sessions |
+
+### Key Modules
+| Module | Purpose |
+|---|---|
+| `store.rs` | SQLite CRUD, schema init, embedding serialization |
+| `engine.rs` | `MemoryEngine` — public orchestrator API |
+| `embeddings.rs` | Jcode embedder wrapper with feature gate |
+| `retrieval.rs` | search() — semantic + text fallback pipeline |
+| `summarizer.rs` | Conversation summarizer + memory entry creation |
+| `nudge.rs` | Proactive nudges from related past context |
+
+### Daemon Integration
+- Memory engine initialized at daemon startup (graceful fallback if unavailable)
+- Stored in `Daemon.memory: Option<Arc<MemoryEngine>>`
+- Ready for gateway integration (nudge injection into agent context)
 
 ## Phase 1-2 Implementation Details
 
