@@ -18,6 +18,7 @@ use crate::i18n::Lang;
 use crate::pairing::PairingManager;
 use crate::session::SessionManager;
 use ohagent_core::jcode_bridge::JcodeBridge;
+use ohagent_skills::registry::SkillRegistry;
 
 /// Helper: parse a string chat_id to teloxide's ChatId.
 fn to_chat_id(s: &str) -> Result<ChatId, Box<dyn std::error::Error + Send + Sync>> {
@@ -48,6 +49,12 @@ enum Command {
     Stop,
     #[command(description = "Check agent status")]
     Status,
+    #[command(description = "List learned skills")]
+    Skills,
+    #[command(description = "Show skill details")]
+    Skill(String),
+    #[command(description = "Record a skill as used")]
+    Skilluse(String),
 }
 
 /// Shared state accessible from all Telegram handlers.
@@ -59,6 +66,7 @@ struct TelegramState {
 /// The Telegram platform adapter.
 pub struct TelegramAdapter {
     bot_token: String,
+    skills: Option<Arc<SkillRegistry>>,
 }
 
 impl TelegramAdapter {
@@ -69,14 +77,24 @@ impl TelegramAdapter {
     pub fn from_env() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let token = std::env::var("TELEGRAM_BOT_TOKEN")
             .map_err(|_| "TELEGRAM_BOT_TOKEN not set. Ensure Vault agent is running.")?;
-        Ok(Self { bot_token: token })
+        Ok(Self {
+            bot_token: token,
+            skills: None,
+        })
     }
 
     /// Create with an explicit token.
     pub fn new(token: impl Into<String>) -> Self {
         Self {
             bot_token: token.into(),
+            skills: None,
         }
+    }
+
+    /// Attach a skill registry for skill commands.
+    pub fn with_skills(mut self, skills: Arc<SkillRegistry>) -> Self {
+        self.skills = Some(skills);
+        self
     }
 }
 
@@ -94,7 +112,11 @@ impl PlatformAdapter for TelegramAdapter {
 
         let pairing_manager = Arc::new(PairingManager::new());
         let session_manager = Arc::new(SessionManager::new(bridge));
-        let dispatcher = Arc::new(Dispatcher::new(session_manager, pairing_manager));
+        let mut dispatcher_builder = Dispatcher::new(session_manager, pairing_manager);
+        if let Some(ref skills) = self.skills {
+            dispatcher_builder = dispatcher_builder.with_skills(Arc::clone(skills));
+        }
+        let dispatcher = Arc::new(dispatcher_builder);
 
         let state = TelegramState {
             dispatcher: dispatcher.clone(),
@@ -243,6 +265,9 @@ async fn handle_command(
         Command::Lang => ("lang", ""),
         Command::Stop => ("stop", ""),
         Command::Status => ("status", ""),
+        Command::Skills => ("skills", ""),
+        Command::Skill(name) => ("skill", name.as_str()),
+        Command::Skilluse(name) => ("skilluse", name.as_str()),
     };
 
     let incoming = IncomingMessage {

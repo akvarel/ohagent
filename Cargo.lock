@@ -4172,6 +4172,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "chrono",
  "clap",
  "jcode-base",
  "jcode-provider-core",
@@ -4179,11 +4180,13 @@ dependencies = [
  "ohagent-core",
  "ohagent-gateway",
  "ohagent-memory",
+ "ohagent-skills",
  "serde",
  "serde_json",
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "uuid",
 ]
 
 [[package]]
@@ -4195,6 +4198,7 @@ dependencies = [
  "chrono",
  "dashmap",
  "ohagent-core",
+ "ohagent-skills",
  "once_cell",
  "rand 0.8.6",
  "reqwest 0.12.28",
@@ -4233,8 +4237,10 @@ dependencies = [
  "chrono",
  "ohagent-core",
  "ohagent-memory",
+ "rusqlite",
  "serde",
  "serde_json",
+ "shellexpand",
  "thiserror 2.0.18",
  "tokio",
  "tracing",

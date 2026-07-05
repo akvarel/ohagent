@@ -161,9 +161,9 @@ static TRANSLATIONS: Lazy<HashMap<&'static str, Translation>> = Lazy::new(|| {
     m.insert(
         "help",
         Translation {
-            en: "*ohAgent Commands*\n\n/start — Start the bot\n/pair — Pair your account\n/status — Check agent status\n/stop — Stop current task\n/new — Start a new conversation\n/lang — Change language\n/help — Show this help".into(),
-            lv: Some("*ohAgent Komandas*\n\n/start — Sākt botu\n/pair — Savienot kontu\n/status — Pārbaudīt aģenta statusu\n/stop — Apturēt pašreizējo uzdevumu\n/new — Sākt jaunu sarunu\n/lang — Mainīt valodu\n/help — Parādīt šo palīdzību".into()),
-            ru: Some("*ohAgent Команды*\n\n/start — Запустить бота\n/pair — Сопрячь аккаунт\n/status — Проверить статус агента\n/stop — Остановить текущую задачу\n/new — Начать новый разговор\n/lang — Сменить язык\n/help — Показать эту справку".into()),
+            en: "*ohAgent Commands*\n\n/start — Start the bot\n/pair — Pair your account\n/status — Check agent status\n/stop — Stop current task\n/new — Start a new conversation\n/lang — Change language\n/skills — List learned skills\n/skill <name> — Show skill details\n/skilluse <name> — Record skill usage\n/help — Show this help".into(),
+            lv: Some("*ohAgent Komandas*\n\n/start — Sākt botu\n/pair — Savienot kontu\n/status — Pārbaudīt aģenta statusu\n/stop — Apturēt pašreizējo uzdevumu\n/new — Sākt jaunu sarunu\n/lang — Mainīt valodu\n/skills — Parādīt apgūtās prasmes\n/skill <name> — Prasmes detaļas\n/skilluse <name> — Atzīmēt prasmes lietojumu\n/help — Parādīt šo palīdzību".into()),
+            ru: Some("*ohAgent Команды*\n\n/start — Запустить бота\n/pair — Сопрячь аккаунт\n/status — Проверить статус агента\n/stop — Остановить текущую задачу\n/new — Начать новый разговор\n/lang — Сменить язык\n/skills — Список изученных навыков\n/skill <name> — Детали навыка\n/skilluse <name> — Отметить использование навыка\n/help — Показать эту справку".into()),
         },
     );
 
@@ -191,6 +191,48 @@ static TRANSLATIONS: Lazy<HashMap<&'static str, Translation>> = Lazy::new(|| {
             en: "Current task stopped.".into(),
             lv: Some("Pašreizējais uzdevums apturēts.".into()),
             ru: Some("Текущая задача остановлена.".into()),
+        },
+    );
+
+    // ---- Skills ----
+    m.insert(
+        "skills_header",
+        Translation {
+            en: "*Learned Skills:*".into(),
+            lv: Some("*Apgūtās prasmes:*".into()),
+            ru: Some("*Изученные навыки:*".into()),
+        },
+    );
+    m.insert(
+        "skills_none",
+        Translation {
+            en: "No skills learned yet. I'll create new skills as I help you with complex tasks.".into(),
+            lv: Some("Vēl nav apgūtu prasmju. Es izveidošu jaunas prasmes, kad palīdzēšu ar sarežģītiem uzdevumiem.".into()),
+            ru: Some("Пока нет изученных навыков. Я буду создавать новые навыки по мере помощи со сложными задачами.".into()),
+        },
+    );
+    m.insert(
+        "skills_unavailable",
+        Translation {
+            en: "Skill system is not available right now.".into(),
+            lv: Some("Prasmju sistēma pašlaik nav pieejama.".into()),
+            ru: Some("Система навыков сейчас недоступна.".into()),
+        },
+    );
+    m.insert(
+        "skill_not_found",
+        Translation {
+            en: "Skill '{name}' not found.".into(),
+            lv: Some("Prasme '{name}' nav atrasta.".into()),
+            ru: Some("Навык '{name}' не найден.".into()),
+        },
+    );
+    m.insert(
+        "skill_used",
+        Translation {
+            en: "Skill '{name}' recorded as used. Thanks!".into(),
+            lv: Some("Prasme '{name}' atzīmēta kā izmantota. Paldies!".into()),
+            ru: Some("Навык '{name}' отмечен как использованный. Спасибо!".into()),
         },
     );
 

@@ -21,3 +21,4 @@ async-trait = { workspace = true }
 dashmap = { workspace = true }
 rand = { workspace = true }
 ohagent-core = { path = "../ohagent-core" }
+ohagent-skills = { path = "../ohagent-skills" }

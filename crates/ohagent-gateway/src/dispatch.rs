@@ -10,11 +10,13 @@ use crate::adapter::{IncomingMessage, OutgoingMessage};
 use crate::i18n::I18n;
 use crate::pairing::PairingManager;
 use crate::session::SessionManager;
+use ohagent_skills::registry::SkillRegistry;
 
 /// The central dispatcher that every platform adapter calls into.
 pub struct Dispatcher {
     session_manager: Arc<SessionManager>,
     pairing_manager: Arc<PairingManager>,
+    skills: Option<Arc<SkillRegistry>>,
 }
 
 impl Dispatcher {
@@ -25,7 +27,14 @@ impl Dispatcher {
         Self {
             session_manager,
             pairing_manager,
+            skills: None,
         }
+    }
+
+    /// Set the skill registry for skill-related commands.
+    pub fn with_skills(mut self, skills: Arc<SkillRegistry>) -> Self {
+        self.skills = Some(skills);
+        self
     }
 
     /// Handle an incoming message from any platform.
@@ -208,6 +217,160 @@ impl Dispatcher {
                     text: i18n.t("task_stopped"),
                     markdown: false,
                 })
+            }
+
+            "skills" => {
+                // List active skills for this tenant
+                match &self.skills {
+                    Some(skills) => {
+                        match skills.list(&msg.tenant_id, None, 20) {
+                            Ok(list) if list.is_empty() => {
+                                Some(OutgoingMessage {
+                                    chat_id: msg.chat_id.clone(),
+                                    text: i18n.t("skills_none"),
+                                    markdown: false,
+                                })
+                            }
+                            Ok(list) => {
+                                let mut text = i18n.t("skills_header");
+                                for s in &list {
+                                    text.push_str(&format!(
+                                        "\n• *{}* (v{}) — {} — {:.0}%",
+                                        s.name,
+                                        s.version,
+                                        s.status,
+                                        s.quality_score * 100.0,
+                                    ));
+                                }
+                                Some(OutgoingMessage {
+                                    chat_id: msg.chat_id.clone(),
+                                    text,
+                                    markdown: true,
+                                })
+                            }
+                            Err(e) => Some(OutgoingMessage {
+                                chat_id: msg.chat_id.clone(),
+                                text: i18n.tf("error", &[("error", &e.to_string())]),
+                                markdown: false,
+                            }),
+                        }
+                    }
+                    None => Some(OutgoingMessage {
+                        chat_id: msg.chat_id.clone(),
+                        text: i18n.t("skills_unavailable"),
+                        markdown: false,
+                    }),
+                }
+            }
+
+            "skill" => {
+                let skill_name = args.trim();
+                if skill_name.is_empty() {
+                    return Some(OutgoingMessage {
+                        chat_id: msg.chat_id.clone(),
+                        text: "Usage: /skill <name>".into(),
+                        markdown: false,
+                    });
+                }
+                match &self.skills {
+                    Some(skills) => {
+                        match skills.find_by_name(&msg.tenant_id, skill_name) {
+                            Ok(Some(s)) => {
+                                let triggers = s.triggers.join(", ");
+                                let tags = s.tags.join(", ");
+                                let text = format!(
+                                    "*{name}* (v{ver})\n\
+                                     Status: {status}\n\
+                                     Quality: {quality:.0}%\n\
+                                     Used: {used} times\n\
+                                     \n{desc}\n\
+                                     \nTriggers: {triggers}\n\
+                                     Tags: {tags}",
+                                    name = s.name,
+                                    ver = s.version,
+                                    status = s.status,
+                                    quality = s.quality_score * 100.0,
+                                    used = s.use_count,
+                                    desc = s.description,
+                                    triggers = triggers,
+                                    tags = tags,
+                                );
+                                Some(OutgoingMessage {
+                                    chat_id: msg.chat_id.clone(),
+                                    text,
+                                    markdown: true,
+                                })
+                            }
+                            Ok(None) => Some(OutgoingMessage {
+                                chat_id: msg.chat_id.clone(),
+                                text: i18n.tf("skill_not_found", &[("name", skill_name)]),
+                                markdown: false,
+                            }),
+                            Err(e) => Some(OutgoingMessage {
+                                chat_id: msg.chat_id.clone(),
+                                text: i18n.tf("error", &[("error", &e.to_string())]),
+                                markdown: false,
+                            }),
+                        }
+                    }
+                    None => Some(OutgoingMessage {
+                        chat_id: msg.chat_id.clone(),
+                        text: i18n.t("skills_unavailable"),
+                        markdown: false,
+                    }),
+                }
+            }
+
+            "skilluse" => {
+                let skill_name = args.trim();
+                if skill_name.is_empty() {
+                    return Some(OutgoingMessage {
+                        chat_id: msg.chat_id.clone(),
+                        text: "Usage: /skilluse <name>".into(),
+                        markdown: false,
+                    });
+                }
+                match &self.skills {
+                    Some(skills) => {
+                        match skills.find_by_name(&msg.tenant_id, skill_name) {
+                            Ok(Some(s)) => {
+                                match ohagent_skills::evaluator::record_success(
+                                    skills,
+                                    &s.id,
+                                    &format!("{}:{}", msg.platform, msg.chat_id),
+                                    &msg.tenant_id,
+                                    None,
+                                ) {
+                                    Ok(()) => Some(OutgoingMessage {
+                                        chat_id: msg.chat_id.clone(),
+                                        text: i18n.tf("skill_used", &[("name", &s.name)]),
+                                        markdown: false,
+                                    }),
+                                    Err(e) => Some(OutgoingMessage {
+                                        chat_id: msg.chat_id.clone(),
+                                        text: i18n.tf("error", &[("error", &e.to_string())]),
+                                        markdown: false,
+                                    }),
+                                }
+                            }
+                            Ok(None) => Some(OutgoingMessage {
+                                chat_id: msg.chat_id.clone(),
+                                text: i18n.tf("skill_not_found", &[("name", skill_name)]),
+                                markdown: false,
+                            }),
+                            Err(e) => Some(OutgoingMessage {
+                                chat_id: msg.chat_id.clone(),
+                                text: i18n.tf("error", &[("error", &e.to_string())]),
+                                markdown: false,
+                            }),
+                        }
+                    }
+                    None => Some(OutgoingMessage {
+                        chat_id: msg.chat_id.clone(),
+                        text: i18n.t("skills_unavailable"),
+                        markdown: false,
+                    }),
+                }
             }
 
             _ => {

@@ -16,6 +16,8 @@ use ohagent_gateway::platforms::telegram::TelegramAdapter;
 use ohagent_gateway::adapter::PlatformAdapter;
 use ohagent_memory::engine::MemoryEngine;
 use ohagent_memory::models::MemoryConfig;
+use ohagent_skills::registry::SkillRegistry;
+use ohagent_skills::SkillConfig;
 use jcode_provider_core::Provider;
 
 /// Register external provider runtimes (OpenRouter, OpenAI-compatible profiles).
@@ -80,6 +82,7 @@ struct Daemon {
     shutdown: Arc<tokio::sync::Notify>,
     bridge: Arc<JcodeBridge>,
     memory: Option<Arc<MemoryEngine>>,
+    skills: Option<Arc<SkillRegistry>>,
 }
 
 impl Daemon {
@@ -131,12 +134,25 @@ impl Daemon {
             }
         };
 
+        // Initialize skill registry
+        let skills = match SkillRegistry::open(SkillConfig::default()) {
+            Ok(reg) => {
+                info!("Skill registry initialized");
+                Some(Arc::new(reg))
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "Skill registry not available");
+                None
+            }
+        };
+
         Ok(Self {
             health_port,
             enable_telegram,
             shutdown: Arc::new(tokio::sync::Notify::new()),
             bridge,
             memory,
+            skills,
         })
     }
 
@@ -179,12 +195,16 @@ impl Daemon {
 
     /// Start the Telegram gateway.
     async fn start_telegram(&self) -> Result<()> {
-        let adapter = TelegramAdapter::from_env().map_err(|e| {
+        let mut adapter = TelegramAdapter::from_env().map_err(|e| {
             anyhow::anyhow!(
                 "Failed to initialize Telegram adapter: {e}. \
                  Set TELEGRAM_BOT_TOKEN or disable with --telegram=false."
             )
         })?;
+
+        if let Some(ref skills) = self.skills {
+            adapter = adapter.with_skills(Arc::clone(skills));
+        }
 
         info!("Telegram adapter configured, starting bot...");
 
@@ -216,6 +236,9 @@ impl Daemon {
             }
         }
 
+        // Start skills cron (creation, evaluation, curation)
+        self.start_skills_cron().await;
+
         info!("ohAgent daemon ready");
 
         // Wait for shutdown signal
@@ -223,6 +246,85 @@ impl Daemon {
 
         info!("ohAgent daemon stopped");
         Ok(())
+    }
+
+    /// Spawn a periodic background task for skill lifecycle management.
+    ///
+    /// - Every 10 minutes: scan conversations, propose new skills
+    /// - Every 5 minutes: evaluate existing skills, promote/demote
+    /// - Every 30 minutes: curate (merge, prune, enforce limits)
+    async fn start_skills_cron(&self) {
+        let memory = self.memory.clone();
+        let skills = self.skills.clone();
+        let shutdown = Arc::clone(&self.shutdown);
+
+        if memory.is_none() || skills.is_none() {
+            tracing::info!("Skills cron disabled — memory or skills not available");
+            return;
+        }
+
+        tokio::spawn(async move {
+            let memory = memory.unwrap();
+            let skills = skills.unwrap();
+            let config = SkillConfig::default();
+
+            // Use two intervals: short for eval, longer for creation & curation
+            let mut eval_tick = tokio::time::interval(std::time::Duration::from_secs(300)); // 5 min
+            let mut create_tick = tokio::time::interval(std::time::Duration::from_secs(600)); // 10 min
+            // Curate every other eval cycle (≈10 min) for simplicity
+            let mut curate_tick = tokio::time::interval(std::time::Duration::from_secs(600));
+
+            loop {
+                tokio::select! {
+                    _ = shutdown.notified() => {
+                        info!("Skills cron shutting down");
+                        break;
+                    }
+                    _ = eval_tick.tick() => {
+                        // Evaluate all tenants with skills
+                        if let Ok(tenants) = skills.all_tenants() {
+                            for tid in &tenants {
+                                if let Err(e) = ohagent_skills::evaluator::periodic_evaluation(&skills, tid, &config) {
+                                    tracing::warn!(tenant_id=%tid, error=%e, "Skill evaluation failed");
+                                }
+                            }
+                        }
+                    }
+                    _ = create_tick.tick() => {
+                        // Propose new skills for tenants with recent conversations
+                        let sample_tenants = ["default"];
+                        for tid in &sample_tenants {
+                            if let Err(e) = ohagent_skills::creator::propose_skills(
+                                &skills, &memory, tid, &config,
+                            ) {
+                                tracing::debug!(tenant_id=%tid, error=%e, "Skill creation skipped");
+                            }
+                        }
+                    }
+                    _ = curate_tick.tick() => {
+                        if let Ok(tenants) = skills.all_tenants() {
+                            for tid in &tenants {
+                                match ohagent_skills::curator::curate(&skills, tid, &config) {
+                                    Ok(report) => {
+                                        tracing::info!(
+                                            tenant_id=%tid,
+                                            merged=report.merged,
+                                            pruned=report.pruned,
+                                            "Curator pass complete"
+                                        );
+                                    }
+                                    Err(e) => {
+                                        tracing::warn!(tenant_id=%tid, error=%e, "Curation failed");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        info!("Skills cron started (eval: 5min, create: 10min, curate: 10min)");
     }
 
     /// Wait for SIGTERM or SIGINT, then trigger graceful shutdown.
