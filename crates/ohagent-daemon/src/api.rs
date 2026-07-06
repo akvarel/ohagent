@@ -28,6 +28,7 @@ use ohagent_core::model_router::ModelRouter;
 use ohagent_core::usage_tracker::UsageTracker;
 use ohagent_core::message_log::MessageLog;
 use ohagent_core::session_store::SessionStore;
+use ohagent_core::push::PushService;
 use ohagent_core::vault::VaultClient;
 use ohagent_memory::engine::MemoryEngine;
 use ohagent_skills::evaluator;
@@ -49,6 +50,7 @@ pub struct ApiState {
     pub system_prompt_builder: Option<super::system_prompt::SystemPromptBuilder>,
     pub session_store: Option<Arc<SessionStore>>,
     pub tool_registry: Option<Arc<ohagent_core::tools::ToolRegistry>>,
+    pub push: Option<Arc<PushService>>,
     pub start_time: chrono::DateTime<chrono::Utc>,
     /// Path to keys config file
     pub keys_path: String,
@@ -101,6 +103,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/api/memory/{id}", get(get_memory))
         .route("/api/sessions", get(list_sessions_handler))
         .route("/api/sessions/{tenant_id}/{session_hash}", delete(delete_session_handler))
+        .route("/api/push", post(push_handler))
         .merge(webhooks)
         .with_state(state)
         .layer(middleware::from_fn(auth::require_auth))
@@ -611,4 +614,26 @@ async fn delete_session_handler(
     store.delete_session(&tenant_id, &session_hash)
         .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
     Ok(Json(serde_json::json!({"ok": true, "tenant_id": tenant_id, "session_hash": session_hash})))
+}
+
+// ── Push notifications ──
+
+#[derive(Deserialize)]
+struct PushRequest {
+    tenant_id: String,
+    message: String,
+}
+
+async fn push_handler(
+    State(state): State<ApiState>,
+    Json(body): Json<PushRequest>,
+) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
+    let push = state.push.as_ref().ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
+    let result = push.send(&body.tenant_id, &body.message).await;
+    Ok(Json(serde_json::json!({
+        "success": result.success,
+        "tenant_id": result.tenant_id,
+        "chat_id": result.chat_id,
+        "error": result.error,
+    })))
 }

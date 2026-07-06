@@ -111,6 +111,7 @@ struct Daemon {
     system_prompt_builder: Option<SystemPromptBuilder>,
     session_store: Option<Arc<ohagent_core::session_store::SessionStore>>,
     tool_registry: Option<Arc<ohagent_core::tools::ToolRegistry>>,
+    push: Option<Arc<ohagent_core::push::PushService>>,
     whatsapp: Option<Arc<WhatsAppAdapter>>,
     slack: Option<Arc<SlackAdapter>>,
 }
@@ -273,6 +274,18 @@ impl Daemon {
         let tool_registry = Arc::new(tool_registry);
         bridge = bridge.with_tools((*tool_registry).clone());
         info!(tools = tool_registry.list().len(), "Built-in tools registered");
+
+        // Initialize push notification service
+        let push = match std::env::var("TELEGRAM_BOT_TOKEN") {
+            Ok(token) => {
+                info!("Push notification service initialized (Telegram)");
+                Some(Arc::new(ohagent_core::push::PushService::new(token)))
+            }
+            Err(_) => {
+                tracing::debug!("TELEGRAM_BOT_TOKEN not set — push notifications disabled");
+                None
+            }
+        };
 
         let bridge = Arc::new(bridge);
 
@@ -437,6 +450,7 @@ impl Daemon {
             system_prompt_builder,
             session_store,
             tool_registry: Some(tool_registry),
+            push,
             whatsapp,
             slack,
         })
@@ -457,6 +471,7 @@ impl Daemon {
             system_prompt_builder: self.system_prompt_builder.clone(),
             session_store: self.session_store.clone(),
             tool_registry: self.tool_registry.clone(),
+            push: self.push.clone(),
             start_time: self.start_time,
             keys_path: self.keys_path.clone(),
             vault: Arc::clone(&self.vault),
