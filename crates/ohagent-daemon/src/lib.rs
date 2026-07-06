@@ -338,11 +338,9 @@ impl Daemon {
                 .expect("Failed to register Prometheus metrics"),
         );
 
-        // Build system prompt with AGENTS.md rules + skills
+        // Build system prompt with skills loaded once at startup.
+        // AGENTS.md rules are re-read per-request in assemble() for project switching.
         let system_prompt_builder = {
-            let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-            let agents_rules = SystemPromptBuilder::load_agents_rules(&cwd);
-
             let skills_list: Vec<SkillPrompt> = skills
                 .as_ref()
                 .map(|reg| {
@@ -360,21 +358,19 @@ impl Daemon {
                 .unwrap_or_default();
 
             let persistent = PersistentInstructions {
-                agents_rules,
                 skills: skills_list,
                 tenant_overrides: None,
             };
 
-            if persistent.agents_rules.is_empty() && persistent.skills.is_empty() {
-                info!("SystemPromptBuilder: no rules or skills loaded");
-                None
+            if persistent.skills.is_empty() {
+                info!("SystemPromptBuilder: no skills loaded — rules-only mode");
+                Some(SystemPromptBuilder::new(persistent.skills, persistent.tenant_overrides))
             } else {
                 info!(
-                    rules = persistent.agents_rules.len(),
                     skills = persistent.skills.len(),
                     "SystemPromptBuilder initialized"
                 );
-                Some(SystemPromptBuilder::new(persistent))
+                Some(SystemPromptBuilder::new(persistent.skills, persistent.tenant_overrides))
             }
         };
 

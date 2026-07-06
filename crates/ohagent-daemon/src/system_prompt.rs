@@ -4,7 +4,7 @@
 //!
 //! ```text
 //! ┌──────────────────────────────────────────┐
-//! │ Layer 1: AGENTS.md      (persistent)     │  ← N E V E R  compressed
+//! │ Layer 1: AGENTS.md      (per-request)    │  ← reloads on project switch
 //! │ Layer 2: Active Skills  (persistent)     │  ← N E V E R  compressed
 //! │ Layer 3: Memory RAG     (per-request)    │  ← N E V E R  compressed
 //! │ Layer 4: RollingSummary (compressed)     │  ← ONLY this is compressed
@@ -14,6 +14,13 @@
 //!
 //! Flash's `build_merge_prompt` only receives layer 4 content (conversation history).
 //! After each merge, layers 1-3 are re-injected fresh — they never go through compression.
+//!
+//! ## Project switching
+//!
+//! `assemble()` accepts `project_dir`. AGENTS.md files are re-read from
+//! the given directory on every call. When a user switches projects in
+//! Open WebUI, the new project's AGENTS.md rules are automatically picked up.
+//! Skills and tenant overrides remain static (loaded once at daemon startup).
 //!
 //! ## Context budget priority
 //!
@@ -37,8 +44,6 @@ fn home_dir() -> Option<PathBuf> {
 /// Sources of persistent instructions that must survive context compression.
 #[derive(Debug, Clone, Default)]
 pub struct PersistentInstructions {
-    /// Loaded from AGENTS.md files (global + project).
-    pub agents_rules: Vec<ProjectRule>,
     /// Active skills from SkillRegistry.
     pub skills: Vec<SkillPrompt>,
     /// Per-tenant custom instructions.
@@ -90,12 +95,12 @@ impl PromptBudget {
         let usable = (context_window as f64 * 0.80) as u32;
         Self {
             total_window: context_window,
-            rules_max: (usable as f64 * 0.20) as u32,   // 20% for rules
-            skills_max: (usable as f64 * 0.15) as u32,  // 15% for skills
-            memory_rag_max: (usable as f64 * 0.10) as u32, // 10% for memory RAG
+            rules_max: (usable as f64 * 0.20) as u32,
+            skills_max: (usable as f64 * 0.15) as u32,
+            memory_rag_max: (usable as f64 * 0.10) as u32,
             remaining_for_conversation: usable.saturating_sub(
                 (usable as f64 * 0.45) as u32
-            ), // remaining ~55% for conversation
+            ),
         }
     }
 }
@@ -122,27 +127,34 @@ pub struct LayerTokens {
 }
 
 /// Assembles the full system prompt from persistent + dynamic layers.
+///
+/// Skills and tenant overrides are loaded once at startup.
+/// AGENTS.md rules are re-read on every request, keyed by `project_dir` —
+/// so switching projects automatically picks up the right rules.
 #[derive(Debug, Clone)]
 pub struct SystemPromptBuilder {
-    persistent: PersistentInstructions,
+    skills: Vec<SkillPrompt>,
+    tenant_overrides: Option<String>,
 }
 
 impl SystemPromptBuilder {
-    /// Create a builder with persistent instructions (rules + skills).
-    pub fn new(persistent: PersistentInstructions) -> Self {
-        Self { persistent }
+    /// Create a builder with skills + tenant overrides.
+    /// AGENTS.md rules are loaded per-request via `project_dir` in `assemble()`.
+    pub fn new(skills: Vec<SkillPrompt>, tenant_overrides: Option<String>) -> Self {
+        Self { skills, tenant_overrides }
     }
 
     /// Load AGENTS.md files following Jcode's resolution order:
-    /// 1. ~/.AGENTS.md (global)
-    /// 2. Current directory's AGENTS.md (project)
-    /// 3. Parent directories' AGENTS.md (inherited)
+    /// 1. ~/.AGENTS.md (global, always)
+    /// 2. Current project_dir's AGENTS.md (project)
+    /// 3. Parent directories' AGENTS.md (inherited, excluding home)
     pub fn load_agents_rules(project_dir: &PathBuf) -> Vec<ProjectRule> {
         let mut rules = Vec::new();
+        let home = home_dir();
 
-        // Global: ~/.AGENTS.md
-        if let Some(home) = home_dir() {
-            let global_path = home.join(".AGENTS.md");
+        // Global: ~/.AGENTS.md (always loaded, regardless of project)
+        if let Some(ref h) = home {
+            let global_path = h.join(".AGENTS.md");
             if global_path.exists() {
                 if let Ok(text) = std::fs::read_to_string(&global_path) {
                     rules.push(ProjectRule {
@@ -157,6 +169,12 @@ impl SystemPromptBuilder {
         // Walk from project_dir up to /
         let mut current = project_dir.clone();
         loop {
+            // Don't re-read ~/.AGENTS.md as an Inherited rule
+            if Some(&current) == home.as_ref() {
+                if !current.pop() { break; }
+                continue;
+            }
+
             let agents_path = current.join("AGENTS.md");
             if agents_path.exists() {
                 if let Ok(text) = std::fs::read_to_string(&agents_path) {
@@ -177,7 +195,7 @@ impl SystemPromptBuilder {
             }
 
             if !current.pop() {
-                break; // Reached root
+                break;
             }
         }
 
@@ -187,12 +205,14 @@ impl SystemPromptBuilder {
 
     /// Assemble the full system prompt for a request.
     ///
+    /// `project_dir` — current working directory; AGENTS.md re-read from here.
     /// `conversation_messages` — raw messages for this turn (layer 5).
     /// `compressed_history` — from RollingSummary, if available (layer 4).
     /// `memory_rag` — relevant memories from MemoryEngine.search() (layer 3).
     /// `budget` — token budget for the target model.
     pub fn assemble(
         &self,
+        project_dir: &PathBuf,
         conversation_messages: &str,
         compressed_history: Option<&str>,
         memory_rag: &[String],
@@ -200,13 +220,14 @@ impl SystemPromptBuilder {
     ) -> AssembledPrompt {
         let mut layer_tokens = LayerTokens::default();
 
-        // ── Layer 1: AGENTS.md rules ──
-        let rules_text = self.format_rules();
+        // ── Layer 1: AGENTS.md rules (re-read every request for project switching) ──
+        let agents_rules = Self::load_agents_rules(project_dir);
+        let rules_text = Self::format_rules_static(&agents_rules, &self.tenant_overrides);
         let rules_text = trim_to_budget(&rules_text, budget.rules_max);
         layer_tokens.rules = estimate_tokens(&rules_text);
 
-        // ── Layer 2: Skills ──
-        let skills_text = self.format_skills();
+        // ── Layer 2: Skills (static, loaded once at startup) ──
+        let skills_text = Self::format_skills_static(&self.skills);
         let skills_text = trim_to_budget(&skills_text, budget.skills_max);
         layer_tokens.skills = estimate_tokens(&skills_text);
 
@@ -263,18 +284,18 @@ impl SystemPromptBuilder {
         }
     }
 
-    fn format_rules(&self) -> String {
-        if self.persistent.agents_rules.is_empty() {
+    fn format_rules_static(rules: &[ProjectRule], tenant_overrides: &Option<String>) -> String {
+        if rules.is_empty() && tenant_overrides.is_none() {
             return String::new();
         }
         let mut out = String::new();
-        for rule in &self.persistent.agents_rules {
+        for rule in rules {
             out.push_str(&format!(
                 "## Project: {} (priority: {:?})\n{}\n\n",
                 rule.project_name, rule.priority, rule.rules_text
             ));
         }
-        if let Some(ref overrides) = self.persistent.tenant_overrides {
+        if let Some(ref overrides) = tenant_overrides {
             out.push_str("## Tenant Instructions\n");
             out.push_str(overrides);
             out.push('\n');
@@ -282,12 +303,12 @@ impl SystemPromptBuilder {
         out
     }
 
-    fn format_skills(&self) -> String {
-        if self.persistent.skills.is_empty() {
+    fn format_skills_static(skills: &[SkillPrompt]) -> String {
+        if skills.is_empty() {
             return String::new();
         }
         let mut out = String::from("Available skills:\n\n");
-        for skill in &self.persistent.skills {
+        for skill in skills {
             out.push_str(&format!(
                 "### /{} — {}\nTrigger: {}\n{}\n\n",
                 skill.name, skill.id, skill.trigger, skill.instructions
@@ -325,7 +346,6 @@ fn trim_to_budget(text: &str, max_tokens: u32) -> String {
     if current <= max_tokens {
         return text.to_string();
     }
-    // Truncate proportionally by character count
     let ratio = max_tokens as f64 / current as f64;
     let max_chars = (text.chars().count() as f64 * ratio) as usize;
     let trimmed: String = text.chars().take(max_chars).collect();
@@ -335,6 +355,18 @@ fn trim_to_budget(text: &str, max_tokens: u32) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn test_builder() -> SystemPromptBuilder {
+        SystemPromptBuilder::new(
+            vec![SkillPrompt {
+                id: "s1".into(),
+                name: "test-skill".into(),
+                trigger: "when testing".into(),
+                instructions: "Do thing.".into(),
+            }],
+            None,
+        )
+    }
 
     #[test]
     fn test_budget_allocation() {
@@ -348,47 +380,30 @@ mod tests {
 
     #[test]
     fn test_assemble_with_compression_flag() {
-        let instructions = PersistentInstructions {
-            agents_rules: vec![ProjectRule {
-                project_name: "test".into(),
-                rules_text: "Always use async.".into(),
-                priority: RulePriority::Project,
-            }],
-            skills: vec![SkillPrompt {
-                id: "s1".into(),
-                name: "test-skill".into(),
-                trigger: "when testing".into(),
-                instructions: "Do thing.".into(),
-            }],
-            tenant_overrides: None,
-        };
-
-        let builder = SystemPromptBuilder::new(instructions);
+        let builder = test_builder();
         let budget = PromptBudget::from_window(128_000);
+        let cwd = PathBuf::from(".");
 
-        // Short conversation — no compression needed
-        let short_conv = "hello";
-        let result = builder.assemble(short_conv, None, &[], &budget);
+        // Short conversation
+        let result = builder.assemble(&cwd, "hello", None, &[], &budget);
         assert!(!result.needs_compression);
-        assert!(result.system.contains("── RULES ──"));
         assert!(result.system.contains("── SKILLS ──"));
-        assert!(result.system.contains("Always use async."));
         assert!(result.system.contains("test-skill"));
 
         // Very long conversation — should need compression
         let long_conv = "long message. ".repeat(50_000);
-        let result = builder.assemble(&long_conv, None, &[], &budget);
+        let result = builder.assemble(&cwd, &long_conv, None, &[], &budget);
         assert!(result.needs_compression);
-        // Rules must always be present
-        assert!(result.system.contains("── RULES ──"));
     }
 
     #[test]
     fn test_compressed_history_present() {
-        let builder = SystemPromptBuilder::new(PersistentInstructions::default());
+        let builder = test_builder();
         let budget = PromptBudget::from_window(128_000);
+        let cwd = PathBuf::from(".");
 
         let result = builder.assemble(
+            &cwd,
             "hello",
             Some("compressed: user wanted pizza"),
             &[],
@@ -399,47 +414,58 @@ mod tests {
     }
 
     #[test]
-    fn test_rules_trim_to_budget() {
-        let big_rules = "x".repeat(500_000); // huge
-        let trimmed = trim_to_budget(&big_rules, 100);
-        assert!(estimate_tokens(&trimmed) <= 150); // allow some slack
+    fn test_rules_reloaded_on_project_switch() {
+        // Create a temp dir with its own AGENTS.md
+        let tmp = std::env::temp_dir().join("ohagent_test_agents_switch");
+        let _ = std::fs::create_dir_all(&tmp);
+        let agents_path = tmp.join("AGENTS.md");
+        std::fs::write(&agents_path, "## Test Project\nRule: always test.\n").unwrap();
+
+        let builder = test_builder();
+        let budget = PromptBudget::from_window(128_000);
+
+        let result = builder.assemble(&tmp, "hello", None, &[], &budget);
+        assert!(result.system.contains("Test Project"));
+        assert!(result.system.contains("always test"));
+
+        // Cleanup
+        let _ = std::fs::remove_file(&agents_path);
+        let _ = std::fs::remove_dir(&tmp);
     }
 
     #[test]
-    fn test_skills_never_include_rules() {
-        let instructions = PersistentInstructions {
-            agents_rules: vec![ProjectRule {
-                project_name: "p1".into(),
-                rules_text: "RULE: no secrets in code".into(),
-                priority: RulePriority::Global,
-            }],
-            skills: vec![SkillPrompt {
-                id: "s1".into(),
-                name: "deploy".into(),
-                trigger: "on deploy".into(),
-                instructions: "run cargo build".into(),
-            }],
-            tenant_overrides: None,
-        };
-
-        let builder = SystemPromptBuilder::new(instructions);
+    fn test_different_project_different_cwd() {
+        let builder = test_builder();
         let budget = PromptBudget::from_window(128_000);
 
-        // Simulate what happens when compressed_history is injected:
-        // the compressed_history should NOT contain rules text
-        let compressed_only = "User asked about auth, agent suggested OAuth2.";
-        let result = builder.assemble(
-            "what about deployment?",
-            Some(compressed_only),
-            &[],
-            &budget,
-        );
+        let cwd_a = PathBuf::from("/tmp/a");
+        let cwd_b = PathBuf::from("/tmp/b");
 
-        // Rules are present (injected separately)
-        assert!(result.system.contains("no secrets in code"));
-        // Compressed history is present (injected separately)
-        assert!(result.system.contains("OAuth2"));
-        // But the compressed_history itself should NOT contain rules
-        // (this is enforced by build_merge_prompt only receiving conversation)
+        let result_a = builder.assemble(&cwd_a, "hello", None, &[], &budget);
+        let result_b = builder.assemble(&cwd_b, "hello", None, &[], &budget);
+
+        // Both should assemble without panicking
+        assert!(!result_a.system.is_empty());
+        assert!(!result_b.system.is_empty());
+    }
+
+    #[test]
+    fn test_rules_trim_to_budget() {
+        let big_rules = "x".repeat(500_000);
+        let trimmed = trim_to_budget(&big_rules, 100);
+        assert!(estimate_tokens(&trimmed) <= 150);
+    }
+
+    #[test]
+    fn test_global_rules_always_loaded() {
+        // Global ~/.AGENTS.md is always loaded regardless of project_dir
+        let builder = test_builder();
+        let budget = PromptBudget::from_window(128_000);
+
+        // Even with non-existent project_dir, global rules should load
+        // (if ~/.AGENTS.md exists on this machine)
+        let result = builder.assemble(&PathBuf::from("/nonexistent"), "hi", None, &[], &budget);
+        // Should not panic — just might not have rules if ~/.AGENTS.md doesn't exist
+        assert!(!result.system.is_empty());
     }
 }

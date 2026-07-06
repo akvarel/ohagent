@@ -382,6 +382,8 @@ pub async fn chat_completions_handler(
     // ── Build layered system prompt (rules + skills + compressed history) ──
     let system = if let Some(ref builder) = state.system_prompt_builder {
         let budget = crate::system_prompt::PromptBudget::from_window(128_000);
+        let project_dir = std::env::current_dir()
+            .unwrap_or_else(|_| std::path::PathBuf::from("."));
 
         let compressed = state.memory.as_ref().and_then(|mem| {
             ohagent_memory::rolling_summary::load_or_create(
@@ -392,6 +394,7 @@ pub async fn chat_completions_handler(
         });
 
         let assembled = builder.assemble(
+            &project_dir,
             &system,
             compressed.as_deref(),
             &[], // memory RAG not yet wired
