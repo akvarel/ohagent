@@ -492,6 +492,96 @@ impl ModelRouter {
         })
     }
 
+    /// Route with conversation context awareness — skips models whose context
+    /// window is too small for the full message history.
+    pub fn route_with_messages(
+        &self,
+        tenant_id: &str,
+        message: &str,
+        full_messages: Option<&[jcode_message_types::Message]>,
+        system_prompt: Option<&str>,
+    ) -> Result<RoutedModel> {
+        let caps = classify_task(message);
+        let cap_names: Vec<&str> = caps.iter().map(|c| c.as_str()).collect();
+
+        // Preferred model
+        let preferred = caps.first().and_then(|cap| self.get_pref(tenant_id, cap.as_str()));
+        let mut preferred_entry = None;
+        if let Some(ref pref_id) = preferred {
+            if let Some(e) = self.catalog.models.iter().find(|m| &m.id == pref_id) {
+                if std::env::var(&e.api_key_env).is_ok() && self.is_enabled(&e.id) {
+                    if let (Some(msgs), Some(sys)) = (full_messages, system_prompt) {
+                        if crate::context_estimator::fits_context_window(msgs, sys, e.context) {
+                            preferred_entry = Some(e);
+                        }
+                    } else {
+                        preferred_entry = Some(e);
+                    }
+                }
+            }
+        }
+
+        let context_filter = |m: &&ModelEntry| -> bool {
+            if !self.is_enabled(&m.id) { return false; }
+            if std::env::var(&m.api_key_env).is_err() { return false; }
+            if let (Some(msgs), Some(sys)) = (full_messages, system_prompt) {
+                if !crate::context_estimator::fits_context_window(msgs, sys, m.context) {
+                    return false;
+                }
+            }
+            true
+        };
+
+        let entry = preferred_entry.or_else(|| {
+            self.find_filtered(&caps, None, &context_filter)
+        })
+        .or_else(|| {
+            self.find_filtered(&[Capability::GeneralChat], None, &context_filter)
+        })
+        .or_else(|| {
+            self.catalog.models.iter().find(|m| context_filter(m))
+        })
+        .context("No model fits the conversation context — try reducing history")?;
+
+        let provider = self.build_provider(entry)?;
+        info!(
+            model = %entry.display, capabilities = ?cap_names,
+            cost_tier = %entry.cost_tier, context = entry.context,
+            "Routed to model (context-aware)"
+        );
+        Ok(RoutedModel {
+            provider,
+            model_id: entry.id.clone(),
+            display_name: entry.display.clone(),
+            task_capabilities: caps,
+        })
+    }
+
+    /// Generic find with a custom filter predicate.
+    fn find_filtered<F>(
+        &self,
+        required_caps: &[Capability],
+        max_tier: Option<&str>,
+        extra_filter: &F,
+    ) -> Option<&ModelEntry>
+    where
+        F: Fn(&&ModelEntry) -> bool,
+    {
+        let max_tier = max_tier.unwrap_or(&self.catalog.defaults.max_auto_tier);
+        let max_tier_val = tier_value(max_tier);
+        let required: Vec<&str> = required_caps.iter().map(|c| c.as_str()).collect();
+
+        self.catalog
+            .models
+            .iter()
+            .filter(|m| {
+                required.iter().all(|rc| m.capabilities.iter().any(|mc| mc == rc))
+            })
+            .filter(|m| tier_value(&m.cost_tier) <= max_tier_val)
+            .filter(|m| extra_filter(m))
+            .min_by_key(|m| (tier_value(&m.cost_tier), m.id.as_str()))
+    }
+
     /// Build a MultiProvider configured for the given model entry.
     fn build_provider(&self, entry: &ModelEntry) -> Result<Arc<dyn Provider>> {
         let multi = MultiProvider::default();

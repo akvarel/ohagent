@@ -375,12 +375,47 @@ pub async fn chat_completions_handler(
         .as_secs();
 
     let (messages, system) = convert_messages(&req.messages);
-    let input_tokens = estimate_tokens(&system, &messages);
+    let input_tokens = ohagent_core::context_estimator::estimate_conversation_tokens(
+        &messages, &system,
+    );
+
+    // ── Context-aware model routing when ModelRouter is available ──
+    let routed: Option<ohagent_core::model_router::RoutedModel> = if let Some(ref router) = state.model_router {
+        let msg = req.messages.last()
+            .map(|m| m.content.clone())
+            .unwrap_or_default();
+        let tenant = "default"; // todo: extract from headers or user prefs
+        match router.lock() {
+            Ok(r) => {
+                match r.route_with_messages(tenant, &msg, Some(&messages), Some(&system)) {
+                    Ok(rm) => {
+                        tracing::info!(
+                            model = %rm.display_name,
+                            context = %rm.model_id,
+                            tokens_est = input_tokens,
+                            "Context-aware routing selected model"
+                        );
+                        Some(rm)
+                    }
+                    Err(e) => {
+                        tracing::warn!(
+                            error = %e,
+                            "route_with_messages failed — falling back to direct provider"
+                        );
+                        None
+                    }
+                }
+            }
+            Err(_) => None,
+        }
+    } else {
+        None
+    };
 
     if req.stream {
-        handle_streaming(state, req, messages, system, request_id, created, input_tokens).await
+        handle_streaming(state, req, messages, system, request_id, created, input_tokens, routed).await
     } else {
-        handle_non_streaming(state, req, messages, system, request_id, created, input_tokens)
+        handle_non_streaming(state, req, messages, system, request_id, created, input_tokens, routed)
             .await
     }
 }
@@ -394,8 +429,13 @@ async fn handle_non_streaming(
     id: String,
     created: u64,
     input_tokens: u32,
+    routed: Option<ohagent_core::model_router::RoutedModel>,
 ) -> Response {
-    let provider = Arc::clone(state.bridge.provider());
+    let provider: Arc<dyn jcode_provider_core::Provider> = if let Some(ref rm) = routed {
+        Arc::clone(&rm.provider)
+    } else {
+        Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>
+    };
 
     match provider.complete(&messages, &[], &system, None).await {
         Ok(mut stream) => {
@@ -451,8 +491,13 @@ async fn handle_streaming(
     id: String,
     created: u64,
     _input_tokens: u32,
+    routed: Option<ohagent_core::model_router::RoutedModel>,
 ) -> Response {
-    let provider = Arc::clone(state.bridge.provider());
+    let provider: Arc<dyn jcode_provider_core::Provider> = if let Some(ref rm) = routed {
+        Arc::clone(&rm.provider)
+    } else {
+        Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>
+    };
 
     match provider.complete(&messages, &[], &system, None).await {
         Ok(stream) => {

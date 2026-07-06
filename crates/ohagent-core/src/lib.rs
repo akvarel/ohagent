@@ -5,6 +5,7 @@
 
 pub mod agent;
 pub mod config;
+pub mod context_estimator;
 pub mod jcode_bridge;
 pub mod llm_classifier;
 pub mod logging_provider;
