@@ -18,6 +18,7 @@ use crate::i18n::Lang;
 use crate::pairing::PairingManager;
 use crate::session::SessionManager;
 use ohagent_core::jcode_bridge::JcodeBridge;
+use ohagent_core::message_log::MessageLog;
 use ohagent_core::model_router::ModelRouter;
 use ohagent_core::usage_tracker::UsageTracker;
 use ohagent_skills::registry::SkillRegistry;
@@ -73,6 +74,7 @@ pub struct TelegramAdapter {
     skills: Option<Arc<SkillRegistry>>,
     router: Option<Arc<Mutex<ModelRouter>>>,
     usage: Option<Arc<UsageTracker>>,
+    message_log: Option<Arc<MessageLog>>,
 }
 
 impl TelegramAdapter {
@@ -88,6 +90,7 @@ impl TelegramAdapter {
             skills: None,
             router: None,
             usage: None,
+            message_log: None,
         })
     }
 
@@ -98,6 +101,7 @@ impl TelegramAdapter {
             skills: None,
             router: None,
             usage: None,
+            message_log: None,
         }
     }
 
@@ -116,6 +120,12 @@ impl TelegramAdapter {
     /// Attach a usage tracker for recording API calls.
     pub fn with_usage(mut self, usage: Arc<UsageTracker>) -> Self {
         self.usage = Some(usage);
+        self
+    }
+
+    /// Attach a message log for the /logging command.
+    pub fn with_message_log(mut self, log: Arc<MessageLog>) -> Self {
+        self.message_log = Some(log);
         self
     }
 }
@@ -143,6 +153,9 @@ impl PlatformAdapter for TelegramAdapter {
         }
         if let Some(ref usage) = self.usage {
             dispatcher_builder = dispatcher_builder.with_usage(Arc::clone(usage));
+        }
+        if let Some(ref log) = self.message_log {
+            dispatcher_builder = dispatcher_builder.with_message_log(Arc::clone(log));
         }
         let dispatcher = Arc::new(dispatcher_builder);
 

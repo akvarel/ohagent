@@ -33,6 +33,8 @@ prost = "0.13"
 tower = "0.5"
 teloxide = { version = "0.13", default-features = false, features = ["rustls", "ctrlc_handler", "macros"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+flate2 = "1"
+futures = "0.3"
 once_cell = "1"
 async-trait = "0.1"
 dashmap = "6"

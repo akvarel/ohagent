@@ -86,6 +86,7 @@ struct Daemon {
     memory: Option<Arc<MemoryEngine>>,
     skills: Option<Arc<SkillRegistry>>,
     usage: Option<Arc<ohagent_core::usage_tracker::UsageTracker>>,
+    message_log: Option<Arc<ohagent_core::message_log::MessageLog>>,
     router: Option<Arc<std::sync::Mutex<ohagent_core::model_router::ModelRouter>>>,
     start_time: chrono::DateTime<chrono::Utc>,
     keys_path: String,
@@ -137,6 +138,32 @@ impl Daemon {
             }
 
             Arc::new(multi)
+        };
+
+        // Initialize message log (prompt/response logging)
+        let message_log = match ohagent_core::message_log::MessageLog::open(
+            &shellexpand::tilde("~/.ohagent/message_log.db").to_string(),
+        ) {
+            Ok(log) => {
+                info!("Message log initialized");
+                Some(Arc::new(log))
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "Message log not available");
+                None
+            }
+        };
+
+        // Wrap provider with LoggingProvider for prompt/response capture
+        let provider: Arc<dyn jcode_provider_core::Provider> = if let Some(ref log) = message_log {
+            info!("Wrapping provider with LoggingProvider");
+            Arc::new(ohagent_core::logging_provider::LoggingProvider::new(
+                provider,
+                Arc::clone(log),
+                "default".into(),
+            ))
+        } else {
+            provider
         };
 
         let mut bridge = JcodeBridge::new(provider);
@@ -193,6 +220,7 @@ impl Daemon {
             memory,
             skills,
             usage,
+            message_log,
             router,
             start_time: chrono::Utc::now(),
             keys_path,
@@ -209,6 +237,7 @@ impl Daemon {
             memory: self.memory.clone(),
             skills: self.skills.clone(),
             usage: self.usage.clone(),
+            message_log: self.message_log.clone(),
             start_time: self.start_time,
             keys_path: self.keys_path.clone(),
         };
@@ -250,6 +279,9 @@ impl Daemon {
         }
         if let Some(ref u) = self.usage {
             adapter = adapter.with_usage(Arc::clone(u));
+        }
+        if let Some(ref log) = self.message_log {
+            adapter = adapter.with_message_log(Arc::clone(log));
         }
 
         // Also attach model router reference for the /model command

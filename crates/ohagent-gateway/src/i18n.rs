@@ -236,5 +236,38 @@ static TRANSLATIONS: Lazy<HashMap<&'static str, Translation>> = Lazy::new(|| {
         },
     );
 
+    m.insert(
+        "logging_on",
+        Translation {
+            en: "Message logging is now ON. Your prompts and responses will be logged.".into(),
+            lv: Some("Zi\u{0146}ojumu re\u{0123}istr\u{0113}\u{0161}ana ir IESL\u{0112}GTA. J\u{016b}su vaic\u{0101}jumi un atbildes tiks re\u{0123}istr\u{0113}ti.".into()),
+            ru: Some("\u{041b}огирование сообщений ВКЛЮЧЕНО. Ваши запросы и ответы будут записываться.".into()),
+        },
+    );
+    m.insert(
+        "logging_off",
+        Translation {
+            en: "Message logging is now OFF. No prompts or responses will be logged.".into(),
+            lv: Some("Zi\u{0146}ojumu re\u{0123}istr\u{0113}\u{0161}ana ir IZSL\u{0112}GTA. Vaic\u{0101}jumi un atbildes netiks re\u{0123}istr\u{0113}ti.".into()),
+            ru: Some("\u{041b}огирование сообщений ВЫКЛЮЧЕНО. Запросы и ответы не будут записываться.".into()),
+        },
+    );
+    m.insert(
+        "logging_status_on",
+        Translation {
+            en: "Logging status: ON. Use /logging off to disable.".into(),
+            lv: Some("Re\u{0123}istr\u{0113}\u{0161}anas statuss: IESL\u{0112}GTS. Izmantojiet /logging off, lai izsl\u{0113}gtu.".into()),
+            ru: Some("\u{0421}татус логирования: ВКЛ. Используйте /logging off для отключения.".into()),
+        },
+    );
+    m.insert(
+        "logging_status_off",
+        Translation {
+            en: "Logging status: OFF. Use /logging on to enable.".into(),
+            lv: Some("Re\u{0123}istr\u{0113}\u{0161}anas statuss: IZSL\u{0112}GTS. Izmantojiet /logging on, lai iesl\u{0113}gtu.".into()),
+            ru: Some("\u{0421}татус логирования: ВЫКЛ. Используйте /logging on для включения.".into()),
+        },
+    );
+
     m
 });

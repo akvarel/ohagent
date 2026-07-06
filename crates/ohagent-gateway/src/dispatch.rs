@@ -10,6 +10,7 @@ use crate::adapter::{IncomingMessage, OutgoingMessage};
 use crate::i18n::I18n;
 use crate::pairing::PairingManager;
 use crate::session::SessionManager;
+use ohagent_core::message_log::MessageLog;
 use ohagent_core::model_router::ModelRouter;
 use ohagent_core::usage_tracker::UsageTracker;
 use ohagent_skills::registry::SkillRegistry;
@@ -21,6 +22,7 @@ pub struct Dispatcher {
     skills: Option<Arc<SkillRegistry>>,
     router: Option<Arc<Mutex<ModelRouter>>>,
     usage: Option<Arc<UsageTracker>>,
+    message_log: Option<Arc<MessageLog>>,
 }
 
 impl Dispatcher {
@@ -34,6 +36,7 @@ impl Dispatcher {
             skills: None,
             router: None,
             usage: None,
+            message_log: None,
         }
     }
 
@@ -52,6 +55,12 @@ impl Dispatcher {
     /// Set the usage tracker for recording API calls.
     pub fn with_usage(mut self, usage: Arc<UsageTracker>) -> Self {
         self.usage = Some(usage);
+        self
+    }
+
+    /// Set the message log for the /logging command.
+    pub fn with_message_log(mut self, log: Arc<MessageLog>) -> Self {
+        self.message_log = Some(log);
         self
     }
 
@@ -535,6 +544,49 @@ impl Dispatcher {
                     None => Some(OutgoingMessage {
                         chat_id: msg.chat_id.clone(),
                         text: i18n.t("skills_unavailable"),
+                        markdown: false,
+                    }),
+                }
+            }
+
+            "logging" => {
+                match &self.message_log {
+                    Some(log) => {
+                        let sub = args.trim();
+                        match sub {
+                            "on" => {
+                                let _ = log.set_enabled(&msg.tenant_id, true);
+                                Some(OutgoingMessage {
+                                    chat_id: msg.chat_id.clone(),
+                                    text: i18n.t("logging_on"),
+                                    markdown: false,
+                                })
+                            }
+                            "off" => {
+                                let _ = log.set_enabled(&msg.tenant_id, false);
+                                Some(OutgoingMessage {
+                                    chat_id: msg.chat_id.clone(),
+                                    text: i18n.t("logging_off"),
+                                    markdown: false,
+                                })
+                            }
+                            _ => {
+                                let enabled = log.is_enabled_for(&msg.tenant_id);
+                                Some(OutgoingMessage {
+                                    chat_id: msg.chat_id.clone(),
+                                    text: if enabled {
+                                        i18n.t("logging_status_on")
+                                    } else {
+                                        i18n.t("logging_status_off")
+                                    },
+                                    markdown: false,
+                                })
+                            }
+                        }
+                    }
+                    None => Some(OutgoingMessage {
+                        chat_id: msg.chat_id.clone(),
+                        text: "Message logging is not configured.".into(),
                         markdown: false,
                     }),
                 }

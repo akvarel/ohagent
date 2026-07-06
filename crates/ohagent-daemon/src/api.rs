@@ -24,6 +24,7 @@ use serde::{Deserialize, Serialize};
 
 use ohagent_core::jcode_bridge::JcodeBridge;
 use ohagent_core::usage_tracker::UsageTracker;
+use ohagent_core::message_log::MessageLog;
 use ohagent_memory::engine::MemoryEngine;
 use ohagent_skills::evaluator;
 use ohagent_skills::models::SkillStatus;
@@ -36,6 +37,7 @@ pub struct ApiState {
     pub memory: Option<Arc<MemoryEngine>>,
     pub skills: Option<Arc<SkillRegistry>>,
     pub usage: Option<Arc<UsageTracker>>,
+    pub message_log: Option<Arc<MessageLog>>,
     pub start_time: chrono::DateTime<chrono::Utc>,
     /// Path to keys config file
     pub keys_path: String,
@@ -50,6 +52,8 @@ pub fn router(state: ApiState) -> Router {
         .route("/api/keys", put(update_keys))
         .route("/api/usage/stats", get(usage_stats))
         .route("/api/usage/recent", get(usage_recent))
+        .route("/api/logging/prefs/{tenant_id}", get(get_logging_prefs))
+        .route("/api/logging/prefs/{tenant_id}", put(set_logging_prefs))
         .route("/api/skills", get(list_skills))
         .route("/api/skills/{id}", get(get_skill))
         .route("/api/skills/{id}/record", post(record_skill_usage))
@@ -453,4 +457,41 @@ async fn usage_recent(
         .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Json(serde_json::to_value(records).unwrap_or_default()))
+}
+
+// ── Logging preferences ──
+
+#[derive(Serialize)]
+struct LoggingPrefs {
+    tenant_id: String,
+    enabled: bool,
+}
+
+async fn get_logging_prefs(
+    State(state): State<ApiState>,
+    Path(tenant_id): Path<String>,
+) -> Result<Json<LoggingPrefs>, axum::http::StatusCode> {
+    match &state.message_log {
+        Some(log) => {
+            let enabled = log.is_enabled_for(&tenant_id);
+            Ok(Json(LoggingPrefs { tenant_id, enabled }))
+        }
+        None => Err(axum::http::StatusCode::SERVICE_UNAVAILABLE),
+    }
+}
+
+async fn set_logging_prefs(
+    State(state): State<ApiState>,
+    Path(tenant_id): Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
+    let enabled = body.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
+    match &state.message_log {
+        Some(log) => {
+            log.set_enabled(&tenant_id, enabled)
+                .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+            Ok(Json(serde_json::json!({"ok": true, "tenant_id": tenant_id, "enabled": enabled})))
+        }
+        None => Err(axum::http::StatusCode::SERVICE_UNAVAILABLE),
+    }
 }

@@ -4138,12 +4138,17 @@ name = "ohagent-core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "async-trait",
  "chrono",
+ "flate2",
+ "futures",
  "jcode-agent-runtime",
  "jcode-app-core",
  "jcode-base",
+ "jcode-message-types",
  "jcode-provider-core",
  "jcode-provider-openrouter-runtime",
+ "reqwest 0.12.28",
  "rusqlite",
  "serde",
  "serde_json",
