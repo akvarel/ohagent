@@ -25,6 +25,7 @@ use serde::{Deserialize, Serialize};
 use ohagent_core::jcode_bridge::JcodeBridge;
 use ohagent_core::usage_tracker::UsageTracker;
 use ohagent_core::message_log::MessageLog;
+use ohagent_core::vault::VaultClient;
 use ohagent_memory::engine::MemoryEngine;
 use ohagent_skills::evaluator;
 use ohagent_skills::models::SkillStatus;
@@ -41,6 +42,8 @@ pub struct ApiState {
     pub start_time: chrono::DateTime<chrono::Utc>,
     /// Path to keys config file
     pub keys_path: String,
+    /// Vault client for secret resolution
+    pub vault: Arc<VaultClient>,
     /// Webhook adapters state
     pub webhook_state: crate::webhooks::WebhookState,
 }
@@ -65,6 +68,8 @@ pub fn router(state: ApiState) -> Router {
         .route("/api/usage/recent", get(usage_recent))
         .route("/api/logging/prefs/{tenant_id}", get(get_logging_prefs))
         .route("/api/logging/prefs/{tenant_id}", put(set_logging_prefs))
+        .route("/api/vault/health", get(vault_health))
+        .route("/api/vault/status", get(vault_status))
         .route("/api/skills", get(list_skills))
         .route("/api/skills/{id}", get(get_skill))
         .route("/api/skills/{id}/record", post(record_skill_usage))
@@ -94,6 +99,7 @@ struct StatusResponse {
     memory_count: usize,
     skills_enabled: bool,
     memory_enabled: bool,
+    vault_available: bool,
 }
 
 async fn status_handler(State(state): State<ApiState>) -> Json<StatusResponse> {
@@ -117,6 +123,7 @@ async fn status_handler(State(state): State<ApiState>) -> Json<StatusResponse> {
         memory_count,
         skills_enabled: state.skills.is_some(),
         memory_enabled: state.memory.is_some(),
+        vault_available: state.vault.available(),
     })
 }
 
@@ -506,4 +513,33 @@ async fn set_logging_prefs(
         }
         None => Err(axum::http::StatusCode::SERVICE_UNAVAILABLE),
     }
+}
+
+// ── Vault ──
+
+async fn vault_health(State(state): State<ApiState>) -> Json<serde_json::Value> {
+    let available = state.vault.available();
+    let healthy = if available {
+        state.vault.health_check().await.unwrap_or(false)
+    } else {
+        false
+    };
+    Json(serde_json::json!({
+        "available": available,
+        "healthy": healthy,
+    }))
+}
+
+async fn vault_status(State(state): State<ApiState>) -> Json<serde_json::Value> {
+    let available = state.vault.available();
+    let sealed = if available {
+        state.vault.is_sealed().await.unwrap_or(true)
+    } else {
+        true
+    };
+    Json(serde_json::json!({
+        "available": available,
+        "sealed": sealed,
+        "token_set": available,
+    }))
 }

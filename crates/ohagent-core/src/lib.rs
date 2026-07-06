@@ -14,6 +14,7 @@ pub mod s3_archive;
 pub mod session;
 pub mod tools;
 pub mod usage_tracker;
+pub mod vault;
 
 /// Core error type for ohAgent.
 pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;

@@ -16,6 +16,7 @@ use tracing::info;
 use tracing_subscriber::EnvFilter;
 
 use ohagent_core::jcode_bridge::JcodeBridge;
+use ohagent_core::vault::{resolve_secret, VaultClient};
 use ohagent_gateway::platforms::telegram::TelegramAdapter;
 use ohagent_gateway::platforms::whatsapp::WhatsAppAdapter;
 use ohagent_gateway::platforms::slack::SlackAdapter;
@@ -94,6 +95,7 @@ struct Daemon {
     router: Option<Arc<std::sync::Mutex<ohagent_core::model_router::ModelRouter>>>,
     start_time: chrono::DateTime<chrono::Utc>,
     keys_path: String,
+    vault: Arc<VaultClient>,
     whatsapp: Option<Arc<WhatsAppAdapter>>,
     slack: Option<Arc<SlackAdapter>>,
 }
@@ -117,6 +119,67 @@ impl Daemon {
                 None
             }
         };
+
+        // Initialize Vault client for secret resolution
+        let vault = VaultClient::from_env();
+        if vault.available() {
+            info!("Vault client initialized");
+        } else {
+            info!("Vault not configured — falling back to env vars and keys.toml");
+        }
+        let vault = Arc::new(vault);
+
+        // Load keys from keys.toml for fallback
+        let keys_path = shellexpand::tilde("~/.ohagent/keys.toml").to_string();
+        let keys_config: std::collections::HashMap<String, String> =
+            match std::fs::read_to_string(&keys_path) {
+                Ok(content) => {
+                    #[derive(serde::Deserialize, Default)]
+                    struct KeysToml {
+                        #[serde(default)]
+                        keys: std::collections::HashMap<String, String>,
+                    }
+                    toml::from_str::<KeysToml>(&content)
+                        .map(|k| k.keys)
+                        .unwrap_or_default()
+                }
+                Err(_) => std::collections::HashMap::new(),
+            };
+
+        // Resolve provider API keys via Vault → env → keys.toml
+        let rt = tokio::runtime::Handle::current();
+        let (deepseek_key, anthropic_key, openai_key) = rt.block_on(async {
+            let dk = resolve_secret(
+                &vault,
+                "providers/deepseek/api-key",
+                "DEEPSEEK_API_KEY",
+                &keys_config,
+            ).await;
+            let ak = resolve_secret(
+                &vault,
+                "providers/anthropic/api-key",
+                "ANTHROPIC_API_KEY",
+                &keys_config,
+            ).await;
+            let ok = resolve_secret(
+                &vault,
+                "providers/openai/api-key",
+                "OPENAI_API_KEY",
+                &keys_config,
+            ).await;
+            (dk, ak, ok)
+        });
+
+        // Set resolved keys into env for jcode provider resolution
+        if let Some(ref key) = deepseek_key {
+            std::env::set_var("DEEPSEEK_API_KEY", key);
+        }
+        if let Some(ref key) = anthropic_key {
+            std::env::set_var("ANTHROPIC_API_KEY", key);
+        }
+        if let Some(ref key) = openai_key {
+            std::env::set_var("OPENAI_API_KEY", key);
+        }
 
         // Build default provider (fallback if router unavailable)
         let provider: Arc<dyn Provider> = {
@@ -216,8 +279,6 @@ impl Daemon {
             }
         };
 
-        let keys_path = shellexpand::tilde("~/.ohagent/keys.toml").to_string();
-
         // Initialize WhatsApp adapter (if configured)
         let whatsapp = match WhatsAppAdapter::from_env() {
             Ok(wa) => {
@@ -254,6 +315,7 @@ impl Daemon {
             router,
             start_time: chrono::Utc::now(),
             keys_path,
+            vault,
             whatsapp,
             slack,
         })
@@ -272,6 +334,7 @@ impl Daemon {
             message_log: self.message_log.clone(),
             start_time: self.start_time,
             keys_path: self.keys_path.clone(),
+            vault: Arc::clone(&self.vault),
             webhook_state: webhooks::WebhookState {
                 whatsapp: self.whatsapp.clone(),
                 slack: self.slack.clone(),
