@@ -15,10 +15,10 @@ ohAgent/
 │   ├── ohagent-gateway/    # Messaging gateway (Telegram first)
 │   ├── ohagent-memory/     # Deep memory engine (SQLite + pgvector)
 │   ├── ohagent-skills/     # Self-learning skill creation & curator
+│   ├── ohagent-dashboard/  # React web dashboard (TypeScript + Tailwind)
 │   └── ohagent-cron/       # Cron scheduler for background tasks
 ├── docs/                    # Documentation
-├── PRODUCT-BRIEF.md         # Product lens analysis
-└── CAPABILITY.md            # Implementation-ready spec (product-capability output)
+└── README.md                # Front page (overview, why ohAgent, quick start)
 ```
 
 ## Design Rules
@@ -75,7 +75,8 @@ ohAgent/
 | 1 | Daemon + Profiles + Session Storage | ✅ Done |
 | 2 | Gateway (Telegram) | ✅ Done |
 | 3 | Deep Memory (SQLite + vector) | ✅ Done |
-| 4 | Self-Learning Skills | 🔲 Planned |
+| 4 | Self-Learning Skills | ✅ Done |
+| 5 | REST API + React Dashboard | ✅ Done |
 
 ## Phase 3 Implementation Details
 
@@ -106,6 +107,56 @@ ohAgent/
 - Memory engine initialized at daemon startup (graceful fallback if unavailable)
 - Stored in `Daemon.memory: Option<Arc<MemoryEngine>>`
 - Ready for gateway integration (nudge injection into agent context)
+
+## Phase 4 Implementation Details
+
+### Skills Architecture
+- **SQLite** with WAL mode for skills + usage tables
+- **Creator**: analyzes conversation patterns (keyword co-occurrence on 20 task verbs), proposes `Proposed` skills
+- **Evaluator**: tracks usage → quality scoring → `Proposed→Active` promotion, `Disabled` demotion, stale `Retired` retirement
+- **Curator**: prunes retired skills >90 days, merges similar skills (Jaccard overlap), enforces per-tenant limits
+- **LLM prompt builder** for richer extraction (ready, not yet wired)
+
+### Skills Lifecycle
+```
+Conversation → creator → Proposed → evaluator → Active
+                                      ↓
+                                   Disabled → evaluator → Active
+                                      ↓
+                                   Retired → curator → Deleted
+```
+
+### Skills Schema
+| Table | Purpose |
+|---|---|
+| `skills` | Skill templates (name, triggers, instructions, quality_score, status) |
+| `skill_usage` | Invocation records (success/failure, duration, session) |
+
+### Telegram Skills Commands
+| Command | Description |
+|---|---|
+| `/skills` | List learned skills with quality % |
+| `/skill <name>` | Full detail: triggers, instructions, usage stats |
+| `/skilluse <name>` | Record successful use (boosts quality) |
+
+### Daemon Cron
+- Every 5 min: evaluate all tenant skills
+- Every 10 min: scan conversations → propose new skills
+- Every 10 min: curate (merge, prune, enforce limits)
+
+## Phase 5 Implementation Details
+
+### REST API
+- Axum server on `:9090` (same port as health check)
+- Modular `api.rs` with `ApiState` shared state
+- Endpoints: `/health`, `/api/status`, `/api/skills`, `/api/skills/:id`, `/api/skills/:id/record`, `/api/memory`, `/api/memory/:id`
+
+### Dashboard
+- React 18 + TypeScript + Vite + Tailwind CSS
+- Located at `crates/ohagent-dashboard/`
+- Pages: Dashboard (status cards), Skills (list + filter + detail + record use), Memory (search)
+- Vite proxies `/api` → `:9090` in dev
+- Production build: `npm run build` → `target/dashboard-dist/`
 
 ## Phase 1-2 Implementation Details
 

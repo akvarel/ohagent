@@ -104,6 +104,9 @@ Once the daemon is running and the bot is connected:
 | `/lang` | Cycle language: EN → LV → RU → EN |
 | `/stop` | Stop the current task |
 | `/status` | Check agent status |
+| `/skills` | List learned skills with quality scores |
+| `/skill <name>` | Show skill details (triggers, instructions, stats) |
+| `/skilluse <name>` | Record a successful skill usage |
 
 ### Pairing Flow
 
@@ -151,6 +154,67 @@ Without embeddings, text-based keyword matching is used as a fallback.
 | `/remember <text>` | Explicitly save something to memory |
 | `/recall <query>` | Search past memories |
 | `/forget` | Clear memory for the current chat |
+
+---
+
+## Self-Learning Skills (Phase 4)
+
+ohAgent watches what you ask and automatically learns reusable skills. This means it gets faster and more accurate at tasks you do regularly.
+
+### How It Works
+
+1. **Creator** — scans your conversations for patterns (tasks you've asked for 2+ times) and proposes new skills
+2. **Evaluator** — tracks when skills are used successfully, computes quality scores, promotes good skills to Active
+3. **Curator** — periodically cleans up: merges similar skills, prunes old unused ones
+
+Skills are stored alongside memory in SQLite at `~/.ohagent/skills.db`.
+
+### Manually Recording Skills
+
+Use `/skilluse <name>` after the agent successfully completes a task using a known pattern. This boosts the skill's quality score and helps it stay active.
+
+### Skill Statuses
+
+| Status | Meaning |
+|---|---|
+| `Proposed` | Auto-created from patterns, not yet proven |
+| `Active` | Proven useful through usage |
+| `Disabled` | Quality dropped below threshold |
+| `Retired` | Stale — unused for too long |
+
+---
+
+## Web Dashboard (Phase 5)
+
+The dashboard gives you a visual overview of your agent:
+
+```bash
+cd crates/ohagent-dashboard
+npm install
+npm run dev        # opens http://localhost:5173
+```
+
+### Pages
+
+- **Dashboard** — status cards (uptime, provider, skill/memory counts)
+- **Skills** — skill list with status filter, quality scores, triggers. Click any skill for full details and to record usage.
+- **Memory** — searchable memory entries with source type, importance, and timestamps
+
+### REST API
+
+The dashboard talks to the daemon's REST API on port `:9090`:
+
+```
+GET  /health                     → health check
+GET  /api/status                 → full daemon status
+GET  /api/skills?status=active   → list skills with filtering
+GET  /api/skills/:id             → skill detail
+POST /api/skills/:id/record      → record usage (body: {"success":true})
+GET  /api/memory?q=deploy        → search memories
+GET  /api/memory/:id             → memory entry
+```
+
+These endpoints can be used by any external tool or integration.
 
 ---
 
