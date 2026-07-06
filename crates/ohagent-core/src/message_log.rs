@@ -84,6 +84,15 @@ impl MessageLog {
         .unwrap_or(true)
     }
 
+    /// Access the underlying database connection for migrations or maintenance.
+    pub fn with_conn<F, R>(&self, f: F) -> Result<R>
+    where
+        F: FnOnce(&rusqlite::Connection) -> Result<R>,
+    {
+        let db = self.db.lock().unwrap();
+        f(&db)
+    }
+
     /// Enable or disable logging for a tenant.
     pub fn set_enabled(&self, tenant_id: &str, enabled: bool) -> Result<()> {
         let db = self.db.lock().unwrap();

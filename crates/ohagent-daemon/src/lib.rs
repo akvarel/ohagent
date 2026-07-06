@@ -222,6 +222,12 @@ impl Daemon {
         ) {
             Ok(log) => {
                 info!("Message log initialized");
+                // Apply migrations to message log DB
+                if let Err(e) = log.with_conn(|conn| {
+                    migrations::run(conn).map_err(|e| anyhow::anyhow!("{e}"))
+                }) {
+                    tracing::warn!(error = %e, "Message log migrations failed");
+                }
                 Some(Arc::new(log))
             }
             Err(e) => {
