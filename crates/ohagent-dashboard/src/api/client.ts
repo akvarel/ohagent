@@ -93,4 +93,65 @@ export const api = {
     return get<MemorySummary[]>(`/api/memory?${params}`);
   },
   memoryEntry: (id: string) => get<MemorySummary>(`/api/memory/${id}`),
+
+  // ── API Keys ──
+  keys: () => get<KeyInfo[]>('/api/keys'),
+  updateKeys: (keys: Record<string, string>) =>
+    post<{ ok: boolean; updated: string[] }>('/api/keys', keys),
+
+  // ── Usage ──
+  usageStats: () => get<UsageStats>('/api/usage/stats'),
+  usageRecent: (limit?: number) => {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', String(limit));
+    return get<UsageRecord[]>(`/api/usage/recent?${params}`);
+  },
 };
+
+// ── Key & Usage types ──
+
+export interface KeyInfo {
+  env_var: string;
+  display_name: string;
+  provider: string;
+  set: boolean;
+  prefix: string;
+}
+
+export interface UsageStats {
+  total_calls: number;
+  total_input_tokens: number;
+  total_output_tokens: number;
+  total_cost_usd: number;
+  by_model: ModelStats[];
+  by_day: DailyStats[];
+}
+
+export interface ModelStats {
+  model_id: string;
+  model_display: string;
+  calls: number;
+  input_tokens: number;
+  output_tokens: number;
+  cost_usd: number;
+}
+
+export interface DailyStats {
+  date: string;
+  calls: number;
+  cost_usd: number;
+}
+
+export interface UsageRecord {
+  id: number;
+  tenant_id: string;
+  session_id: string;
+  model_id: string;
+  model_display: string;
+  capabilities: string[];
+  input_tokens: number;
+  output_tokens: number;
+  duration_ms: number;
+  estimated_cost_usd: number;
+  created_at: string;
+}

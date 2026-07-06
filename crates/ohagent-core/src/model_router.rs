@@ -23,6 +23,7 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::{debug, info};
 
@@ -207,6 +208,10 @@ fn tier_value(tier: &str) -> u8 {
 /// Intelligent model router.
 pub struct ModelRouter {
     catalog: ModelCatalog,
+    /// Per-tenant capability -> model_id overrides
+    user_prefs: HashMap<String, HashMap<String, String>>,
+    /// Path for persisting preferences
+    prefs_path: Option<PathBuf>,
 }
 
 /// Result of routing a task to a model.
@@ -227,7 +232,11 @@ impl ModelRouter {
             models = catalog.models.len(),
             "Model catalog loaded"
         );
-        Ok(Self { catalog })
+        Ok(Self {
+            catalog,
+            user_prefs: HashMap::new(),
+            prefs_path: None,
+        })
     }
 
     /// Load from a custom catalog path.
@@ -236,7 +245,11 @@ impl ModelRouter {
             .with_context(|| format!("Failed to read catalog from {path}"))?;
         let catalog: ModelCatalog = toml::from_str(&catalog_str)
             .context("Failed to parse model catalog")?;
-        Ok(Self { catalog })
+        Ok(Self {
+            catalog,
+            user_prefs: HashMap::new(),
+            prefs_path: None,
+        })
     }
 
     /// List all models in the catalog.
@@ -277,30 +290,63 @@ impl ModelRouter {
 
     /// Route a user message to the best model.
     ///
+    /// Checks per-tenant preferences first, then falls back to auto-routing.
     /// Returns a `RoutedModel` with a ready-to-use provider, or falls back
     /// to the first available model in the catalog.
     pub fn route(
         &self,
+        tenant_id: &str,
         message: &str,
     ) -> Result<RoutedModel> {
         let caps = classify_task(message);
         let cap_names: Vec<&str> = caps.iter().map(|c| c.as_str()).collect();
-        debug!(message = %message, capabilities = ?cap_names, "Classified task");
+        debug!(message = %message, tenant = %tenant_id, capabilities = ?cap_names, "Classified task");
 
-        let entry = self
-            .find_model(&caps, None)
-            .or_else(|| {
-                // Fall back: try general_chat capability
-                let fallback = vec![Capability::GeneralChat];
-                self.find_model(&fallback, None)
+        // Check user preference for the primary capability
+        let preferred = caps.first().and_then(|cap| {
+            self.get_pref(tenant_id, cap.as_str())
+        });
+
+        let entry = if let Some(pref_model_id) = preferred {
+            // Try to find the preferred model in the catalog
+            let preferred_entry = self.catalog.models.iter().find(|m| m.id == pref_model_id)
+                .and_then(|m| {
+                    if std::env::var(&m.api_key_env).is_ok() {
+                        Some(m)
+                    } else {
+                        None
+                    }
+                });
+            match preferred_entry {
+                Some(e) => {
+                    info!(model = %e.display, "Using user-preferred model");
+                    Some(e)
+                }
+                None => {
+                    // Preferred model not available, fall back to auto
+                    debug!("Preferred model {pref_model_id} not available, falling back to auto");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
+        let entry = entry.or_else(|| {
+            self.find_model(&caps, None)
+        })
+        .or_else(|| {
+            // Fall back: try general_chat capability
+            let fallback = vec![Capability::GeneralChat];
+            self.find_model(&fallback, None)
+        })
+        .or_else(|| {
+            // Last resort: first model in catalog with any key set
+            self.catalog.models.iter().find(|m| {
+                std::env::var(&m.api_key_env).is_ok()
             })
-            .or_else(|| {
-                // Last resort: first model in catalog with any key set
-                self.catalog.models.iter().find(|m| {
-                    std::env::var(&m.api_key_env).is_ok()
-                })
-            })
-            .context("No available model found — check API keys")?;
+        })
+        .context("No available model found — check API keys")?;
 
         let provider = self.build_provider(entry)?;
 
@@ -382,6 +428,95 @@ impl ModelRouter {
             }
         }
         map
+    }
+
+    // ── Per-tenant model preferences ──
+
+    /// Set the path for persisting preferences (and load existing ones).
+    pub fn with_prefs_path(mut self, path: PathBuf) -> Self {
+        self.prefs_path = Some(path.clone());
+        if let Err(e) = self.load_prefs() {
+            debug!(error = %e, "No existing model prefs found, starting fresh");
+        }
+        self
+    }
+
+    /// Set a preference: for `tenant`, use `model_id` for `capability`.
+    pub fn set_pref(&mut self, tenant: &str, capability: &str, model_id: &str) -> Result<()> {
+        // Validate that the model exists in the catalog
+        if !self.catalog.models.iter().any(|m| m.id == model_id) {
+            return Err(anyhow::anyhow!("Unknown model: {model_id}"));
+        }
+        self.user_prefs
+            .entry(tenant.to_string())
+            .or_default()
+            .insert(capability.to_lowercase(), model_id.to_string());
+        self.save_prefs()?;
+        info!(tenant = %tenant, capability = %capability, model = %model_id, "Model preference set");
+        Ok(())
+    }
+
+    /// Get a model preference for a tenant + capability.
+    pub fn get_pref(&self, tenant: &str, capability: &str) -> Option<&str> {
+        self.user_prefs
+            .get(tenant)
+            .and_then(|caps| caps.get(&capability.to_lowercase()))
+            .map(|s| s.as_str())
+    }
+
+    /// Clear preferences for a tenant. If `capability` is Some, clear only
+    /// that capability. If None, clear all preferences for the tenant.
+    pub fn clear_pref(
+        &mut self,
+        tenant: &str,
+        capability: Option<&str>,
+    ) -> Result<()> {
+        match capability {
+            Some(cap) => {
+                if let Some(caps) = self.user_prefs.get_mut(tenant) {
+                    caps.remove(&cap.to_lowercase());
+                }
+                info!(tenant = %tenant, capability = %cap, "Cleared model preference");
+            }
+            None => {
+                self.user_prefs.remove(tenant);
+                info!(tenant = %tenant, "Cleared all model preferences");
+            }
+        }
+        self.save_prefs()?;
+        Ok(())
+    }
+
+    /// List all preferences for a tenant.
+    pub fn list_prefs(&self, tenant: &str) -> HashMap<String, String> {
+        self.user_prefs
+            .get(tenant)
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    /// Load preferences from the prefs_path file.
+    fn load_prefs(&mut self) -> Result<()> {
+        if let Some(ref path) = self.prefs_path {
+            if path.exists() {
+                let data = std::fs::read_to_string(path)?;
+                self.user_prefs = toml::from_str(&data)?;
+                debug!(path = %path.display(), "Loaded model preferences");
+            }
+        }
+        Ok(())
+    }
+
+    /// Persist preferences to the prefs_path file.
+    fn save_prefs(&self) -> Result<()> {
+        if let Some(ref path) = self.prefs_path {
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            let data = toml::to_string_pretty(&self.user_prefs)?;
+            std::fs::write(path, &data)?;
+        }
+        Ok(())
     }
 }
 

@@ -85,7 +85,10 @@ struct Daemon {
     bridge: Arc<JcodeBridge>,
     memory: Option<Arc<MemoryEngine>>,
     skills: Option<Arc<SkillRegistry>>,
+    usage: Option<Arc<ohagent_core::usage_tracker::UsageTracker>>,
+    router: Option<Arc<std::sync::Mutex<ohagent_core::model_router::ModelRouter>>>,
     start_time: chrono::DateTime<chrono::Utc>,
+    keys_path: String,
 }
 
 impl Daemon {
@@ -97,7 +100,10 @@ impl Daemon {
         let router = match ohagent_core::model_router::ModelRouter::load() {
             Ok(r) => {
                 info!(models = r.list_models().len(), "Model router loaded");
-                Some(Arc::new(r))
+                let prefs_path =
+                    std::path::PathBuf::from(shellexpand::tilde("~/.ohagent/model_prefs.toml").to_string());
+                let r = r.with_prefs_path(prefs_path);
+                Some(Arc::new(std::sync::Mutex::new(r)))
             }
             Err(e) => {
                 tracing::warn!(error = %e, "Model router unavailable — using default provider");
@@ -163,6 +169,22 @@ impl Daemon {
             }
         };
 
+        // Initialize usage tracker
+        let usage = match ohagent_core::usage_tracker::UsageTracker::open(
+            "~/.ohagent/usage.db", None,
+        ) {
+            Ok(t) => {
+                info!("Usage tracker initialized");
+                Some(Arc::new(t))
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "Usage tracker not available");
+                None
+            }
+        };
+
+        let keys_path = shellexpand::tilde("~/.ohagent/keys.toml").to_string();
+
         Ok(Self {
             health_port,
             enable_telegram,
@@ -170,7 +192,10 @@ impl Daemon {
             bridge,
             memory,
             skills,
+            usage,
+            router,
             start_time: chrono::Utc::now(),
+            keys_path,
         })
     }
 
@@ -183,7 +208,9 @@ impl Daemon {
             bridge: Arc::clone(&self.bridge),
             memory: self.memory.clone(),
             skills: self.skills.clone(),
+            usage: self.usage.clone(),
             start_time: self.start_time,
+            keys_path: self.keys_path.clone(),
         };
 
         let app = api::router(api_state);
@@ -218,9 +245,17 @@ impl Daemon {
         if let Some(ref skills) = self.skills {
             adapter = adapter.with_skills(Arc::clone(skills));
         }
+        if let Some(ref r) = self.router {
+            adapter = adapter.with_router(Arc::clone(r));
+        }
+        if let Some(ref u) = self.usage {
+            adapter = adapter.with_usage(Arc::clone(u));
+        }
 
         // Also attach model router reference for the /model command
         // (the router is stored inside the bridge, we also pass it directly)
+        // The router and usage tracker are stored in Daemon fields added for this purpose.
+        // They are passed to the gateway's Dispatcher via the adapter's `start` method.
 
         info!("Telegram adapter configured, starting bot...");
 

@@ -3,7 +3,7 @@
 //! Handles the full lifecycle: receive → check pairing → get/create session →
 //! send "thinking" → process → send response.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tracing::{error, info};
 
 use crate::adapter::{IncomingMessage, OutgoingMessage};
@@ -11,6 +11,7 @@ use crate::i18n::I18n;
 use crate::pairing::PairingManager;
 use crate::session::SessionManager;
 use ohagent_core::model_router::ModelRouter;
+use ohagent_core::usage_tracker::UsageTracker;
 use ohagent_skills::registry::SkillRegistry;
 
 /// The central dispatcher that every platform adapter calls into.
@@ -18,7 +19,8 @@ pub struct Dispatcher {
     session_manager: Arc<SessionManager>,
     pairing_manager: Arc<PairingManager>,
     skills: Option<Arc<SkillRegistry>>,
-    router: Option<Arc<ModelRouter>>,
+    router: Option<Arc<Mutex<ModelRouter>>>,
+    usage: Option<Arc<UsageTracker>>,
 }
 
 impl Dispatcher {
@@ -31,6 +33,7 @@ impl Dispatcher {
             pairing_manager,
             skills: None,
             router: None,
+            usage: None,
         }
     }
 
@@ -41,8 +44,14 @@ impl Dispatcher {
     }
 
     /// Set the model router for model-related commands.
-    pub fn with_router(mut self, router: Arc<ModelRouter>) -> Self {
+    pub fn with_router(mut self, router: Arc<Mutex<ModelRouter>>) -> Self {
         self.router = Some(router);
+        self
+    }
+
+    /// Set the usage tracker for recording API calls.
+    pub fn with_usage(mut self, usage: Arc<UsageTracker>) -> Self {
+        self.usage = Some(usage);
         self
     }
 
@@ -100,6 +109,25 @@ impl Dispatcher {
         match session.send_message(&msg.text).await {
             Ok(()) => {
                 info!(session_key = %session_key, "Message processed");
+
+                // Record usage (rough tok estimate: ~4 chars/tok)
+                if let Some(ref usage) = self.usage {
+                    let estimated_input_tokens = (msg.text.len() as u32 / 4).max(1);
+                    let model_id = "auto"; // model routed by bridge
+                    let model_display = "Auto-selected";
+                    let caps = vec!["general_chat".to_string()];
+                    let _ = usage.record(
+                        &msg.tenant_id,
+                        &session.session_id,
+                        model_id,
+                        model_display,
+                        &caps,
+                        estimated_input_tokens,
+                        estimated_input_tokens / 2, // rough output estimate
+                        0, // duration unknown
+                    );
+                }
+
                 None // No explicit response needed for now; streaming will come later.
             }
             Err(e) => {
@@ -231,26 +259,124 @@ impl Dispatcher {
             "model" => {
                 match &self.router {
                     Some(router) => {
-                        let _diag = router.diagnostics();
-                        let models = router.list_models();
-                        let available: Vec<String> = models
-                            .iter()
-                            .filter(|m| std::env::var(&m.api_key_env).is_ok())
-                            .map(|m| format!("• *{}* ({}) — {}", m.display, m.cost_tier, m.capabilities.join(", ")))
-                            .collect();
+                        let args_trim = args.trim();
+                        let parts: Vec<&str> =
+                            args_trim.split_whitespace().collect();
+                        let tenant = &msg.tenant_id;
 
-                        let mut text = "*Model Router Status*\n\n".to_string();
-                        text.push_str(&format!("{} models loaded, {} available\n\n",
-                            models.len(), available.len()));
-                        text.push_str("*Available models:*\n");
-                        text.push_str(&available.join("\n"));
-                        text.push_str("\n\nModels are auto-selected based on your task type.");
+                        match parts.first().copied() {
+                            Some("set") => {
+                                // /model set <capability> <model_id>
+                                if parts.len() < 3 {
+                                    return Some(OutgoingMessage {
+                                        chat_id: msg.chat_id.clone(),
+                                        text: "Usage: /model set <capability> <model_id>\n\
+                                               Capabilities: coding, reasoning, analysis, general_chat, creative_writing, image_gen, video_gen\n\
+                                               Use /model to see available models."
+                                            .into(),
+                                        markdown: false,
+                                    });
+                                }
+                                let cap = parts[1];
+                                let model_id = parts[2];
 
-                        Some(OutgoingMessage {
-                            chat_id: msg.chat_id.clone(),
-                            text,
-                            markdown: true,
-                        })
+                                let mut r = router.lock().unwrap();
+                                match r.set_pref(tenant, cap, model_id) {
+                                    Ok(()) => Some(OutgoingMessage {
+                                        chat_id: msg.chat_id.clone(),
+                                        text: format!(
+                                            "*Preference saved:* `{cap}` → `{model_id}`",
+                                        ),
+                                        markdown: true,
+                                    }),
+                                    Err(e) => Some(OutgoingMessage {
+                                        chat_id: msg.chat_id.clone(),
+                                        text: format!("Error: {e}"),
+                                        markdown: false,
+                                    }),
+                                }
+                            }
+
+                            Some("clear") => {
+                                // /model clear [capability]
+                                let cap = parts.get(1).copied();
+                                let mut r = router.lock().unwrap();
+                                match r.clear_pref(tenant, cap) {
+                                    Ok(()) => {
+                                        let msg_text = match cap {
+                                            Some(c) => format!(
+                                                "*Cleared* preference for `{c}`"
+                                            ),
+                                            None => "*Cleared* all your model preferences."
+                                                .into(),
+                                        };
+                                        Some(OutgoingMessage {
+                                            chat_id: msg.chat_id.clone(),
+                                            text: msg_text,
+                                            markdown: true,
+                                        })
+                                    }
+                                    Err(e) => Some(OutgoingMessage {
+                                        chat_id: msg.chat_id.clone(),
+                                        text: format!("Error: {e}"),
+                                        markdown: false,
+                                    }),
+                                }
+                            }
+
+                            Some("list") | None => {
+                                let r = router.lock().unwrap();
+                                let models = r.list_models().to_vec();
+                                let available: Vec<String> = models
+                                    .iter()
+                                    .filter(|m| std::env::var(&m.api_key_env).is_ok())
+                                    .map(|m| format!("• *{}* ({}) — {}", m.display, m.cost_tier, m.capabilities.join(", ")))
+                                    .collect();
+
+                                let prefs = r.list_prefs(tenant);
+                                drop(r);
+
+                                let mut text = "*Model Router Status*\n\n".to_string();
+                                text.push_str(&format!("{} models loaded, {} available\n",
+                                    models.len(), available.len()));
+
+                                // Show user's preferences
+                                if !prefs.is_empty() {
+                                    text.push_str("\n*Your preferences:*\n");
+                                    let mut sorted: Vec<_> = prefs.iter().collect();
+                                    sorted.sort_by_key(|(k, _)| *k);
+                                    for (cap, model) in sorted {
+                                        text.push_str(&format!("• `{cap}` → `{model}`\n"));
+                                    }
+                                    text.push_str("\nTo clear: /model clear <capability>\n");
+                                    text.push_str("To clear all: /model clear\n");
+                                } else {
+                                    text.push_str("\n*No personal preferences set.*\n");
+                                    text.push_str("Set with: /model set <capability> <model_name>\n");
+                                }
+
+                                text.push_str("\n*Available models:*\n");
+                                text.push_str(&available.join("\n"));
+                                text.push_str("\n\nModels are auto-selected based on your task type.");
+
+                                Some(OutgoingMessage {
+                                    chat_id: msg.chat_id.clone(),
+                                    text,
+                                    markdown: true,
+                                })
+                            }
+
+                            _ => Some(OutgoingMessage {
+                                chat_id: msg.chat_id.clone(),
+                                text: "Usage: /model [set|clear|list]\n\
+                                       /model — show models & preferences\n\
+                                       /model set <capability> <model_id> — set preferred model\n\
+                                       /model clear [capability] — clear preference(s)\n\
+                                       /model list — list preferences"
+                                    .into(),
+                                markdown: false,
+                            }),
+                        }
                     }
                     None => Some(OutgoingMessage {
                         chat_id: msg.chat_id.clone(),

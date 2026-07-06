@@ -1,23 +1,29 @@
 //! REST API for ohAgent dashboard and external integrations.
 //!
 //! Endpoints:
-//! - GET  /health            — health check (existing)
-//! - GET  /api/status        — full daemon status
-//! - GET  /api/skills        — list skills
-//! - GET  /api/skills/:id    — skill detail
+//! - GET  /health               — health check
+//! - GET  /api/status           — full daemon status
+//! - GET  /api/keys             — list configured API keys (masked)
+//! - PUT  /api/keys             — update API keys
+//! - GET  /api/skills           — list skills
+//! - GET  /api/skills/:id       — skill detail
 //! - POST /api/skills/:id/record — record usage
-//! - GET  /api/memory        — query memories
-//! - GET  /api/memory/:id    — memory detail
+//! - GET  /api/usage/stats      — usage statistics
+//! - GET  /api/usage/recent     — recent usage records
+//! - GET  /api/memory           — query memories
+//! - GET  /api/memory/:id       — memory detail
 
+use std::collections::HashMap;
 use std::sync::Arc;
 use axum::{
     extract::{Path, Query, State},
-    routing::{get, post},
+    routing::{get, post, put},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
 
 use ohagent_core::jcode_bridge::JcodeBridge;
+use ohagent_core::usage_tracker::UsageTracker;
 use ohagent_memory::engine::MemoryEngine;
 use ohagent_skills::evaluator;
 use ohagent_skills::models::SkillStatus;
@@ -29,7 +35,10 @@ pub struct ApiState {
     pub bridge: Arc<JcodeBridge>,
     pub memory: Option<Arc<MemoryEngine>>,
     pub skills: Option<Arc<SkillRegistry>>,
+    pub usage: Option<Arc<UsageTracker>>,
     pub start_time: chrono::DateTime<chrono::Utc>,
+    /// Path to keys config file
+    pub keys_path: String,
 }
 
 /// Build the full API router (includes /health).
@@ -37,6 +46,10 @@ pub fn router(state: ApiState) -> Router {
     Router::new()
         .route("/health", get(health_handler))
         .route("/api/status", get(status_handler))
+        .route("/api/keys", get(get_keys))
+        .route("/api/keys", put(update_keys))
+        .route("/api/usage/stats", get(usage_stats))
+        .route("/api/usage/recent", get(usage_recent))
         .route("/api/skills", get(list_skills))
         .route("/api/skills/{id}", get(get_skill))
         .route("/api/skills/{id}/record", post(record_skill_usage))
@@ -319,4 +332,125 @@ async fn get_memory(
         access_count: entry.access_count,
         tags: entry.tags,
     }))
+}
+
+// ── API Keys ──
+
+/// Keys config stored as TOML: {keys: {DEEPSEEK_API_KEY: "sk-...", ...}}
+#[derive(Deserialize, Serialize, Clone, Default)]
+struct KeysConfig {
+    #[serde(default)]
+    keys: HashMap<String, String>,
+}
+
+#[derive(Serialize)]
+struct KeyInfo {
+    key: String,
+    masked: String,
+    is_set: bool,
+}
+
+async fn get_keys(State(state): State<ApiState>) -> Json<Vec<KeyInfo>> {
+    let config = read_keys_config(&state.keys_path).unwrap_or_default();
+    // List known key names from model catalog env vars + standard ones
+    let known_keys = vec![
+        "DEEPSEEK_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY",
+        "OPENROUTER_API_KEY", "TELEGRAM_BOT_TOKEN",
+    ];
+
+    let result: Vec<KeyInfo> = known_keys
+        .into_iter()
+        .map(|k| {
+            let val = config.keys.get(k).cloned()
+                .or_else(|| std::env::var(k).ok());
+            let is_set = val.is_some();
+            let masked = val.as_ref()
+                .map(|v| mask_key(v))
+                .unwrap_or_default();
+            KeyInfo { key: k.to_string(), masked, is_set }
+        })
+        .collect();
+
+    Json(result)
+}
+
+#[derive(Deserialize)]
+struct UpdateKeysBody {
+    keys: HashMap<String, String>,
+}
+
+async fn update_keys(
+    State(state): State<ApiState>,
+    Json(body): Json<UpdateKeysBody>,
+) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
+    let mut config = read_keys_config(&state.keys_path).unwrap_or_default();
+
+    for (k, v) in &body.keys {
+        if v.is_empty() {
+            config.keys.remove(k);
+        } else {
+            config.keys.insert(k.clone(), v.clone());
+        }
+        // Also set in current process env
+        if v.is_empty() {
+            // Don't unset — just leave as-is
+        } else {
+            std::env::set_var(k, v);
+        }
+    }
+
+    let toml_str = toml::to_string_pretty(&config)
+        .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+    std::fs::write(&state.keys_path, toml_str)
+        .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(serde_json::json!({"ok": true})))
+}
+
+fn read_keys_config(path: &str) -> Option<KeysConfig> {
+    let expanded = shellexpand::tilde(path).to_string();
+    let content = std::fs::read_to_string(&expanded).ok()?;
+    toml::from_str(&content).ok()
+}
+
+fn mask_key(key: &str) -> String {
+    if key.len() <= 8 {
+        return "••••".to_string();
+    }
+    format!("{}••••{}", &key[..4], &key[key.len()-4..])
+}
+
+// ── Usage ──
+
+#[derive(Deserialize)]
+struct UsageQuery {
+    tenant_id: Option<String>,
+}
+
+async fn usage_stats(
+    State(state): State<ApiState>,
+    Query(params): Query<UsageQuery>,
+) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
+    let usage = state.usage.as_ref().ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
+    let tenant = params.tenant_id.unwrap_or_else(|| "default".into());
+
+    let stats = usage
+        .stats(&tenant)
+        .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(serde_json::to_value(stats).unwrap_or_default()))
+}
+
+async fn usage_recent(
+    State(state): State<ApiState>,
+    Query(params): Query<UsageQuery>,
+) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
+    let usage = state.usage.as_ref().ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
+    let tenant = params.tenant_id.unwrap_or_else(|| "default".into());
+
+    let records = usage
+        .recent(&tenant, 50)
+        .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(Json(serde_json::to_value(records).unwrap_or_default()))
 }

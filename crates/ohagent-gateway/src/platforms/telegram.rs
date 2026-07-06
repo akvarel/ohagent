@@ -3,7 +3,7 @@
 //! Uses teloxide for the Telegram Bot API.
 //! Requires TELEGRAM_BOT_TOKEN environment variable (injected by Vault agent).
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use teloxide::{
     dispatching::UpdateFilterExt,
     prelude::*,
@@ -19,6 +19,7 @@ use crate::pairing::PairingManager;
 use crate::session::SessionManager;
 use ohagent_core::jcode_bridge::JcodeBridge;
 use ohagent_core::model_router::ModelRouter;
+use ohagent_core::usage_tracker::UsageTracker;
 use ohagent_skills::registry::SkillRegistry;
 
 /// Helper: parse a string chat_id to teloxide's ChatId.
@@ -70,7 +71,8 @@ struct TelegramState {
 pub struct TelegramAdapter {
     bot_token: String,
     skills: Option<Arc<SkillRegistry>>,
-    router: Option<Arc<ModelRouter>>,
+    router: Option<Arc<Mutex<ModelRouter>>>,
+    usage: Option<Arc<UsageTracker>>,
 }
 
 impl TelegramAdapter {
@@ -85,6 +87,7 @@ impl TelegramAdapter {
             bot_token: token,
             skills: None,
             router: None,
+            usage: None,
         })
     }
 
@@ -94,6 +97,7 @@ impl TelegramAdapter {
             bot_token: token.into(),
             skills: None,
             router: None,
+            usage: None,
         }
     }
 
@@ -104,8 +108,14 @@ impl TelegramAdapter {
     }
 
     /// Attach a model router for model commands.
-    pub fn with_router(mut self, router: Arc<ModelRouter>) -> Self {
+    pub fn with_router(mut self, router: Arc<Mutex<ModelRouter>>) -> Self {
         self.router = Some(router);
+        self
+    }
+
+    /// Attach a usage tracker for recording API calls.
+    pub fn with_usage(mut self, usage: Arc<UsageTracker>) -> Self {
+        self.usage = Some(usage);
         self
     }
 }
@@ -130,6 +140,9 @@ impl PlatformAdapter for TelegramAdapter {
         }
         if let Some(ref router) = self.router {
             dispatcher_builder = dispatcher_builder.with_router(Arc::clone(router));
+        }
+        if let Some(ref usage) = self.usage {
+            dispatcher_builder = dispatcher_builder.with_usage(Arc::clone(usage));
         }
         let dispatcher = Arc::new(dispatcher_builder);
 

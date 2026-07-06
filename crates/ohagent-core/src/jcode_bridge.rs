@@ -15,8 +15,8 @@ use jcode_app_core::{
 };
 use jcode_provider_core::Provider as ProviderTrait;
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
-use tokio::sync::{Mutex, RwLock};
+use std::sync::{Arc, Mutex};
+use tokio::sync::{Mutex as TokioMutex, RwLock};
 use tracing::info;
 
 /// Error type for Jcode bridge operations.
@@ -50,7 +50,7 @@ pub struct SessionConfig {
 #[derive(Clone)]
 pub struct SessionHandle {
     pub session_id: String,
-    pub agent: Arc<Mutex<Agent>>,
+    pub agent: Arc<TokioMutex<Agent>>,
 }
 
 impl SessionHandle {
@@ -116,7 +116,7 @@ pub struct JcodeBridge {
     sessions: SessionAgents,
     global_session_id: Arc<RwLock<String>>,
     provider: Arc<dyn ProviderTrait>,
-    router: Option<Arc<ModelRouter>>,
+    router: Option<Arc<Mutex<ModelRouter>>>,
     swarm_members: Arc<RwLock<HashMap<String, SwarmMember>>>,
     swarms_by_id: Arc<RwLock<HashMap<String, HashSet<String>>>>,
     swarm_coordinators: Arc<RwLock<HashMap<String, String>>>,
@@ -145,7 +145,7 @@ impl JcodeBridge {
     }
 
     /// Attach a model router for intelligent model selection.
-    pub fn with_router(mut self, router: Arc<ModelRouter>) -> Self {
+    pub fn with_router(mut self, router: Arc<Mutex<ModelRouter>>) -> Self {
         self.router = Some(router);
         self
     }
@@ -158,10 +158,10 @@ impl JcodeBridge {
     /// Route a message to the best model and return the model name.
     ///
     /// If no router is configured, returns the default provider name.
-    pub fn route_message(&self, message: &str) -> String {
+    pub fn route_message(&self, tenant_id: &str, message: &str) -> String {
         match &self.router {
             Some(router) => {
-                match router.route(message) {
+                match router.lock().unwrap().route(tenant_id, message) {
                     Ok(routed) => routed.display_name,
                     Err(_) => self.provider.display_name(),
                 }
