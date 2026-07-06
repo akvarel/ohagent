@@ -655,6 +655,104 @@ migrations are skipped on restart.
 
 ---
 
+## CMC Reasoning Engine (AutoTTS-inspired)
+
+The CMC (Confidence Momentum Controller) replaces naive single-model routing
+with budget-aware, replay-optimized reasoning. Inspired by the AutoTTS paper
+(LLMs Improving LLMs) — discovered controller saves 30–70% tokens at same accuracy.
+
+### How It Works
+
+```text
+User message → N parallel branches (cheap model)
+                    ↓
+            CMC Controller → Stop? (EMA gate on confidence)
+            |    ↓                     ↓
+            |  Widen (more models)   Return winner
+            |    ↓
+            |  Abandon deviants
+            ↓
+          Continue probing
+```
+
+1. **β parameterization**: Single scalar β ∈ [0,1] controls all behavior:
+   - β=0: cheap/fast (few branches, early stop)
+   - β=1: thorough (many branches, high inertia)
+2. **EMA gate**: Smoothes confidence over time, avoids false stops on noise
+3. **Trend widening**: Spawns new branches when confidence trend is weak
+4. **Conservative abandonment**: Only drops branches after persistent disagreement
+5. **Budget-driven**: β auto-derives from remaining token budget
+
+### Replay Environment
+
+Frozen LLM traces → evaluate controllers offline (zero LLM calls):
+
+```
+Coding Agent → writes controller.py
+                   ↓
+             ReplayEnv.evaluate(controller)  ← 0$ cost
+                   ↓
+             accuracy + cost + traces
+                   ↓
+Coding Agent → improves controller → deploy
+```
+
+Full optimization cycle cost: ~$40 (matching AutoTTS results).
+
+### Usage (from code)
+
+```rust
+use ohagent_reasoning::cmc::CmcConfig;
+use ohagent_reasoning::budget::BudgetTracker;
+use ohagent_reasoning::router::ReasoningRouter;
+
+// Create budget with β=0.5 (balanced)
+let cmc = CmcConfig::balanced();
+let budget = BudgetTracker::new(/* config */);
+let mut router = ReasoningRouter::new(cmc, budget);
+
+// Initialize with initial batch
+router.init(initial_results);
+
+// Main loop
+loop {
+    match router.decide() {
+        ReasoningAction::Stop { answer, .. } => break,
+        ReasoningAction::Probe { allocations } => { /* call LLMs */ },
+        ReasoningAction::Widen { count } => { /* spawn branches */ },
+        ReasoningAction::Abandon { .. } => { /* already handled */ },
+    }
+}
+```
+
+### Replay Evaluation
+
+```rust
+use ohagent_reasoning::replay::ReplayEnv;
+
+let mut env = ReplayEnv::new("./replay_store");
+env.load()?;
+
+// Sweep β from 0 to 1 to find optimal operating point
+let optimal = env.find_optimal_beta(0.9, 20);  // ≥90% accuracy, 20 steps
+
+// Single config evaluation
+let eval = env.evaluate(&CmcConfig::balanced());
+println!("{eval:?}");
+// accuracy=94.50% tokens=12400 queries=100 correct=94
+```
+
+### Configuration
+
+| Env var | Default | Description |
+|---|---|---|
+| `OHAGENT_CMC_BETA` | `0.5` | CMC behavior scalar |
+| `OHAGENT_REASONING_MAX_TOKENS` | `50000` | Max tokens per reasoning session |
+| `OHAGENT_REASONING_MAX_COST_CENTS` | `500` | Max cost per session in cents |
+| `OHAGENT_REPLAY_DIR` | `./replay_store` | Replay trace storage directory |
+
+---
+
 ## Usage Tracking & Message Logging (Phase 7)
 
 ohAgent tracks all LLM usage and can log all prompts/responses for audit.
