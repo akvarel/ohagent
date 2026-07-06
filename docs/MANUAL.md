@@ -551,6 +551,110 @@ graceful degradation without a real Vault server.
 
 ---
 
+## Docker & CI/CD
+
+### Docker Build
+
+```bash
+# Build the image
+docker build -t ohagent-daemon:latest .
+
+# Run locally
+docker run -p 9090:9090 \
+  -e DEEPSEEK_API_KEY=sk-... \
+  -e OHAGENT_API_KEY=my-secret-key \
+  ohagent-daemon:latest
+```
+
+### Docker Compose (Local Dev)
+
+Full dev environment with Vault:
+
+```bash
+docker compose up -d
+curl http://localhost:9090/health
+curl http://localhost:9090/api/status -H "X-API-Key: dev-key-change-me"
+```
+
+Services:
+- **ohagent-daemon** — port 9090
+- **Vault** — port 8200, root token `dev-root-token`
+
+### CI/CD Pipeline (GitLab)
+
+Three stages: `test` → `build` → `deploy`
+
+| Stage | Job | Trigger |
+|---|---|---|
+| test | `test:unit` | MR, main, develop |
+| test | `test:lint` (allow-failure) | MR, main |
+| test | `test:e2e` (allow-failure) | MR, main |
+| build | `build:docker` (kaniko) | main |
+| deploy | `deploy:dev` (auto) | develop |
+| deploy | `deploy:prod` (manual) | main |
+
+### API Authentication
+
+All `/api/*` endpoints require authentication:
+
+```bash
+# Via X-API-Key header
+curl -H "X-API-Key: $OHAGENT_API_KEY" http://localhost:9090/api/status
+
+# Via Authorization: Bearer
+curl -H "Authorization: Bearer $OHAGENT_API_KEY" http://localhost:9090/api/status
+```
+
+If `OHAGENT_API_KEY` is not set, a random key is generated on startup
+and logged. Public endpoints (`/health`, `/v1/*`, `/webhooks/*`) are
+never authenticated.
+
+### Prometheus Metrics
+
+```bash
+curl http://localhost:9090/metrics
+```
+
+Key metrics:
+- `ohagent_requests_total{path,method,status}` — all HTTP requests
+- `ohagent_llm_calls_total{provider,model}` — LLM API calls
+- `ohagent_llm_tokens_total{provider,type}` — prompt/completion tokens
+- `ohagent_sessions_active` — active Jcode sessions
+- `ohagent_request_duration_seconds{path}` — request latency histogram
+
+K8s ServiceMonitor auto-scrapes this endpoint via prometheus-operator.
+
+### Rate Limiting
+
+Per-tenant sliding window (default: 30 req/min/tenant):
+
+| Env | Default | Description |
+|---|---|---|
+| `RATE_LIMIT_MAX_REQUESTS` | 30 | Max requests per window |
+| `RATE_LIMIT_WINDOW_SECS` | 60 | Window duration in seconds |
+| `RATE_LIMIT_BAN_SECS` | 300 | Ban duration after exceeding limit |
+
+Rate-limited tenants get a 5-minute ban. Admin tenants can be exempted.
+
+### DB Migrations
+
+SQLite migrations are auto-applied on startup. Current migrations:
+
+| Version | Description |
+|---|---|
+| 1 | skills table |
+| 2 | memories table |
+| 3 | usage_records table |
+| 4 | message_log table |
+| 5 | message_log_prefs table |
+| 6 | pairing_codes table |
+| 7 | Common indexes |
+
+Migrations are tracked in the `_migrations` table. Already-applied
+migrations are skipped on restart.
+
+---
+
 ## Usage Tracking & Message Logging (Phase 7)
 
 ohAgent tracks all LLM usage and can log all prompts/responses for audit.
