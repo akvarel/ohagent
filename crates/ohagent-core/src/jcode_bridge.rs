@@ -57,8 +57,23 @@ impl SessionHandle {
     /// Send a text message to this agent.
     ///
     /// The message is processed through Jcode's agent loop.
-    /// Returns `Ok(())` when the agent has finished processing.
+    /// For messages with attachments, use `send_message_with_images` instead.
     pub async fn send_message(&self, content: &str) -> Result<(), BridgeError> {
+        self.send_message_with_images(content, Vec::new()).await
+    }
+
+    /// Send a text message with attached images to this agent.
+    ///
+    /// `images` is a list of `(media_type, base64_encoded_data)` tuples.
+    /// Supported media types: "image/png", "image/jpeg", "image/gif", "image/webp".
+    ///
+    /// The message is processed through Jcode's agent loop.
+    /// Returns `Ok(())` when the agent has finished processing.
+    pub async fn send_message_with_images(
+        &self,
+        content: &str,
+        images: Vec<(String, String)>,
+    ) -> Result<(), BridgeError> {
         let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel();
 
         let agent = Arc::clone(&self.agent);
@@ -69,7 +84,7 @@ impl SessionHandle {
             process_message_streaming_mpsc(
                 agent,
                 &text,
-                Vec::new(),
+                images,
                 None,
                 event_tx,
             )

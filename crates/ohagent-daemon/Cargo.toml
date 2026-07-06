@@ -28,6 +28,7 @@ jcode-message-types = { path = "../../jcode/crates/jcode-message-types" }
 jcode-provider-openrouter-runtime = { path = "../../jcode/crates/jcode-provider-openrouter-runtime" }
 futures = { workspace = true }
 tokio-stream = "0.1"
+async-stream = "0.3"
 ohagent-reasoning = { workspace = true }
 hmac = "0.12"
 sha2 = "0.10"

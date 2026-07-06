@@ -4376,6 +4376,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "assert-json-diff",
+ "async-stream",
  "axum",
  "chrono",
  "clap",
@@ -4415,6 +4416,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "base64 0.22.1",
  "chrono",
  "dashmap",
  "futures",

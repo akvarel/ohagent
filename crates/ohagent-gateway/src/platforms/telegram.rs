@@ -20,6 +20,8 @@ use crate::session::SessionManager;
 use ohagent_core::jcode_bridge::JcodeBridge;
 use ohagent_core::message_log::MessageLog;
 use ohagent_core::model_router::ModelRouter;
+use ohagent_core::push::PushService;
+use ohagent_core::session_store::SessionStore;
 use ohagent_core::usage_tracker::UsageTracker;
 use ohagent_skills::registry::SkillRegistry;
 
@@ -75,6 +77,8 @@ pub struct TelegramAdapter {
     router: Option<Arc<Mutex<ModelRouter>>>,
     usage: Option<Arc<UsageTracker>>,
     message_log: Option<Arc<MessageLog>>,
+    session_store: Option<Arc<SessionStore>>,
+    push: Option<Arc<PushService>>,
 }
 
 impl TelegramAdapter {
@@ -91,6 +95,8 @@ impl TelegramAdapter {
             router: None,
             usage: None,
             message_log: None,
+            session_store: None,
+            push: None,
         })
     }
 
@@ -102,6 +108,8 @@ impl TelegramAdapter {
             router: None,
             usage: None,
             message_log: None,
+            session_store: None,
+            push: None,
         }
     }
 
@@ -126,6 +134,18 @@ impl TelegramAdapter {
     /// Attach a message log for the /logging command.
     pub fn with_message_log(mut self, log: Arc<MessageLog>) -> Self {
         self.message_log = Some(log);
+        self
+    }
+
+    /// Attach a session store for /new persistence.
+    pub fn with_session_store(mut self, store: Arc<SessionStore>) -> Self {
+        self.session_store = Some(store);
+        self
+    }
+
+    /// Attach a push service for pairing registration.
+    pub fn with_push(mut self, push: Arc<PushService>) -> Self {
+        self.push = Some(push);
         self
     }
 }
@@ -156,6 +176,12 @@ impl PlatformAdapter for TelegramAdapter {
         }
         if let Some(ref log) = self.message_log {
             dispatcher_builder = dispatcher_builder.with_message_log(Arc::clone(log));
+        }
+        if let Some(ref ss) = self.session_store {
+            dispatcher_builder = dispatcher_builder.with_session_store(Arc::clone(ss));
+        }
+        if let Some(ref push) = self.push {
+            dispatcher_builder = dispatcher_builder.with_push(Arc::clone(push));
         }
         let dispatcher = Arc::new(dispatcher_builder);
 

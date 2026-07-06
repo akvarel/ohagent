@@ -531,6 +531,12 @@ impl Daemon {
         if let Some(ref log) = self.message_log {
             adapter = adapter.with_message_log(Arc::clone(log));
         }
+        if let Some(ref ss) = self.session_store {
+            adapter = adapter.with_session_store(Arc::clone(ss));
+        }
+        if let Some(ref push) = self.push {
+            adapter = adapter.with_push(Arc::clone(push));
+        }
 
         // Also attach model router reference for the /model command
         // (the router is stored inside the bridge, we also pass it directly)

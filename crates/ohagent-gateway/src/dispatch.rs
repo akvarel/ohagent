@@ -4,16 +4,51 @@
 //! send "thinking" → process → send response.
 
 use std::sync::{Arc, Mutex};
+use std::fs;
 use tracing::{error, info};
 
-use crate::adapter::{IncomingMessage, OutgoingMessage};
+use crate::adapter::{FileAttachment, IncomingMessage, OutgoingMessage};
 use crate::i18n::I18n;
 use crate::pairing::PairingManager;
 use crate::session::SessionManager;
 use ohagent_core::message_log::MessageLog;
 use ohagent_core::model_router::ModelRouter;
+use ohagent_core::push::PushService;
+use ohagent_core::session_store::SessionStore;
 use ohagent_core::usage_tracker::UsageTracker;
 use ohagent_skills::registry::SkillRegistry;
+
+/// Encode a file attachment to (media_type, base64_data) tuple suitable for Jcode.
+fn encode_attachment(att: &FileAttachment) -> Result<(String, String), std::io::Error> {
+    let data = fs::read(&att.local_path)?;
+    let mime = att
+        .mime_type
+        .clone()
+        .unwrap_or_else(|| guess_mime_from_path(&att.local_path));
+    use base64::Engine;
+    let b64 = base64::engine::general_purpose::STANDARD.encode(&data);
+    Ok((mime, b64))
+}
+
+fn guess_mime_from_path(path: &str) -> String {
+    let ext = std::path::Path::new(path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+    match ext.as_str() {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "pdf" => "application/pdf",
+        "txt" => "text/plain",
+        "json" => "application/json",
+        "csv" => "text/csv",
+        _ => "application/octet-stream",
+    }
+    .to_string()
+}
 
 /// The central dispatcher that every platform adapter calls into.
 pub struct Dispatcher {
@@ -23,6 +58,8 @@ pub struct Dispatcher {
     router: Option<Arc<Mutex<ModelRouter>>>,
     usage: Option<Arc<UsageTracker>>,
     message_log: Option<Arc<MessageLog>>,
+    session_store: Option<Arc<SessionStore>>,
+    push: Option<Arc<PushService>>,
 }
 
 impl Dispatcher {
@@ -37,6 +74,8 @@ impl Dispatcher {
             router: None,
             usage: None,
             message_log: None,
+            session_store: None,
+            push: None,
         }
     }
 
@@ -61,6 +100,18 @@ impl Dispatcher {
     /// Set the message log for the /logging command.
     pub fn with_message_log(mut self, log: Arc<MessageLog>) -> Self {
         self.message_log = Some(log);
+        self
+    }
+
+    /// Set the session store for /new persistence.
+    pub fn with_session_store(mut self, store: Arc<SessionStore>) -> Self {
+        self.session_store = Some(store);
+        self
+    }
+
+    /// Set the push service for pairing registration.
+    pub fn with_push(mut self, push: Arc<PushService>) -> Self {
+        self.push = Some(push);
         self
     }
 
@@ -114,8 +165,25 @@ impl Dispatcher {
             "Dispatching message"
         );
 
+        // Process attachment if present — read file, base64-encode
+        let images: Vec<(String, String)> = if let Some(ref att) = msg.attachment {
+            match encode_attachment(att) {
+                Ok(img) => vec![img],
+                Err(e) => {
+                    error!(
+                        attachment_path = %att.local_path,
+                        error = %e,
+                        "Failed to encode attachment"
+                    );
+                    Vec::new()
+                }
+            }
+        } else {
+            Vec::new()
+        };
+
         // Send the message to the agent
-        match session.send_message(&msg.text).await {
+        match session.send_message_with_images(&msg.text, images).await {
             Ok(()) => {
                 info!(session_key = %session_key, "Message processed");
 
@@ -202,11 +270,17 @@ impl Dispatcher {
                     code,
                     msg.lang.as_str(),
                 ) {
-                    Ok(_) => Some(OutgoingMessage {
-                        chat_id: msg.chat_id.clone(),
-                        text: i18n.t("pairing_success"),
-                        markdown: false,
-                    }),
+                    Ok(ref paired) => {
+                        // Register for push notifications
+                        if let Some(ref push) = self.push {
+                            push.register(&paired.tenant_id, &msg.chat_id);
+                        }
+                        Some(OutgoingMessage {
+                            chat_id: msg.chat_id.clone(),
+                            text: i18n.t("pairing_success"),
+                            markdown: false,
+                        })
+                    }
                     Err(e) => Some(OutgoingMessage {
                         chat_id: msg.chat_id.clone(),
                         text: e,
@@ -226,6 +300,10 @@ impl Dispatcher {
             "new" => {
                 let session_key = format!("{}:{}", msg.platform, msg.chat_id);
                 self.session_manager.reset(&session_key).await;
+                // Also clear persistent session
+                if let Some(ref ss) = self.session_store {
+                    let _ = ss.delete_all_for_tenant(&msg.tenant_id);
+                }
                 Some(OutgoingMessage {
                     chat_id: msg.chat_id.clone(),
                     text: i18n.t("new_session"),

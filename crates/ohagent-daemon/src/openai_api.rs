@@ -20,9 +20,10 @@ use axum::{
     Json,
 };
 use futures::StreamExt;
-use jcode_message_types::{ContentBlock, Message, Role, StreamEvent};
+use jcode_message_types::{ContentBlock, Message, Role, StreamEvent, ToolDefinition};
 use serde::{Deserialize, Serialize};
 use crate::api::ApiState;
+use ohagent_core::agent_runner::{self, AgentEvent};
 
 // ── /v1/models handler ──
 
@@ -491,7 +492,19 @@ pub async fn chat_completions_handler(
         let _ = ss.heartbeat(tenant, session_hash, total_messages, input_tokens as u64, ".");
     }
 
-    if req.stream {
+    // ── Tool-augmented path: use agent_runner when tools are registered ──
+    let tool_registry = state.tool_registry.clone();
+    let has_tools = tool_registry.as_ref()
+        .map(|tr| !tr.list().is_empty())
+        .unwrap_or(false);
+
+    if has_tools {
+        if req.stream {
+            handle_streaming_with_tools(state, req, messages, system, request_id, created).await
+        } else {
+            handle_non_streaming_with_tools(state, req, messages, system, request_id, created).await
+        }
+    } else if req.stream {
         handle_streaming(state, req, messages, system, request_id, created, input_tokens, routed).await
     } else {
         handle_non_streaming(state, req, messages, system, request_id, created, input_tokens, routed)
@@ -636,4 +649,165 @@ fn error_response(msg: &str) -> Response {
         Json(body),
     )
         .into_response()
+}
+
+// ── Tool-augmented handlers (agent_runner) ──
+
+/// Non-streaming with tool-calling loop.
+async fn handle_non_streaming_with_tools(
+    state: ApiState,
+    req: ChatCompletionRequest,
+    messages: Vec<Message>,
+    system: String,
+    id: String,
+    created: u64,
+) -> Response {
+    let tr = match state.tool_registry {
+        Some(ref tr) => Arc::clone(tr),
+        None => return error_response("Tool registry not available"),
+    };
+
+    let provider: Arc<dyn jcode_provider_core::Provider> = if let Some(ref router) = state.model_router {
+        match router.lock() {
+            Ok(r) => {
+                let msg = req.messages.last().map(|m| m.content.as_str()).unwrap_or("");
+                match r.route_with_messages("default", msg, Some(&messages), Some(&system)) {
+                    Ok(rm) => rm.provider,
+                    Err(_) => Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>,
+                }
+            }
+            Err(_) => Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>,
+        }
+    } else {
+        Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>
+    };
+
+    let tool_defs: Vec<ToolDefinition> = tr.list().into_iter().map(|(name, desc)| {
+        let tool = tr.get(&name);
+        ToolDefinition {
+            name,
+            description: desc,
+            input_schema: tool.map(|t| t.parameters_schema.clone()).unwrap_or_default(),
+        }
+    }).collect();
+
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+
+    let handle = tokio::spawn(async move {
+        agent_runner::run_agent_turn(provider, messages, system, tool_defs, tr, tx).await
+    });
+
+    let mut content = String::new();
+    while let Some(event) = rx.recv().await {
+        match event {
+            AgentEvent::TextDelta(text) => content.push_str(&text),
+            AgentEvent::ToolCallStart { name, .. } => {
+                tracing::info!(tool = %name, "Agent calling tool");
+            }
+            AgentEvent::ToolResult { name, output, success, .. } => {
+                tracing::info!(tool = %name, success, "Tool result ({} bytes)", output.len());
+            }
+            AgentEvent::Error(msg) => {
+                return error_response(&msg);
+            }
+            AgentEvent::Done { .. } => break,
+        }
+    }
+
+    let output_tokens = (content.len() / 4).max(1) as u32;
+    let response = ChatCompletionResponse {
+        id,
+        object: "chat.completion".into(),
+        created,
+        model: req.model.clone(),
+        choices: vec![Choice {
+            index: 0,
+            message: ChoiceMessage { role: "assistant".into(), content },
+            finish_reason: "stop".into(),
+        }],
+        usage: Usage { prompt_tokens: 0, completion_tokens: output_tokens, total_tokens: output_tokens },
+    };
+
+    (axum::http::StatusCode::OK, Json(response)).into_response()
+}
+
+/// Streaming with tool-calling loop.
+async fn handle_streaming_with_tools(
+    state: ApiState,
+    req: ChatCompletionRequest,
+    messages: Vec<Message>,
+    system: String,
+    id: String,
+    created: u64,
+) -> Response {
+    let tr = match state.tool_registry {
+        Some(ref tr) => Arc::clone(tr),
+        None => return error_response("Tool registry not available"),
+    };
+
+    let provider: Arc<dyn jcode_provider_core::Provider> = if let Some(ref router) = state.model_router {
+        match router.lock() {
+            Ok(r) => {
+                let msg = req.messages.last().map(|m| m.content.as_str()).unwrap_or("");
+                match r.route_with_messages("default", msg, Some(&messages), Some(&system)) {
+                    Ok(rm) => rm.provider,
+                    Err(_) => Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>,
+                }
+            }
+            Err(_) => Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>,
+        }
+    } else {
+        Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>
+    };
+
+    let tool_defs: Vec<ToolDefinition> = tr.list().into_iter().map(|(name, desc)| {
+        let tool = tr.get(&name);
+        ToolDefinition {
+            name,
+            description: desc,
+            input_schema: tool.map(|t| t.parameters_schema.clone()).unwrap_or_default(),
+        }
+    }).collect();
+
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+
+    tokio::spawn(async move {
+        let _ = agent_runner::run_agent_turn(provider, messages, system, tool_defs, tr, tx).await;
+    });
+
+    let id_clone = id.clone();
+    let model = req.model.clone();
+    let stream = async_stream::stream! {
+        while let Some(event) = rx.recv().await {
+            match event {
+                AgentEvent::TextDelta(text) => {
+                    let chunk = ChatCompletionChunk {
+                        id: id_clone.clone(),
+                        object: "chat.completion.chunk".into(),
+                        created,
+                        model: model.clone(),
+                        choices: vec![ChunkChoice {
+                            index: 0,
+                            delta: ChunkDelta { role: Some("assistant".into()), content: Some(text) },
+                            finish_reason: None,
+                        }],
+                    };
+                    let json = serde_json::to_string(&chunk).unwrap_or_default();
+                    yield Ok(Event::default().data(json));
+                }
+                AgentEvent::ToolCallStart { name, id: tid } => {
+                    yield Ok(Event::default().comment(format!("tool:{name}:{tid}")));
+                }
+                AgentEvent::Error(msg) => {
+                    yield Err(axum::Error::new(std::io::Error::new(std::io::ErrorKind::Other, msg)));
+                    break;
+                }
+                AgentEvent::Done { .. } => break,
+                _ => {}
+            }
+        }
+        yield Ok(Event::default().data("[DONE]"));
+    };
+
+    Sse::new(stream).into_response()
 }
