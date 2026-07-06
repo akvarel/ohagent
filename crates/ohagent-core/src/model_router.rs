@@ -22,7 +22,7 @@
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::{debug, info};
@@ -64,6 +64,13 @@ pub struct ModelEntry {
     /// Off-peak window end in UTC (HH:MM format)
     #[serde(default)]
     pub off_peak_end_utc: Option<String>,
+    /// Whether model is enabled (can be toggled at runtime via API)
+    #[serde(default = "default_enabled")]
+    pub enabled: bool,
+}
+
+fn default_enabled() -> bool {
+    true
 }
 
 /// Top-level catalog config.
@@ -227,6 +234,10 @@ pub struct ModelRouter {
     user_prefs: HashMap<String, HashMap<String, String>>,
     /// Path for persisting preferences
     prefs_path: Option<PathBuf>,
+    /// Runtime disabled models (via API toggle). Persisted to disabled_path.
+    disabled_models: HashSet<String>,
+    /// Path for persisting disabled models
+    disabled_path: Option<PathBuf>,
 }
 
 /// Result of routing a task to a model.
@@ -235,6 +246,17 @@ pub struct RoutedModel {
     pub model_id: String,
     pub display_name: String,
     pub task_capabilities: Vec<Capability>,
+}
+
+/// Model status returned by the API.
+#[derive(Debug, Clone, Serialize)]
+pub struct ModelStatus {
+    pub id: String,
+    pub display: String,
+    pub provider: String,
+    pub cost_tier: String,
+    pub enabled: bool,
+    pub has_api_key: bool,
 }
 
 impl ModelRouter {
@@ -251,6 +273,8 @@ impl ModelRouter {
             catalog,
             user_prefs: HashMap::new(),
             prefs_path: None,
+            disabled_models: HashSet::new(),
+            disabled_path: None,
         })
     }
 
@@ -264,7 +288,89 @@ impl ModelRouter {
             catalog,
             user_prefs: HashMap::new(),
             prefs_path: None,
+            disabled_models: HashSet::new(),
+            disabled_path: None,
         })
+    }
+
+    /// Set the path for disabled models persistence and load existing.
+    pub fn with_disabled_path(mut self, path: PathBuf) -> Self {
+        self.disabled_path = Some(path.clone());
+        if let Err(e) = self.load_disabled() {
+            debug!(error = %e, "No existing disabled list, starting fresh");
+        }
+        self
+    }
+
+    /// Check if a model is enabled (catalog default + runtime override).
+    pub fn is_enabled(&self, model_id: &str) -> bool {
+        // Runtime override takes precedence
+        if self.disabled_models.contains(model_id) {
+            return false;
+        }
+        // Catalog default
+        self.catalog.models
+            .iter()
+            .find(|m| m.id == model_id)
+            .map(|m| m.enabled)
+            .unwrap_or(true)
+    }
+
+    /// Enable or disable a model at runtime (persisted).
+    pub fn set_enabled(&mut self, model_id: &str, enabled: bool) -> Result<()> {
+        // Validate model exists
+        if !self.catalog.models.iter().any(|m| m.id == model_id) {
+            return Err(anyhow::anyhow!("Unknown model: {model_id}"));
+        }
+        if enabled {
+            self.disabled_models.remove(model_id);
+            info!(%model_id, "Model enabled");
+        } else {
+            self.disabled_models.insert(model_id.to_string());
+            info!(%model_id, "Model disabled");
+        }
+        self.save_disabled()?;
+        Ok(())
+    }
+
+    /// List all models with their enabled state.
+    pub fn model_statuses(&self) -> Vec<ModelStatus> {
+        self.catalog.models.iter().map(|m| {
+            ModelStatus {
+                id: m.id.clone(),
+                display: m.display.clone(),
+                provider: m.provider.clone(),
+                cost_tier: m.cost_tier.clone(),
+                enabled: self.is_enabled(&m.id),
+                has_api_key: std::env::var(&m.api_key_env).is_ok(),
+            }
+        }).collect()
+    }
+
+    /// Load disabled list from disk.
+    fn load_disabled(&mut self) -> Result<()> {
+        if let Some(ref path) = self.disabled_path {
+            if path.exists() {
+                let data = std::fs::read_to_string(path)?;
+                let list: Vec<String> = serde_json::from_str(&data)?;
+                self.disabled_models = list.into_iter().collect();
+                debug!(count = self.disabled_models.len(), "Loaded disabled models");
+            }
+        }
+        Ok(())
+    }
+
+    /// Persist disabled list to disk.
+    fn save_disabled(&self) -> Result<()> {
+        if let Some(ref path) = self.disabled_path {
+            if let Some(parent) = path.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            let list: Vec<&String> = self.disabled_models.iter().collect();
+            let data = serde_json::to_string_pretty(&list)?;
+            std::fs::write(path, &data)?;
+        }
+        Ok(())
     }
 
     /// Get the catalog (used by API to expose model list).
@@ -294,6 +400,7 @@ impl ModelRouter {
         self.catalog
             .models
             .iter()
+            .filter(|m| self.is_enabled(&m.id))
             .filter(|m| {
                 // Must have all required capabilities
                 required

@@ -76,6 +76,8 @@ pub fn router(state: ApiState) -> Router {
         .route("/v1/models", get(crate::openai_api::list_models_handler))
         .route("/v1/models/prefs", get(crate::openai_api::get_model_prefs))
         .route("/v1/models/prefs", post(crate::openai_api::set_model_pref))
+        .route("/v1/models/status", get(crate::openai_api::model_status_handler))
+        .route("/v1/models/toggle", post(crate::openai_api::toggle_model_handler))
         .route("/v1/chat/completions", post(crate::openai_api::chat_completions_handler))
         .route("/api/status", get(status_handler))
         .route("/api/keys", get(get_keys))

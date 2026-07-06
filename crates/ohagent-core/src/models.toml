@@ -87,6 +87,7 @@ cost_tier = "medium"
 context = 128_000
 input_price = 2.50
 output_price = 10.00
+enabled = false
 
 [[models]]
 id = "claude-sonnet-4-6"
@@ -98,6 +99,7 @@ cost_tier = "medium"
 context = 200_000
 input_price = 3.00
 output_price = 15.00
+enabled = false
 
 # ── Tier: premium (best quality, expensive) ──
 
@@ -111,6 +113,8 @@ cost_tier = "high"
 context = 200_000
 input_price = 1.10
 output_price = 4.40
+# Disabled by default — enable via /v1/models/toggle if needed
+enabled = false
 
 [[models]]
 id = "claude-opus-4-5"
@@ -122,6 +126,7 @@ cost_tier = "high"
 context = 200_000
 input_price = 15.00
 output_price = 75.00
+enabled = false
 
 # ── Tier: image generation (non-chat, separate API) ──
 

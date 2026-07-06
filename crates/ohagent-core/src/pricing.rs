@@ -204,6 +204,7 @@ mod tests {
                 off_peak_discount: Some(0.5),
                 off_peak_start_utc: Some("16:30".into()),
                 off_peak_end_utc: Some("00:30".into()),
+                enabled: true,
             },
             ModelEntry {
                 id: "dall-e-3".into(), provider: "openai-image".into(),
@@ -213,6 +214,7 @@ mod tests {
                 off_peak_discount: None,
                 off_peak_start_utc: None,
                 off_peak_end_utc: None,
+                enabled: true,
             },
         ]
     }

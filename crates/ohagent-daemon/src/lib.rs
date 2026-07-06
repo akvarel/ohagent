@@ -120,6 +120,9 @@ impl Daemon {
                 let prefs_path =
                     std::path::PathBuf::from(shellexpand::tilde("~/.ohagent/model_prefs.toml").to_string());
                 let r = r.with_prefs_path(prefs_path);
+                let disabled_path =
+                    std::path::PathBuf::from(shellexpand::tilde("~/.ohagent/disabled_models.json").to_string());
+                let r = r.with_disabled_path(disabled_path);
                 Some(Arc::new(std::sync::Mutex::new(r)))
             }
             Err(e) => {

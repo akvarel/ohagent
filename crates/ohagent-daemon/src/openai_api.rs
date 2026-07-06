@@ -41,13 +41,14 @@ pub struct ModelList {
 }
 
 /// GET /v1/models — list available models from the catalog.
-/// Dynamic: reads from the ModelRouter, so models.toml changes take effect live.
+/// Dynamic: reads from the ModelRouter, only shows enabled models.
 pub async fn list_models_handler(State(state): State<ApiState>) -> Json<ModelList> {
     let models: Vec<ModelInfo> = if let Some(ref router) = state.model_router {
         match router.lock() {
             Ok(r) => r
                 .catalog()
                 .iter()
+                .filter(|m| r.is_enabled(&m.id))
                 .map(|m| ModelInfo {
                     id: m.id.clone(),
                     object: "model".into(),
@@ -147,6 +148,78 @@ pub async fn set_model_pref(
                 "tenant": tenant,
                 "capability": capability,
                 "model_id": model_id
+            }))),
+            Err(e) => Err((
+                axum::http::StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": format!("{}", e)})),
+            )),
+        },
+        Err(_) => Err((
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": "lock failed"})),
+        )),
+    }
+}
+
+// ── /v1/models/status handler ──
+
+/// GET /v1/models/status — list all models with enabled/disabled state.
+pub async fn model_status_handler(
+    State(state): State<ApiState>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    let router = state.model_router.as_ref().ok_or_else(|| {
+        (
+            axum::http::StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({"error": "model router not available"})),
+        )
+    })?;
+
+    match router.lock() {
+        Ok(r) => {
+            let statuses: Vec<serde_json::Value> = r.model_statuses()
+                .iter()
+                .map(|s| serde_json::json!({
+                    "id": s.id, "display": s.display,
+                    "provider": s.provider, "cost_tier": s.cost_tier,
+                    "enabled": s.enabled, "has_api_key": s.has_api_key,
+                }))
+                .collect();
+            Ok(Json(serde_json::json!({"models": statuses})))
+        }
+        Err(_) => Err((
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": "lock failed"})),
+        )),
+    }
+}
+
+// ── /v1/models/toggle handler ──
+
+/// POST /v1/models/toggle — enable or disable a model.
+/// Body: {"model_id": "gpt-4o", "enabled": false}
+pub async fn toggle_model_handler(
+    State(state): State<ApiState>,
+    Json(body): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    let model_id = body["model_id"].as_str().ok_or_else(|| {
+        (
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "model_id required"})),
+        )
+    })?;
+    let enabled = body["enabled"].as_bool().unwrap_or(true);
+
+    let router = state.model_router.as_ref().ok_or_else(|| {
+        (
+            axum::http::StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({"error": "model router not available"})),
+        )
+    })?;
+
+    match router.lock() {
+        Ok(mut r) => match r.set_enabled(model_id, enabled) {
+            Ok(()) => Ok(Json(serde_json::json!({
+                "ok": true, "model_id": model_id, "enabled": enabled
             }))),
             Err(e) => Err((
                 axum::http::StatusCode::BAD_REQUEST,
