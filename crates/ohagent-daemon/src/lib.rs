@@ -12,6 +12,7 @@ mod migrations;
 mod openai_api;
 mod rate_limiter;
 mod reasoning;
+mod system_prompt;
 mod webhooks;
 
 use anyhow::Result;
