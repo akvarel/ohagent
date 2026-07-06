@@ -93,29 +93,39 @@ impl Daemon {
         // Register provider runtimes before creating any provider
         setup_provider_runtimes();
 
-        // Build the provider
+        // Load model router (intelligent model selection based on task)
+        let router = match ohagent_core::model_router::ModelRouter::load() {
+            Ok(r) => {
+                info!(models = r.list_models().len(), "Model router loaded");
+                Some(Arc::new(r))
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "Model router unavailable — using default provider");
+                None
+            }
+        };
+
+        // Build default provider (fallback if router unavailable)
         let provider: Arc<dyn Provider> = {
-            let multi = jcode_base::provider::MultiProvider::new();
+            let multi = jcode_base::provider::MultiProvider::default();
 
             // Configure from environment / Vault
-            if let Ok(api_key) = std::env::var("DEEPSEEK_API_KEY") {
+            if let Ok(_api_key) = std::env::var("DEEPSEEK_API_KEY") {
                 multi
                     .set_model("deepseek:deepseek-v4-flash")
                     .map_err(|e| anyhow::anyhow!("Failed to set DeepSeek model: {e}"))?;
                 info!(
                     provider = %multi.display_name(),
-                    "Provider configured via DEEPSEEK_API_KEY"
+                    "Default provider: DeepSeek"
                 );
-                let _ = api_key; // Already consumed by MultiProvider via env
-            } else if let Ok(api_key) = std::env::var("ANTHROPIC_API_KEY") {
+            } else if let Ok(_api_key) = std::env::var("ANTHROPIC_API_KEY") {
                 multi
                     .set_model("claude:claude-sonnet-4-6")
                     .map_err(|e| anyhow::anyhow!("Failed to set Claude model: {e}"))?;
                 info!(
                     provider = %multi.display_name(),
-                    "Provider configured via ANTHROPIC_API_KEY"
+                    "Default provider: Claude"
                 );
-                let _ = api_key;
             } else {
                 info!("No provider API key found. Using default provider (may need /login).");
             }
@@ -123,7 +133,11 @@ impl Daemon {
             Arc::new(multi)
         };
 
-        let bridge = Arc::new(JcodeBridge::new(provider));
+        let mut bridge = JcodeBridge::new(provider);
+        if let Some(ref r) = router {
+            bridge = bridge.with_router(Arc::clone(r));
+        }
+        let bridge = Arc::new(bridge);
 
         // Initialize memory engine
         let memory = match MemoryEngine::open(MemoryConfig::default()) {
@@ -204,6 +218,9 @@ impl Daemon {
         if let Some(ref skills) = self.skills {
             adapter = adapter.with_skills(Arc::clone(skills));
         }
+
+        // Also attach model router reference for the /model command
+        // (the router is stored inside the bridge, we also pass it directly)
 
         info!("Telegram adapter configured, starting bot...");
 

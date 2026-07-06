@@ -1,0 +1,124 @@
+# Model Catalog
+#
+# Each model entry defines capabilities, pricing, and provider.
+# API keys come from environment (or Vault). Models are tried in order
+# within the same capability tier — first available wins.
+
+# ── Tier: budget (cheap, fast, for simple tasks) ──
+
+[[models]]
+id = "deepseek-v4-flash"
+provider = "deepseek"
+api_key_env = "DEEPSEEK_API_KEY"
+display = "DeepSeek V4 Flash"
+capabilities = ["coding", "general_chat", "analysis"]
+cost_tier = "low"
+context = 128_000
+
+[[models]]
+id = "openai-gpt-4o-mini"
+provider = "openai"
+api_key_env = "OPENAI_API_KEY"
+display = "GPT-4o Mini"
+capabilities = ["coding", "general_chat", "analysis", "creative_writing"]
+cost_tier = "low"
+context = 128_000
+
+[[models]]
+id = "claude-haiku-4-5"
+provider = "anthropic"
+api_key_env = "ANTHROPIC_API_KEY"
+display = "Claude Haiku 4.5"
+capabilities = ["coding", "general_chat", "analysis"]
+cost_tier = "low"
+context = 200_000
+
+# ── Tier: standard (balanced quality/cost) ──
+
+[[models]]
+id = "deepseek-v4"
+provider = "deepseek"
+api_key_env = "DEEPSEEK_API_KEY"
+display = "DeepSeek V4"
+capabilities = ["coding", "general_chat", "analysis", "reasoning"]
+cost_tier = "medium"
+context = 128_000
+
+[[models]]
+id = "openai-gpt-4o"
+provider = "openai"
+api_key_env = "OPENAI_API_KEY"
+display = "GPT-4o"
+capabilities = ["coding", "general_chat", "analysis", "reasoning", "creative_writing"]
+cost_tier = "medium"
+context = 128_000
+
+[[models]]
+id = "claude-sonnet-4-6"
+provider = "anthropic"
+api_key_env = "ANTHROPIC_API_KEY"
+display = "Claude Sonnet 4.6"
+capabilities = ["coding", "general_chat", "analysis", "reasoning"]
+cost_tier = "medium"
+context = 200_000
+
+# ── Tier: premium (best quality, expensive) ──
+
+[[models]]
+id = "openai-o4-mini"
+provider = "openai"
+api_key_env = "OPENAI_API_KEY"
+display = "OpenAI o4-mini"
+capabilities = ["coding", "reasoning", "analysis"]
+cost_tier = "high"
+context = 200_000
+
+[[models]]
+id = "claude-opus-4-5"
+provider = "anthropic"
+api_key_env = "ANTHROPIC_API_KEY"
+display = "Claude Opus 4.5"
+capabilities = ["coding", "general_chat", "analysis", "reasoning", "creative_writing"]
+cost_tier = "high"
+context = 200_000
+
+# ── Tier: image generation (non-chat, separate API) ──
+
+[[models]]
+id = "dall-e-3"
+provider = "openai-image"
+api_key_env = "OPENAI_API_KEY"
+display = "DALL-E 3"
+capabilities = ["image_gen"]
+cost_tier = "medium"
+context = 0
+
+[[models]]
+id = "flux-1.1-pro"
+provider = "openrouter"
+api_key_env = "OPENROUTER_API_KEY"
+display = "Flux 1.1 Pro (via OpenRouter)"
+capabilities = ["image_gen"]
+cost_tier = "low"
+context = 0
+
+# ── Tier: video generation ──
+
+[[models]]
+id = "kling-v1-6"
+provider = "openrouter"
+api_key_env = "OPENROUTER_API_KEY"
+display = "Kling v1.6 (via OpenRouter)"
+capabilities = ["video_gen"]
+cost_tier = "high"
+context = 0
+
+# ── Defaults ──
+
+[defaults]
+# Which capability to use when no task pattern is detected
+fallback_capability = "general_chat"
+# Default cost tier (budget unless task needs more)
+default_tier = "low"
+# Max tier to auto-select (never auto-select premium without user request)
+max_auto_tier = "medium"

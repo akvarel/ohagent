@@ -10,6 +10,7 @@ use crate::adapter::{IncomingMessage, OutgoingMessage};
 use crate::i18n::I18n;
 use crate::pairing::PairingManager;
 use crate::session::SessionManager;
+use ohagent_core::model_router::ModelRouter;
 use ohagent_skills::registry::SkillRegistry;
 
 /// The central dispatcher that every platform adapter calls into.
@@ -17,6 +18,7 @@ pub struct Dispatcher {
     session_manager: Arc<SessionManager>,
     pairing_manager: Arc<PairingManager>,
     skills: Option<Arc<SkillRegistry>>,
+    router: Option<Arc<ModelRouter>>,
 }
 
 impl Dispatcher {
@@ -28,12 +30,19 @@ impl Dispatcher {
             session_manager,
             pairing_manager,
             skills: None,
+            router: None,
         }
     }
 
     /// Set the skill registry for skill-related commands.
     pub fn with_skills(mut self, skills: Arc<SkillRegistry>) -> Self {
         self.skills = Some(skills);
+        self
+    }
+
+    /// Set the model router for model-related commands.
+    pub fn with_router(mut self, router: Arc<ModelRouter>) -> Self {
+        self.router = Some(router);
         self
     }
 
@@ -217,6 +226,38 @@ impl Dispatcher {
                     text: i18n.t("task_stopped"),
                     markdown: false,
                 })
+            }
+
+            "model" => {
+                match &self.router {
+                    Some(router) => {
+                        let _diag = router.diagnostics();
+                        let models = router.list_models();
+                        let available: Vec<String> = models
+                            .iter()
+                            .filter(|m| std::env::var(&m.api_key_env).is_ok())
+                            .map(|m| format!("• *{}* ({}) — {}", m.display, m.cost_tier, m.capabilities.join(", ")))
+                            .collect();
+
+                        let mut text = "*Model Router Status*\n\n".to_string();
+                        text.push_str(&format!("{} models loaded, {} available\n\n",
+                            models.len(), available.len()));
+                        text.push_str("*Available models:*\n");
+                        text.push_str(&available.join("\n"));
+                        text.push_str("\n\nModels are auto-selected based on your task type.");
+
+                        Some(OutgoingMessage {
+                            chat_id: msg.chat_id.clone(),
+                            text,
+                            markdown: true,
+                        })
+                    }
+                    None => Some(OutgoingMessage {
+                        chat_id: msg.chat_id.clone(),
+                        text: "Model router is not configured. Using default provider.".into(),
+                        markdown: false,
+                    }),
+                }
             }
 
             "skills" => {

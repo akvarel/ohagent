@@ -19,6 +19,7 @@ jcode-app-core = { path = "../../jcode/crates/jcode-app-core" }
 jcode-base = { path = "../../jcode/crates/jcode-base", features = ["embeddings"] }
 jcode-provider-core = { path = "../../jcode/crates/jcode-provider-core" }
 jcode-agent-runtime = { path = "../../jcode/crates/jcode-agent-runtime" }
+toml = "0.8"
 
 [dev-dependencies]
 jcode-provider-openrouter-runtime = { path = "../../jcode/crates/jcode-provider-openrouter-runtime" }

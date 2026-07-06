@@ -6,6 +6,7 @@
 pub mod agent;
 pub mod config;
 pub mod jcode_bridge;
+pub mod model_router;
 pub mod session;
 pub mod tools;
 

@@ -18,6 +18,7 @@ use crate::i18n::Lang;
 use crate::pairing::PairingManager;
 use crate::session::SessionManager;
 use ohagent_core::jcode_bridge::JcodeBridge;
+use ohagent_core::model_router::ModelRouter;
 use ohagent_skills::registry::SkillRegistry;
 
 /// Helper: parse a string chat_id to teloxide's ChatId.
@@ -55,6 +56,8 @@ enum Command {
     Skill(String),
     #[command(description = "Record a skill as used")]
     Skilluse(String),
+    #[command(description = "Show/set active model")]
+    Model,
 }
 
 /// Shared state accessible from all Telegram handlers.
@@ -67,6 +70,7 @@ struct TelegramState {
 pub struct TelegramAdapter {
     bot_token: String,
     skills: Option<Arc<SkillRegistry>>,
+    router: Option<Arc<ModelRouter>>,
 }
 
 impl TelegramAdapter {
@@ -80,6 +84,7 @@ impl TelegramAdapter {
         Ok(Self {
             bot_token: token,
             skills: None,
+            router: None,
         })
     }
 
@@ -88,12 +93,19 @@ impl TelegramAdapter {
         Self {
             bot_token: token.into(),
             skills: None,
+            router: None,
         }
     }
 
     /// Attach a skill registry for skill commands.
     pub fn with_skills(mut self, skills: Arc<SkillRegistry>) -> Self {
         self.skills = Some(skills);
+        self
+    }
+
+    /// Attach a model router for model commands.
+    pub fn with_router(mut self, router: Arc<ModelRouter>) -> Self {
+        self.router = Some(router);
         self
     }
 }
@@ -115,6 +127,9 @@ impl PlatformAdapter for TelegramAdapter {
         let mut dispatcher_builder = Dispatcher::new(session_manager, pairing_manager);
         if let Some(ref skills) = self.skills {
             dispatcher_builder = dispatcher_builder.with_skills(Arc::clone(skills));
+        }
+        if let Some(ref router) = self.router {
+            dispatcher_builder = dispatcher_builder.with_router(Arc::clone(router));
         }
         let dispatcher = Arc::new(dispatcher_builder);
 
@@ -268,6 +283,7 @@ async fn handle_command(
         Command::Skills => ("skills", ""),
         Command::Skill(name) => ("skill", name.as_str()),
         Command::Skilluse(name) => ("skilluse", name.as_str()),
+        Command::Model => ("model", ""),
     };
 
     let incoming = IncomingMessage {

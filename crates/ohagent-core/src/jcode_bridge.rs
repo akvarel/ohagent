@@ -106,6 +106,8 @@ impl SessionHandle {
     }
 }
 
+use crate::model_router::ModelRouter;
+
 /// Main bridge between ohAgent and Jcode.
 ///
 /// Manages the lifecycle of Jcode sessions.
@@ -114,6 +116,7 @@ pub struct JcodeBridge {
     sessions: SessionAgents,
     global_session_id: Arc<RwLock<String>>,
     provider: Arc<dyn ProviderTrait>,
+    router: Option<Arc<ModelRouter>>,
     swarm_members: Arc<RwLock<HashMap<String, SwarmMember>>>,
     swarms_by_id: Arc<RwLock<HashMap<String, HashSet<String>>>>,
     swarm_coordinators: Arc<RwLock<HashMap<String, String>>>,
@@ -132,6 +135,7 @@ impl JcodeBridge {
             sessions: Arc::new(RwLock::new(HashMap::new())),
             global_session_id: Arc::new(RwLock::new(String::new())),
             provider,
+            router: None,
             swarm_members: Arc::new(RwLock::new(HashMap::new())),
             swarms_by_id: Arc::new(RwLock::new(HashMap::new())),
             swarm_coordinators: Arc::new(RwLock::new(HashMap::new())),
@@ -140,9 +144,30 @@ impl JcodeBridge {
         }
     }
 
+    /// Attach a model router for intelligent model selection.
+    pub fn with_router(mut self, router: Arc<ModelRouter>) -> Self {
+        self.router = Some(router);
+        self
+    }
+
     /// Human-readable name of the provider (e.g. "deepseek", "anthropic").
     pub fn provider_name(&self) -> String {
         self.provider.display_name()
+    }
+
+    /// Route a message to the best model and return the model name.
+    ///
+    /// If no router is configured, returns the default provider name.
+    pub fn route_message(&self, message: &str) -> String {
+        match &self.router {
+            Some(router) => {
+                match router.route(message) {
+                    Ok(routed) => routed.display_name,
+                    Err(_) => self.provider.display_name(),
+                }
+            }
+            None => self.provider.display_name(),
+        }
     }
 
     /// Create a new headless agent session.
