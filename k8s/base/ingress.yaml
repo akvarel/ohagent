@@ -1,0 +1,106 @@
+# Ingress — external access for webhooks with TLS termination via cert-manager
+#
+# Prerequisites:
+#   kubectl apply -f https://github.com/cert-manager/cert-manager/releases/latest/download/cert-manager.yaml
+#   kubectl create secret generic cloudflare-api-token --from-literal=api-token=... -n cert-manager
+#
+# This Ingress exposes:
+#   /health, /v1/*, /webhooks/*  → ohagent-daemon
+#   /api/*                       → ohagent-daemon (internal-only via auth)
+#
+# TLS is auto-provisioned via cert-manager + Let's Encrypt.
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ohagent-ingress
+  namespace: ohagent
+  labels:
+    app: ohagent
+  annotations:
+    # cert-manager: auto-provision TLS from Let's Encrypt
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    # Nginx ingress: WebSocket support for streaming
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    # Rate limit at ingress level
+    nginx.ingress.kubernetes.io/limit-rps: "30"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"
+    # CORS for dashboard
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - ohagent.orangehat.dev
+      secretName: ohagent-tls
+  rules:
+    - host: ohagent.orangehat.dev
+      http:
+        paths:
+          # Health check (no auth needed)
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: ohagent
+                port:
+                  name: api
+          # OpenAI-compatible API (no auth for Open WebUI compatibility)
+          - path: /v1
+            pathType: Prefix
+            backend:
+              service:
+                name: ohagent
+                port:
+                  name: api
+          # Webhooks from WhatsApp / Slack (platform-specific auth)
+          - path: /webhooks
+            pathType: Prefix
+            backend:
+              service:
+                name: ohagent
+                port:
+                  name: api
+          # Internal API (requires X-API-Key header — blocked at app level)
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: ohagent
+                port:
+                  name: api
+---
+# ClusterIssuer for Let's Encrypt
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: admin@orangehat.dev
+    privateKeySecretRef:
+      name: letsencrypt-prod-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx
+---
+# Staging issuer for testing (no rate limits)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+spec:
+  acme:
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: admin@orangehat.dev
+    privateKeySecretRef:
+      name: letsencrypt-staging-account-key
+    solvers:
+      - http01:
+          ingress:
+            class: nginx

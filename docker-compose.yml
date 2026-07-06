@@ -1,0 +1,87 @@
+# Docker Compose — local development environment for ohAgent
+#
+# Starts: ohagent-daemon + Vault (dev mode)
+#
+# Usage:
+#   docker compose up -d
+#   curl http://localhost:9090/health
+#   curl http://localhost:9090/api/status -H "X-API-Key: dev-key-change-me"
+#
+# Vault (dev mode):
+#   http://localhost:8200 — root token is "dev-root-token"
+#   Secrets path: secret/ohagent/
+
+version: "3.9"
+
+services:
+  # ── Vault (dev mode, auto-unsealed) ──
+  vault:
+    image: hashicorp/vault:latest
+    container_name: ohagent-vault
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: dev-root-token
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    ports:
+      - "8200:8200"
+    volumes:
+      - vault-data:/vault/data
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - ohagent-net
+
+  # ── ohAgent Daemon ──
+  ohagent:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ohagent-daemon
+    ports:
+      - "9090:9090"
+    environment:
+      # Provider API keys (set these or use Vault below)
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # Platform tokens
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      WA_VERIFY_TOKEN: ${WA_VERIFY_TOKEN:-}
+      WA_PHONE_ID: ${WA_PHONE_ID:-}
+      WA_ACCESS_TOKEN: ${WA_ACCESS_TOKEN:-}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN:-}
+      SLACK_SIGNING_SECRET: ${SLACK_SIGNING_SECRET:-}
+      # Vault connection
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: dev-root-token
+      VAULT_KV_PATH: secret
+      # Auth
+      OHAGENT_API_KEY: ${OHAGENT_API_KEY:-dev-key-change-me}
+      # Logging
+      RUST_LOG: ${RUST_LOG:-info}
+    volumes:
+      - ohagent-data:/home/jcode/.ohagent
+    depends_on:
+      vault:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - ohagent-net
+    restart: unless-stopped
+
+volumes:
+  ohagent-data:
+  vault-data:
+
+networks:
+  ohagent-net:
+    driver: bridge

@@ -83,6 +83,17 @@ impl SlackAdapter {
         slack_signature: Option<&str>,
         slack_timestamp: Option<&str>,
     ) -> Result<(u16, String), String> {
+        // Verify Slack signing secret for all requests
+        if let (Some(sig), Some(ts)) = (slack_signature, slack_timestamp) {
+            if !verify_slack_signature(&self.signing_secret, ts, body, sig) {
+                warn!("Slack signature verification failed");
+                return Ok((401, "invalid_signature".into()));
+            }
+        } else {
+            warn!("Missing Slack signature headers");
+            return Ok((401, "missing_signature".into()));
+        }
+
         // URL verification challenge
         let parsed: serde_json::Value =
             serde_json::from_str(body).map_err(|e| format!("Parse: {e}"))?;
@@ -238,7 +249,48 @@ pub struct InnerEvent {
     pub ts: Option<String>,
 }
 
-/// Clean Slack-specific markup from text (bot mentions, links).
+/// Verify a Slack request signature (HMAC-SHA256).
+///
+/// Replay protection: rejects timestamps more than 5 minutes old.
+fn verify_slack_signature(
+    signing_secret: &str,
+    timestamp: &str,
+    body: &str,
+    signature: &str,
+) -> bool {
+    use hmac::{Hmac, Mac};
+    use sha2::Sha256;
+
+    // Check timestamp freshness (prevent replay attacks)
+    let ts: i64 = match timestamp.parse() {
+        Ok(t) => t,
+        Err(_) => return false,
+    };
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs() as i64;
+    if (now - ts).abs() > 300 {
+        return false;
+    }
+
+    // Recompute signature: v0=hex(HMAC-SHA256(secret, "v0:{ts}:{body}"))
+    let sig_base = format!("v0:{timestamp}:{body}");
+    let mut mac = Hmac::<Sha256>::new_from_slice(signing_secret.as_bytes())
+        .expect("HMAC can take key of any size");
+    mac.update(sig_base.as_bytes());
+    let computed = format!("v0={}", hex::encode(mac.finalize().into_bytes()));
+
+    // Constant-time comparison
+    let expected = computed.as_bytes();
+    let actual = signature.as_bytes();
+    expected.len() == actual.len()
+        && expected
+            .iter()
+            .zip(actual.iter())
+            .fold(0, |acc, (a, b)| acc | (a ^ b))
+            == 0
+}
 fn clean_slack_text(text: &str) -> String {
     // Remove bot mentions like <@U12345> — simple approach
     let mut result = text.to_string();

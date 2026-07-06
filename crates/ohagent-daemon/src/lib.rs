@@ -5,7 +5,11 @@
 //! hosts the messaging gateway, and serves the REST API.
 
 mod api;
+mod auth;
+mod metrics;
+mod migrations;
 mod openai_api;
+mod rate_limiter;
 mod webhooks;
 
 use anyhow::Result;
@@ -96,6 +100,9 @@ struct Daemon {
     start_time: chrono::DateTime<chrono::Utc>,
     keys_path: String,
     vault: Arc<VaultClient>,
+    auth_config: auth::AuthConfig,
+    rate_limiter: Arc<rate_limiter::RateLimiter>,
+    metrics: Arc<metrics::Metrics>,
     whatsapp: Option<Arc<WhatsAppAdapter>>,
     slack: Option<Arc<SlackAdapter>>,
 }
@@ -303,6 +310,20 @@ impl Daemon {
             }
         };
 
+        // Initialize API auth (key from env or generated)
+        let auth_config = auth::AuthConfig::from_env();
+
+        // Initialize rate limiter
+        let rate_limiter = Arc::new(rate_limiter::RateLimiter::new(
+            rate_limiter::RateLimitConfig::from_env(),
+        ));
+
+        // Initialize Prometheus metrics
+        let prom_metrics = Arc::new(
+            metrics::Metrics::new()
+                .expect("Failed to register Prometheus metrics"),
+        );
+
         Ok(Self {
             health_port,
             enable_telegram,
@@ -316,6 +337,9 @@ impl Daemon {
             start_time: chrono::Utc::now(),
             keys_path,
             vault,
+            auth_config,
+            rate_limiter,
+            metrics: prom_metrics,
             whatsapp,
             slack,
         })
@@ -335,6 +359,12 @@ impl Daemon {
             start_time: self.start_time,
             keys_path: self.keys_path.clone(),
             vault: Arc::clone(&self.vault),
+            auth_state: auth::AuthState {
+                config: self.auth_config.clone(),
+            },
+            metrics_state: metrics::MetricsState {
+                metrics: Arc::clone(&self.metrics),
+            },
             webhook_state: webhooks::WebhookState {
                 whatsapp: self.whatsapp.clone(),
                 slack: self.slack.clone(),

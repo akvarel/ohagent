@@ -17,6 +17,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use axum::{
     extract::{Path, Query, State},
+    middleware,
     routing::{get, post, put},
     Json, Router,
 };
@@ -31,6 +32,9 @@ use ohagent_skills::evaluator;
 use ohagent_skills::models::SkillStatus;
 use ohagent_skills::registry::SkillRegistry;
 
+use crate::auth::{self, AuthState};
+use crate::metrics::{self, MetricsState};
+
 /// Shared state for API handlers.
 #[derive(Clone)]
 pub struct ApiState {
@@ -44,12 +48,19 @@ pub struct ApiState {
     pub keys_path: String,
     /// Vault client for secret resolution
     pub vault: Arc<VaultClient>,
+    /// Auth state for API endpoint protection
+    pub auth_state: AuthState,
+    /// Prometheus metrics state
+    pub metrics_state: MetricsState,
     /// Webhook adapters state
     pub webhook_state: crate::webhooks::WebhookState,
 }
 
 /// Build the full API router (includes /health, OpenAI /v1, and webhooks).
+/// Auth middleware is applied to /api/* endpoints.
 pub fn router(state: ApiState) -> Router {
+    let auth_ext = state.auth_state.clone();
+    let metrics_ext = state.metrics_state.clone();
     let webhooks = Router::new()
         .route("/webhooks/whatsapp", get(crate::webhooks::wa_verify))
         .route("/webhooks/whatsapp", post(crate::webhooks::wa_webhook))
@@ -58,6 +69,7 @@ pub fn router(state: ApiState) -> Router {
 
     Router::new()
         .route("/health", get(health_handler))
+        .route("/metrics", get(crate::metrics::metrics_handler))
         // OpenAI-compatible endpoints for Open WebUI integration
         .route("/v1/models", get(crate::openai_api::list_models_handler))
         .route("/v1/chat/completions", post(crate::openai_api::chat_completions_handler))
@@ -77,6 +89,10 @@ pub fn router(state: ApiState) -> Router {
         .route("/api/memory/{id}", get(get_memory))
         .merge(webhooks)
         .with_state(state)
+        .layer(middleware::from_fn(auth::require_auth))
+        .layer(middleware::from_fn(metrics::metrics_middleware))
+        .layer(axum::Extension(auth_ext))
+        .layer(axum::Extension(metrics_ext))
 }
 
 // ── Handlers ──

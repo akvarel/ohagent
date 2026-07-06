@@ -1,0 +1,24 @@
+# Prometheus ServiceMonitor for ohAgent daemon metrics scraping
+#
+# Requires: prometheus-operator (kube-prometheus-stack)
+#   kubectl apply -k https://github.com/prometheus-operator/kube-prometheus
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ohagent-daemon
+  namespace: ohagent
+  labels:
+    app: ohagent
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: ohagent
+      component: daemon
+  endpoints:
+    - port: api
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+      honorLabels: true

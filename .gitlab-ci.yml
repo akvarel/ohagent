@@ -1,0 +1,123 @@
+# GitLab CI/CD pipeline for ohAgent
+#
+# Stages: test → build-docker → deploy
+# Requires:
+#   - GitLab Docker runner (dind or kaniko)
+#   - K8s cluster with kubectl configured (CI variables: KUBECONFIG)
+#   - Container registry (CI_REGISTRY)
+
+stages:
+  - test
+  - build
+  - deploy
+
+variables:
+  DOCKER_DRIVER: overlay2
+  CARGO_HOME: ${CI_PROJECT_DIR}/.cargo
+  SCCACHE_DIR: ${CI_PROJECT_DIR}/.sccache
+  RUSTC_WRAPPER: sccache
+  IMAGE_TAG: ${CI_REGISTRY_IMAGE}/ohagent-daemon:${CI_COMMIT_REF_SLUG}
+  IMAGE_LATEST: ${CI_REGISTRY_IMAGE}/ohagent-daemon:latest
+
+# ── Cache template ──
+.cargo_cache: &cargo_cache
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - .cargo/registry/
+      - .cargo/git/
+      - target/
+      - .sccache/
+
+# ── Test Stage ──
+
+test:unit:
+  stage: test
+  image: rust:1.85-bookworm
+  <<: *cargo_cache
+  before_script:
+    - apt-get update && apt-get install -y protobuf-compiler libprotobuf-dev pkg-config libssl-dev
+    - cargo install sccache --version 0.8.0 || true
+    - git submodule update --init --recursive
+  script:
+    - cargo test --workspace -- --skip e2e
+  only:
+    - merge_requests
+    - main
+    - develop
+
+test:lint:
+  stage: test
+  image: rust:1.85-bookworm
+  <<: *cargo_cache
+  before_script:
+    - apt-get update && apt-get install -y protobuf-compiler libprotobuf-dev pkg-config libssl-dev
+    - rustup component add clippy rustfmt
+    - git submodule update --init --recursive
+  script:
+    - cargo fmt --all -- --check
+    - cargo clippy --workspace -- -D warnings 2>&1 | head -100 || true
+  allow_failure: true
+  only:
+    - merge_requests
+    - main
+
+test:e2e:
+  stage: test
+  image: rust:1.85-bookworm
+  <<: *cargo_cache
+  before_script:
+    - apt-get update && apt-get install -y protobuf-compiler libprotobuf-dev pkg-config libssl-dev curl
+    - git submodule update --init --recursive
+  script:
+    - cargo test -p ohagent-daemon --test e2e
+  timeout: 10m
+  allow_failure: true
+  only:
+    - merge_requests
+    - main
+
+# ── Build Stage ──
+
+build:docker:
+  stage: build
+  image: gcr.io/kaniko-project/executor:debug
+  script:
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"auth\":\"$(echo -n $CI_REGISTRY_USER:$CI_REGISTRY_PASSWORD | base64)\"}}}" > /kaniko/.docker/config.json
+    - /kaniko/executor
+      --context ${CI_PROJECT_DIR}
+      --dockerfile ${CI_PROJECT_DIR}/Dockerfile
+      --destination ${IMAGE_TAG}
+      --destination ${IMAGE_LATEST}
+      --cache=true
+      --cache-ttl=24h
+  only:
+    - main
+
+# ── Deploy Stage ──
+
+deploy:dev:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  script:
+    - kubectl set image deployment/ohagent-daemon ohagent-daemon=${IMAGE_TAG} -n ohagent
+    - kubectl rollout status deployment/ohagent-daemon -n ohagent --timeout=5m
+  environment:
+    name: dev
+    url: https://ohagent.orangehat.dev
+  only:
+    - develop
+
+deploy:prod:
+  stage: deploy
+  image: bitnami/kubectl:latest
+  script:
+    - kubectl apply -k k8s/overlays/prod
+    - kubectl rollout status deployment/ohagent-daemon -n ohagent --timeout=5m
+  environment:
+    name: production
+    url: https://ohagent.orangehat.dev
+  when: manual
+  only:
+    - main

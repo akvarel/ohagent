@@ -28,6 +28,13 @@ jcode-message-types = { path = "../../jcode/crates/jcode-message-types" }
 jcode-provider-openrouter-runtime = { path = "../../jcode/crates/jcode-provider-openrouter-runtime" }
 futures = { workspace = true }
 tokio-stream = "0.1"
+hmac = "0.12"
+sha2 = "0.10"
+hex = "0.4"
+rand = "0.8"
+prometheus = "0.13"
+dashmap = { workspace = true }
+rusqlite = { workspace = true }
 
 [dev-dependencies]
 chrono = { workspace = true }
