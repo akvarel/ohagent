@@ -4,6 +4,8 @@
 //! Jcode integration bridge, tool dispatch, and provider resolution.
 
 pub mod agent;
+pub mod agent_runner;
+pub mod builtin_tools;
 pub mod config;
 pub mod context_estimator;
 pub mod jcode_bridge;

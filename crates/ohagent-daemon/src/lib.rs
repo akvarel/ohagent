@@ -110,6 +110,7 @@ struct Daemon {
     metrics: Arc<metrics::Metrics>,
     system_prompt_builder: Option<SystemPromptBuilder>,
     session_store: Option<Arc<ohagent_core::session_store::SessionStore>>,
+    tool_registry: Option<Arc<ohagent_core::tools::ToolRegistry>>,
     whatsapp: Option<Arc<WhatsAppAdapter>>,
     slack: Option<Arc<SlackAdapter>>,
 }
@@ -262,6 +263,17 @@ impl Daemon {
         if let Some(ref r) = router {
             bridge = bridge.with_router(Arc::clone(r));
         }
+
+        // Register built-in tools: bash, write, edit, read, ls
+        let mut tool_registry = ohagent_core::tools::ToolRegistry::new();
+        ohagent_core::builtin_tools::register_builtin_tools(
+            &mut tool_registry,
+            &shellexpand::tilde("~/.ohagent/workspace").to_string(),
+        );
+        let tool_registry = Arc::new(tool_registry);
+        bridge = bridge.with_tools((*tool_registry).clone());
+        info!(tools = tool_registry.list().len(), "Built-in tools registered");
+
         let bridge = Arc::new(bridge);
 
         // Initialize memory engine
@@ -424,6 +436,7 @@ impl Daemon {
             metrics: prom_metrics,
             system_prompt_builder,
             session_store,
+            tool_registry: Some(tool_registry),
             whatsapp,
             slack,
         })
@@ -443,6 +456,7 @@ impl Daemon {
             model_router: self.router.clone(),
             system_prompt_builder: self.system_prompt_builder.clone(),
             session_store: self.session_store.clone(),
+            tool_registry: self.tool_registry.clone(),
             start_time: self.start_time,
             keys_path: self.keys_path.clone(),
             vault: Arc::clone(&self.vault),

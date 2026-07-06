@@ -64,7 +64,7 @@ impl ToolResult {
 }
 
 /// Registry of available tools.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct ToolRegistry {
     tools: Vec<Tool>,
 }

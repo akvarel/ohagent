@@ -48,6 +48,7 @@ pub struct ApiState {
     pub model_router: Option<Arc<std::sync::Mutex<ModelRouter>>>,
     pub system_prompt_builder: Option<super::system_prompt::SystemPromptBuilder>,
     pub session_store: Option<Arc<SessionStore>>,
+    pub tool_registry: Option<Arc<ohagent_core::tools::ToolRegistry>>,
     pub start_time: chrono::DateTime<chrono::Utc>,
     /// Path to keys config file
     pub keys_path: String,
