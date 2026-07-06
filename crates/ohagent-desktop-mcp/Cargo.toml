@@ -1,0 +1,25 @@
+[package]
+name = "ohagent-desktop-mcp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Desktop control MCP server — screenshot, mouse, keyboard, accessibility tree, window management"
+
+[[bin]]
+name = "ohagent-desktop-mcp"
+path = "src/main.rs"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+base64 = "0.22"
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+enigo = { version = "0.6", default-features = false, features = ["x11rb"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+enigo = { version = "0.6", default-features = false }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+enigo = { version = "0.6", default-features = false }

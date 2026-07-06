@@ -9,6 +9,7 @@ members = [
     "crates/ohagent-cron",
     "crates/ohagent-swarm",
     "crates/ohagent-reasoning",
+    "crates/ohagent-desktop-mcp",
 ]
 
 [workspace.package]
