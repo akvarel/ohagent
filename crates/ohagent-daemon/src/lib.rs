@@ -6,6 +6,7 @@
 
 mod api;
 mod openai_api;
+mod webhooks;
 
 use anyhow::Result;
 use clap::Parser;
@@ -16,6 +17,8 @@ use tracing_subscriber::EnvFilter;
 
 use ohagent_core::jcode_bridge::JcodeBridge;
 use ohagent_gateway::platforms::telegram::TelegramAdapter;
+use ohagent_gateway::platforms::whatsapp::WhatsAppAdapter;
+use ohagent_gateway::platforms::slack::SlackAdapter;
 use ohagent_gateway::adapter::PlatformAdapter;
 use ohagent_memory::engine::MemoryEngine;
 use ohagent_memory::models::MemoryConfig;
@@ -91,6 +94,8 @@ struct Daemon {
     router: Option<Arc<std::sync::Mutex<ohagent_core::model_router::ModelRouter>>>,
     start_time: chrono::DateTime<chrono::Utc>,
     keys_path: String,
+    whatsapp: Option<Arc<WhatsAppAdapter>>,
+    slack: Option<Arc<SlackAdapter>>,
 }
 
 impl Daemon {
@@ -213,6 +218,30 @@ impl Daemon {
 
         let keys_path = shellexpand::tilde("~/.ohagent/keys.toml").to_string();
 
+        // Initialize WhatsApp adapter (if configured)
+        let whatsapp = match WhatsAppAdapter::from_env() {
+            Ok(wa) => {
+                info!("WhatsApp adapter initialized");
+                Some(Arc::new(wa))
+            }
+            Err(e) => {
+                tracing::debug!(error = %e, "WhatsApp not configured, skipping");
+                None
+            }
+        };
+
+        // Initialize Slack adapter (if configured)
+        let slack = match SlackAdapter::from_env() {
+            Ok(sl) => {
+                info!("Slack adapter initialized");
+                Some(Arc::new(sl))
+            }
+            Err(e) => {
+                tracing::debug!(error = %e, "Slack not configured, skipping");
+                None
+            }
+        };
+
         Ok(Self {
             health_port,
             enable_telegram,
@@ -225,6 +254,8 @@ impl Daemon {
             router,
             start_time: chrono::Utc::now(),
             keys_path,
+            whatsapp,
+            slack,
         })
     }
 
@@ -241,6 +272,10 @@ impl Daemon {
             message_log: self.message_log.clone(),
             start_time: self.start_time,
             keys_path: self.keys_path.clone(),
+            webhook_state: webhooks::WebhookState {
+                whatsapp: self.whatsapp.clone(),
+                slack: self.slack.clone(),
+            },
         };
 
         let app = api::router(api_state);

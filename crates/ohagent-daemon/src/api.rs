@@ -41,10 +41,18 @@ pub struct ApiState {
     pub start_time: chrono::DateTime<chrono::Utc>,
     /// Path to keys config file
     pub keys_path: String,
+    /// Webhook adapters state
+    pub webhook_state: crate::webhooks::WebhookState,
 }
 
-/// Build the full API router (includes /health and OpenAI /v1).
+/// Build the full API router (includes /health, OpenAI /v1, and webhooks).
 pub fn router(state: ApiState) -> Router {
+    let webhooks = Router::new()
+        .route("/webhooks/whatsapp", get(crate::webhooks::wa_verify))
+        .route("/webhooks/whatsapp", post(crate::webhooks::wa_webhook))
+        .route("/webhooks/slack", post(crate::webhooks::slack_webhook))
+        .with_state(state.webhook_state.clone());
+
     Router::new()
         .route("/health", get(health_handler))
         // OpenAI-compatible endpoints for Open WebUI integration
@@ -62,6 +70,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/api/skills/{id}/record", post(record_skill_usage))
         .route("/api/memory", get(query_memory))
         .route("/api/memory/{id}", get(get_memory))
+        .merge(webhooks)
         .with_state(state)
 }
 

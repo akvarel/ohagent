@@ -12,7 +12,8 @@ pub mod session;
 pub mod platforms {
     //! Platform-specific adapters.
     pub mod telegram;
-    // TODO: discord, slack, whatsapp
+    pub mod whatsapp;
+    pub mod slack;
 }
 
 /// Gateway result type.
