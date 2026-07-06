@@ -182,10 +182,26 @@ impl Dispatcher {
             Vec::new()
         };
 
-        // Send the message to the agent
-        match session.send_message_with_images(&msg.text, images).await {
-            Ok(()) => {
+        // Send message: route through tool-augmented path when:
+        // a) no attachments, and b) bridge has registered tools
+        let send_result = if images.is_empty() {
+            session.send_message_with_tools(&msg.text).await
+        } else {
+            session.send_message_with_images(&msg.text, images).await
+                .map(|_| String::new())
+        };
+
+        match send_result {
+            Ok(response_text) => {
                 info!(session_key = %session_key, "Message processed");
+                if !response_text.is_empty() {
+                    tracing::debug!(
+                        session_key = %session_key,
+                        response_len = response_text.len(),
+                        "Tool-augmented response"
+                    );
+                    // TODO: return response to user when streaming is wired
+                }
 
                 // Record usage (rough tok estimate: ~4 chars/tok)
                 if let Some(ref usage) = self.usage {
@@ -335,7 +351,14 @@ impl Dispatcher {
             }
 
             "stop" => {
-                // TODO: Interrupt the current session
+                let session_key = format!("{}:{}", msg.platform, msg.chat_id);
+                if let Some(session) = self.session_manager.get(&session_key) {
+                    session.interrupt().await;
+                    info!(
+                        session_key = %session_key,
+                        "Agent task interrupted"
+                    );
+                }
                 Some(OutgoingMessage {
                     chat_id: msg.chat_id.clone(),
                     text: i18n.t("task_stopped"),

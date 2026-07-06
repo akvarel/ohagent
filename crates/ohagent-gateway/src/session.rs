@@ -81,6 +81,11 @@ impl SessionManager {
         self.sessions.contains_key(session_key)
     }
 
+    /// Get an existing session handle (returns None if not found).
+    pub fn get(&self, session_key: &str) -> Option<SessionHandle> {
+        self.sessions.get(session_key).map(|entry| entry.clone())
+    }
+
     /// Get the number of active sessions.
     pub fn session_count(&self) -> usize {
         self.sessions.len()

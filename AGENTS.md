@@ -77,6 +77,14 @@ ohAgent/
 | 3 | Deep Memory (SQLite + vector) | ✅ Done |
 | 4 | Self-Learning Skills | ✅ Done |
 | 5 | REST API + React Dashboard | ✅ Done |
+| 6 | Model Router + Multi-Provider + Agent Tools | ✅ Done |
+| 7 | OpenAI-Compatible API + Usage Tracking | ✅ Done |
+| 8 | Multi-Platform Gateways (WhatsApp, Slack) | ✅ Done |
+| 9 | Swarm Orchestration (DAG-based multi-agent) | ✅ Done |
+| 10 | Vault Secrets Integration | ✅ Done |
+| 11 | Kubernetes Deployment (Kustomize) | ✅ Done |
+| 12 | E2E Testing (Cucumber/Gherkin) | ✅ Done |
+| 13 | Session Persistence, Push, Cron, WebSocket, Attachments, MCP | ✅ Done |
 
 ## Phase 3 Implementation Details
 

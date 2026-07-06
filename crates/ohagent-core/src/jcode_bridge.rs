@@ -14,6 +14,8 @@ use jcode_app_core::{
     },
 };
 use jcode_provider_core::Provider as ProviderTrait;
+use jcode_message_types::{ContentBlock, Message, Role, StreamEvent, ToolDefinition};
+use crate::agent_runner::{self, AgentEvent};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use tokio::sync::{Mutex as TokioMutex, RwLock};
@@ -51,6 +53,8 @@ pub struct SessionConfig {
 pub struct SessionHandle {
     pub session_id: String,
     pub agent: Arc<TokioMutex<Agent>>,
+    pub tool_registry: Option<Arc<ToolRegistry>>,
+    provider: Arc<dyn ProviderTrait>,
 }
 
 impl SessionHandle {
@@ -113,6 +117,88 @@ impl SessionHandle {
                 urgent: true,
                 source: SoftInterruptSource::User,
             });
+    }
+
+    /// Send a message with tool augmentation via agent_runner.
+    ///
+    /// When the bridge has tools registered, messages route through
+    /// `run_agent_turn()` instead of `process_message_streaming_mpsc()`.
+    /// This enables bash, write, edit, and other built-in tools in
+    /// non-OpenAI-API contexts (Telegram, WhatsApp, etc.).
+    ///
+    /// Returns the full text response from the agent.
+    pub async fn send_message_with_tools(
+        &self,
+        content: &str,
+    ) -> Result<String, BridgeError> {
+        let tr = match &self.tool_registry {
+            Some(tr) if !tr.list().is_empty() => Arc::clone(tr),
+            _ => {
+                // No tools — fall back to regular send_message
+                self.send_message(content).await?;
+                return Ok(String::new()); // response is empty (processed async)
+            }
+        };
+
+        // Build tool definitions
+        let tool_defs: Vec<ToolDefinition> = tr
+            .list()
+            .into_iter()
+            .map(|(name, desc)| {
+                let schema = tr
+                    .get(&name)
+                    .map(|t| t.parameters_schema.clone())
+                    .unwrap_or(serde_json::Value::Null);
+                ToolDefinition {
+                    name,
+                    description: desc,
+                    input_schema: schema,
+                }
+            })
+            .collect();
+
+        // Build messages from content
+        let messages = vec![jcode_message_types::Message {
+            role: jcode_message_types::Role::User,
+            content: vec![jcode_message_types::ContentBlock::Text {
+                text: content.to_string(),
+                cache_control: None,
+            }],
+            timestamp: None,
+            tool_duration_ms: None,
+        }];
+
+        let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let provider = Arc::clone(&self.provider);
+        let system = String::new(); // System prompt is handled by jcode's agent
+
+        let handle = tokio::spawn(async move {
+            agent_runner::run_agent_turn(
+                provider,
+                messages,
+                system,
+                tool_defs,
+                tr,
+                event_tx,
+            )
+            .await
+        });
+
+        // Collect text deltas
+        let mut response = String::new();
+        while let Some(event) = event_rx.recv().await {
+            if let AgentEvent::TextDelta(text) = event {
+                response.push_str(&text);
+            }
+        }
+
+        handle
+            .await
+            .map_err(|e| BridgeError::Message(e.to_string()))?
+            .map_err(|e| BridgeError::Message(e))?;
+
+        Ok(response)
     }
 
     /// Get the session ID.
@@ -266,6 +352,8 @@ impl JcodeBridge {
         Ok(SessionHandle {
             session_id,
             agent,
+            tool_registry: Some(Arc::clone(&self.tool_registry)),
+            provider: Arc::clone(&self.provider),
         })
     }
 
@@ -277,6 +365,8 @@ impl JcodeBridge {
         Some(SessionHandle {
             session_id: session_id.to_string(),
             agent,
+            tool_registry: Some(Arc::clone(&self.tool_registry)),
+            provider: Arc::clone(&self.provider),
         })
     }
 
