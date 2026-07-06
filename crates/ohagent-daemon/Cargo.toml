@@ -32,3 +32,7 @@ tokio-stream = "0.1"
 [dev-dependencies]
 chrono = { workspace = true }
 uuid = { workspace = true }
+reqwest = { workspace = true, features = ["stream"] }
+cucumber = "0.21"
+tokio = { workspace = true, features = ["process"] }
+assert-json-diff = "2"
