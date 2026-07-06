@@ -10,6 +10,7 @@ mod metrics;
 mod migrations;
 mod openai_api;
 mod rate_limiter;
+mod reasoning;
 mod webhooks;
 
 use anyhow::Result;

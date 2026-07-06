@@ -8,6 +8,7 @@ members = [
     "crates/ohagent-skills",
     "crates/ohagent-cron",
     "crates/ohagent-swarm",
+    "crates/ohagent-reasoning",
 ]
 
 [workspace.package]
@@ -45,3 +46,4 @@ shellexpand = "3"
 
 # Helpers
 ohagent-swarm = { path = "crates/ohagent-swarm" }
+ohagent-reasoning = { path = "crates/ohagent-reasoning" }
