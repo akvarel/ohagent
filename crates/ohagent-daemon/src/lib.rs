@@ -112,6 +112,7 @@ struct Daemon {
     session_store: Option<Arc<ohagent_core::session_store::SessionStore>>,
     tool_registry: Option<Arc<ohagent_core::tools::ToolRegistry>>,
     push: Option<Arc<ohagent_core::push::PushService>>,
+    scheduler: Option<Arc<ohagent_core::scheduler::Scheduler>>,
     whatsapp: Option<Arc<WhatsAppAdapter>>,
     slack: Option<Arc<SlackAdapter>>,
 }
@@ -450,7 +451,8 @@ impl Daemon {
             system_prompt_builder,
             session_store,
             tool_registry: Some(tool_registry),
-            push,
+            push: push.clone(),
+            scheduler: Some(Arc::new(ohagent_core::scheduler::Scheduler::new(push))),
             whatsapp,
             slack,
         })
@@ -472,6 +474,7 @@ impl Daemon {
             session_store: self.session_store.clone(),
             tool_registry: self.tool_registry.clone(),
             push: self.push.clone(),
+            scheduler: self.scheduler.clone(),
             start_time: self.start_time,
             keys_path: self.keys_path.clone(),
             vault: Arc::clone(&self.vault),

@@ -16,6 +16,7 @@ pub mod model_router;
 pub mod pricing;
 pub mod push;
 pub mod s3_archive;
+pub mod scheduler;
 pub mod session;
 pub mod session_store;
 pub mod tools;

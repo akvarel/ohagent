@@ -51,6 +51,7 @@ pub struct ApiState {
     pub session_store: Option<Arc<SessionStore>>,
     pub tool_registry: Option<Arc<ohagent_core::tools::ToolRegistry>>,
     pub push: Option<Arc<PushService>>,
+    pub scheduler: Option<Arc<ohagent_core::scheduler::Scheduler>>,
     pub start_time: chrono::DateTime<chrono::Utc>,
     /// Path to keys config file
     pub keys_path: String,
@@ -104,6 +105,8 @@ pub fn router(state: ApiState) -> Router {
         .route("/api/sessions", get(list_sessions_handler))
         .route("/api/sessions/{tenant_id}/{session_hash}", delete(delete_session_handler))
         .route("/api/push", post(push_handler))
+        .route("/api/remind", post(remind_handler))
+        .route("/api/reminders", get(list_reminders_handler))
         .merge(webhooks)
         .with_state(state)
         .layer(middleware::from_fn(auth::require_auth))
@@ -636,4 +639,88 @@ async fn push_handler(
         "chat_id": result.chat_id,
         "error": result.error,
     })))
+}
+
+// ── Reminders (scheduler) ──
+
+#[derive(Deserialize)]
+struct RemindRequest {
+    tenant_id: String,
+    message: String,
+    /// Delay in seconds, or ISO8601 datetime, or "HH:MM"
+    #[serde(default)]
+    delay_secs: Option<u64>,
+    #[serde(default)]
+    at_time: Option<String>,
+}
+
+async fn remind_handler(
+    State(state): State<ApiState>,
+    Json(body): Json<RemindRequest>,
+) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
+    let scheduler = state.scheduler.as_ref().ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
+
+    if let Some(delay_secs) = body.delay_secs {
+        let delay = std::time::Duration::from_secs(delay_secs);
+        let id = scheduler.schedule_in(&body.tenant_id, delay, &body.message);
+        Ok(Json(serde_json::json!({"id": id, "fire_in_secs": delay_secs})))
+    } else if let Some(ref at_str) = body.at_time {
+        // Parse "HH:MM" or ISO8601
+        let now = chrono::Utc::now();
+        let parsed = if at_str.len() <= 5 && at_str.contains(':') {
+            // HH:MM — today at that time
+            let parts: Vec<&str> = at_str.split(':').collect();
+            if parts.len() == 2 {
+                if let (Ok(h), Ok(m)) = (parts[0].parse::<u32>(), parts[1].parse::<u32>()) {
+                    let today = now.date_naive();
+                    let time = chrono::NaiveTime::from_hms_opt(h, m, 0).unwrap_or_default();
+                    let dt = today.and_time(time).and_utc();
+                    if dt <= now {
+                        // Tomorrow
+                        dt + chrono::Duration::days(1)
+                    } else {
+                        dt
+                    }
+                } else {
+                    return Err(axum::http::StatusCode::BAD_REQUEST);
+                }
+            } else {
+                return Err(axum::http::StatusCode::BAD_REQUEST);
+            }
+        } else {
+            // ISO8601
+            match chrono::DateTime::parse_from_rfc3339(at_str) {
+                Ok(dt) => dt.with_timezone(&chrono::Utc),
+                Err(_) => return Err(axum::http::StatusCode::BAD_REQUEST),
+            }
+        };
+
+        match scheduler.schedule_at(&body.tenant_id, parsed, &body.message) {
+            Some(id) => Ok(Json(serde_json::json!({
+                "id": id,
+                "fire_at": parsed.to_rfc3339(),
+            }))),
+            None => Ok(Json(serde_json::json!({
+                "error": "Time is in the past"
+            }))),
+        }
+    } else {
+        Err(axum::http::StatusCode::BAD_REQUEST)
+    }
+}
+
+async fn list_reminders_handler(
+    State(state): State<ApiState>,
+) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
+    let scheduler = state.scheduler.as_ref().ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
+    let jobs = scheduler.list_jobs();
+    let items: Vec<serde_json::Value> = jobs.iter().map(|j| {
+        serde_json::json!({
+            "id": j.id,
+            "tenant_id": j.tenant_id,
+            "message": j.message,
+            "fire_at": j.fire_at.to_rfc3339(),
+        })
+    }).collect();
+    Ok(Json(serde_json::json!({"reminders": items})))
 }
