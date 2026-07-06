@@ -80,6 +80,41 @@ pub struct ConversationSummary {
     pub message_count: u32,
 }
 
+/// A rolling summary — incremental compression of ongoing session history.
+///
+/// Unlike `ConversationSummary` (post-mortem), this is updated mid-session
+/// by DeepSeek Flash to shrink long contexts for smaller-window models.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RollingSummary {
+    /// Session this rolling summary belongs to.
+    pub session_id: String,
+    /// Tenant scope.
+    pub tenant_id: String,
+    /// Compressed history — injected into system prompt for small-model routing.
+    pub compressed_history: String,
+    /// Topic references for RAG recovery: (topic_label, message_ids_json).
+    pub topic_index: Vec<TopicRef>,
+    /// Total tokens compressed so far (cumulative across all merges).
+    pub tokens_compressed: u64,
+    /// Iterations since last compression.
+    pub iteration_count: u32,
+    /// Index of the last message included in compressed_history.
+    pub last_message_idx: usize,
+    /// When the last merge occurred.
+    pub last_compressed_at: DateTime<Utc>,
+}
+
+/// A topic reference for RAG-recovery when switching back to a large-context model.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TopicRef {
+    /// Short topic label (e.g. "database schema", "auth refactor").
+    pub label: String,
+    /// Comma-separated message IDs that belong to this topic.
+    pub message_ids: Vec<String>,
+    /// Approximate token count of this topic's messages.
+    pub token_estimate: u64,
+}
+
 /// A search result returned by the memory retrieval system.
 #[derive(Debug, Clone)]
 pub struct SearchResult {

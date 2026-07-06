@@ -14,6 +14,7 @@ pub mod engine;
 pub mod models;
 pub mod nudge;
 pub mod retrieval;
+pub mod rolling_summary;
 pub mod store;
 pub mod summarizer;
 

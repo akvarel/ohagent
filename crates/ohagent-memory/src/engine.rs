@@ -9,9 +9,10 @@ use std::sync::Arc;
 use tracing::info;
 
 use crate::embeddings::embed_entry;
-use crate::models::{ConversationSummary, MemoryConfig, MemoryEntry, MemoryNudge, SearchResult};
+use crate::models::{ConversationSummary, MemoryConfig, MemoryEntry, MemoryNudge, RollingSummary, SearchResult};
 use crate::nudge;
 use crate::retrieval;
+use crate::rolling_summary;
 use crate::store::MemoryStore;
 use crate::summarizer;
 use crate::Result;
@@ -108,6 +109,38 @@ impl MemoryEngine {
         session_id: &str,
     ) -> Result<Option<ConversationSummary>> {
         self.store.get_summary(tenant_id, session_id)
+    }
+
+    // ── Rolling Summaries ──
+
+    /// Load or create a rolling summary for a session.
+    pub fn get_rolling_summary(
+        &self,
+        tenant_id: &str,
+        session_id: &str,
+    ) -> Result<RollingSummary> {
+        rolling_summary::load_or_create(&self.store, tenant_id, session_id)
+    }
+
+    /// Save an updated rolling summary.
+    pub fn save_rolling_summary(&self, rs: &RollingSummary) -> Result<()> {
+        self.store.save_rolling_summary(rs)
+    }
+
+    /// Delete a rolling summary (e.g. when session ends).
+    pub fn delete_rolling_summary(&self, tenant_id: &str, session_id: &str) -> Result<()> {
+        self.store.delete_rolling_summary(tenant_id, session_id)
+    }
+
+    /// Inherit a parent session's rolling summary for a swarm child.
+    pub fn inherit_rolling_summary(
+        &self,
+        parent_session_id: &str,
+        child_session_id: &str,
+        tenant_id: &str,
+    ) -> Result<RollingSummary> {
+        let parent = rolling_summary::load_or_create(&self.store, tenant_id, parent_session_id)?;
+        rolling_summary::inherit_for_child(&self.store, &parent, child_session_id)
     }
 
     // ── Nudges ──

@@ -6,6 +6,7 @@
 
 mod api;
 mod auth;
+mod context_compressor;
 mod metrics;
 mod migrations;
 mod openai_api;

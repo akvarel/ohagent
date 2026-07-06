@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use tracing::{debug, info};
 
-use crate::models::{ConversationSummary, MemoryConfig, MemoryEntry, MemorySource};
+use crate::models::{ConversationSummary, MemoryConfig, MemoryEntry, MemorySource, RollingSummary, TopicRef};
 use crate::Result;
 
 /// The memory store — thread-safe wrapper around an SQLite connection.
@@ -82,6 +82,19 @@ impl MemoryStore {
             CREATE INDEX IF NOT EXISTS idx_entries_tenant ON memory_entries(tenant_id);
             CREATE INDEX IF NOT EXISTS idx_entries_session ON memory_entries(session_id);
             CREATE INDEX IF NOT EXISTS idx_entries_created ON memory_entries(created_at);
+
+            CREATE TABLE IF NOT EXISTS rolling_summaries (
+                session_id          TEXT NOT NULL,
+                tenant_id           TEXT NOT NULL,
+                compressed_history  TEXT NOT NULL DEFAULT '',
+                topic_index         TEXT NOT NULL DEFAULT '[]',
+                tokens_compressed   INTEGER NOT NULL DEFAULT 0,
+                iteration_count     INTEGER NOT NULL DEFAULT 0,
+                last_message_idx    INTEGER NOT NULL DEFAULT 0,
+                last_compressed_at  TEXT NOT NULL,
+                PRIMARY KEY (session_id, tenant_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_rolling_tenant ON rolling_summaries(tenant_id);
             ",
         )?;
         debug!("Memory schema initialized");
@@ -280,6 +293,74 @@ impl MemoryStore {
             Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
             Err(e) => Err(e.into()),
         }
+    }
+
+    // ── Rolling Summaries ──
+
+    /// Save (upsert) a rolling summary.
+    pub fn save_rolling_summary(&self, rs: &RollingSummary) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        let topic_index_json = serde_json::to_string(&rs.topic_index)?;
+        conn.execute(
+            "INSERT OR REPLACE INTO rolling_summaries (session_id, tenant_id, compressed_history, topic_index, tokens_compressed, iteration_count, last_message_idx, last_compressed_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![
+                rs.session_id,
+                rs.tenant_id,
+                rs.compressed_history,
+                topic_index_json,
+                rs.tokens_compressed as i64,
+                rs.iteration_count,
+                rs.last_message_idx as i64,
+                rs.last_compressed_at.to_rfc3339(),
+            ],
+        )?;
+        debug!(session_id = %rs.session_id, tokens = rs.tokens_compressed, "Rolling summary saved");
+        Ok(())
+    }
+
+    /// Retrieve a rolling summary.
+    pub fn get_rolling_summary(
+        &self,
+        tenant_id: &str,
+        session_id: &str,
+    ) -> Result<Option<RollingSummary>> {
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(
+            "SELECT session_id, tenant_id, compressed_history, topic_index, tokens_compressed, iteration_count, last_message_idx, last_compressed_at
+             FROM rolling_summaries WHERE tenant_id = ?1 AND session_id = ?2"
+        )?;
+
+        let result = stmt.query_row(params![tenant_id, session_id], |row| {
+            let topic_index_str: String = row.get(3)?;
+            Ok(RollingSummary {
+                session_id: row.get(0)?,
+                tenant_id: row.get(1)?,
+                compressed_history: row.get(2)?,
+                topic_index: serde_json::from_str(&topic_index_str).unwrap_or_default(),
+                tokens_compressed: row.get::<_, i64>(4)? as u64,
+                iteration_count: row.get::<_, i64>(5)? as u32,
+                last_message_idx: row.get::<_, i64>(6)? as usize,
+                last_compressed_at: parse_datetime(&row.get::<_, String>(7).unwrap_or_default()),
+            })
+        });
+
+        match result {
+            Ok(rs) => Ok(Some(rs)),
+            Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    /// Delete a rolling summary.
+    pub fn delete_rolling_summary(&self, tenant_id: &str, session_id: &str) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+        conn.execute(
+            "DELETE FROM rolling_summaries WHERE tenant_id = ?1 AND session_id = ?2",
+            params![tenant_id, session_id],
+        )?;
+        debug!(session_id = %session_id, "Rolling summary deleted");
+        Ok(())
     }
 
     // ── Utilities ──
