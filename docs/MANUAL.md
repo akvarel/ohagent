@@ -111,9 +111,15 @@ Once the daemon is running and the bot is connected:
 | `/lang` | Cycle language: EN → LV → RU → EN |
 | `/stop` | Stop the current task |
 | `/status` | Check agent status |
+| `/model` | Show model router status and preferences |
+| `/model set <cap> <model>` | Set model preference for a capability |
+| `/model clear [cap]` | Clear model preference(s) |
 | `/skills` | List learned skills with quality scores |
 | `/skill <name>` | Show skill details (triggers, instructions, stats) |
 | `/skilluse <name>` | Record a successful skill usage |
+| `/logging` | Show message logging status |
+| `/logging on` | Enable message logging |
+| `/logging off` | Disable message logging |
 
 ### Pairing Flow
 
@@ -219,6 +225,10 @@ GET  /api/skills/:id             → skill detail
 POST /api/skills/:id/record      → record usage (body: {"success":true})
 GET  /api/memory?q=deploy        → search memories
 GET  /api/memory/:id             → memory entry
+GET  /v1/ws/chat                → WebSocket streaming chat (JSON protocol)
+POST /webhooks/telegram          → Telegram webhook (if configured)
+POST /webhooks/whatsapp          → WhatsApp webhook (if configured)
+POST /webhooks/slack             → Slack webhook (if configured)
 ```
 
 These endpoints can be used by any external tool or integration.
@@ -235,7 +245,13 @@ integration with Open WebUI and other OpenAI SDK-compatible tools.
 ```
 POST  /v1/chat/completions   → streaming (SSE) and non-streaming chat
 GET   /v1/models              → model list for client pickers
+GET   /v1/ws/chat             → WebSocket streaming (bidirectional JSON)
 ```
+
+When built-in tools are registered (`bash`, `write`, `edit`, `read`, `ls`),
+chat completions route through `agent_runner` — a tool-calling loop that
+lets the agent execute commands and modify files, streaming both text deltas
+and tool call events as SSE.
 
 ### Usage with Open WebUI
 
@@ -753,6 +769,190 @@ println!("{eval:?}");
 
 ---
 
+## Session Persistence (Phase 13)
+
+ohAgent remembers conversations across daemon restarts. When the daemon
+starts, it restores all active sessions from SQLite.
+
+### How It Works
+
+1. On every message, `SessionStore` writes session metadata to `active_sessions` table
+2. `/new` command clears all sessions for a tenant (both in-memory and SQLite)
+3. On daemon restart, sessions are restored from the message log + summary store
+
+No user action needed — it's fully automatic.
+
+---
+
+## Push Notifications (Phase 13)
+
+ohAgent can send proactive messages without waiting for user input.
+
+### Registration
+
+Push registration happens automatically on pairing (`/confirm`):
+- `PushService` maps `tenant_id → chat_id`
+- After pairing, the agent can push reminders, completion alerts, and errors
+
+### Sending a Push (from code)
+
+```rust
+push.send(&tenant_id, "Build completed successfully!").await?;
+```
+
+Push messages are delivered via the highest-priority active gateway
+(currently Telegram Bot API).
+
+---
+
+## Cron Scheduler (Phase 13)
+
+ohAgent can run tasks on a schedule: reminders, daily reports, periodic checks.
+
+### One-shot Reminders (in-memory)
+
+```rust
+use ohagent_core::scheduler::Scheduler;
+
+let scheduler = Scheduler::new(Some(push_service));
+let job_id = scheduler.schedule_in(
+    "telegram_12345",           // tenant_id
+    Duration::from_secs(600),    // fire in 10 minutes
+    "Проверь почту!",            // message
+);
+```
+
+The scheduler fires after the delay and delivers the message via `PushService`.
+
+### Recurring Tasks (ohagent-cron)
+
+For persistent, recurring schedules, use the `ohagent-cron` crate:
+- Cron expressions: `0 9 * * *` (daily at 9 AM)
+- Intervals: `*/30 * * * *` (every 30 minutes)
+- Skills attachment: each cron job can run a specific skill
+- SQLite storage survives restarts
+
+```rust
+use ohagent_cron::scheduler::CronScheduler;
+
+let scheduler = CronScheduler::new(db_path, push_service);
+scheduler.add_daily("telegram_12345", 9, 0, "Пришли статистику за сегодня").await?;
+```
+
+---
+
+## WebSocket Streaming (Phase 13)
+
+Real-time bidirectional streaming for chat completions.
+
+### Endpoint
+
+```
+GET /v1/ws/chat  → WebSocket upgrade (JSON protocol)
+```
+
+### Protocol
+
+**Client → Server** (JSON):
+```json
+{"type": "chat", "model": "deepseek-chat", "messages": [...], "temperature": 0.7}
+{"type": "cancel"}
+```
+
+**Server → Client** (JSON):
+```json
+{"type": "token", "content": "Hello"}
+{"type": "token", "content": " world"}
+{"type": "done", "usage": {"prompt": 100, "completion": 50}}
+{"type": "error", "message": "Provider error"}
+```
+
+### Example (wscat)
+
+```bash
+wscat -c ws://localhost:9090/v1/ws/chat
+> {"type":"chat","model":"deepseek-chat","messages":[{"role":"user","content":"Hi"}]}
+< {"type":"token","content":"Hello"}
+< {"type":"token","content":"!"}
+< {"type":"done","usage":{"prompt":8,"completion":2}}
+```
+
+---
+
+## File Attachments (Phase 13)
+
+Telegram users can send photos and documents — ohAgent reads and passes them
+to the agent as base64-encoded images.
+
+### How It Works
+
+1. Telegram adapter downloads photo/document from Telegram servers → local temp file
+2. `FileAttachment` stores: `local_path`, `file_name`, `mime_type`, `size_bytes`
+3. `Dispatcher.encode_attachment()` reads the file, base64-encodes it, detects MIME type
+4. `SessionHandle.send_message_with_images()` passes `Vec<(mime, base64)>` to Jcode's agent loop
+
+### Supported Formats
+
+| Extension | MIME Type |
+|---|---|
+| .png | image/png |
+| .jpg, .jpeg | image/jpeg |
+| .gif | image/gif |
+| .webp | image/webp |
+| .pdf | application/pdf |
+| .txt | text/plain |
+
+### Upload Flow
+
+```text
+Telegram API → handle_message() → FileAttachment { local_path }
+                                         ↓
+                              encode_attachment() → (mime, base64)
+                                         ↓
+                              session.send_message_with_images(text, images)
+                                         ↓
+                              Jcode agent loop (vision model)
+```
+
+---
+
+## Jcode Bridge Tools (Phase 13)
+
+ohAgent registers built-in coding tools on the Jcode bridge, making the agent
+capable of executing commands and modifying files.
+
+### Built-in Tools
+
+| Tool | Description |
+|---|---|
+| `bash` | Run bash commands with timeout |
+| `write` | Create or overwrite files |
+| `edit` | Find-and-replace text in files |
+| `read` | Read file contents |
+| `ls` | List directory contents |
+
+These are registered at startup via `register_builtin_tools()`. When tools
+are available, chat completions route through `agent_runner` (tool-calling loop)
+instead of direct `provider.complete()`.
+
+### Tool-Augmented Chat Flow
+
+```text
+POST /v1/chat/completions
+         ↓
+chat_completions_handler()
+         ↓
+    tool_registry.has_tools()? ── Yes → handle_streaming_with_tools()
+         │                                    ↓
+         │                           run_agent_turn(provider, messages, tools)
+         │                                    ↓
+         │                           SSE: text deltas + tool_call events
+         │
+         └── No  → provider.complete() (direct, no tools)
+```
+
+---
+
 ## Usage Tracking & Message Logging (Phase 7)
 
 ohAgent tracks all LLM usage and can log all prompts/responses for audit.
@@ -815,6 +1015,21 @@ and archived to S3 Glacier after 30 days (requires `OHAGENT_S3_BUCKET` env var).
 **Compilation errors**
 → Ensure submodules are initialized: `git submodule update --init --recursive`
 → The Jcode fork (`akvarel/jcode`) must be at the commit tracked by ohAgent.
+
+**File attachment not recognized**
+→ Ensure the file is in a supported format (PNG, JPEG, GIF, WebP, PDF, TXT).
+→ Check the file was fully downloaded: look for `local_path` in debug logs.
+→ The attachment flow: Telegram → download → base64 encode → Jcode agent loop.
+
+**WebSocket connection fails**
+→ Verify the daemon is running: `curl http://localhost:9090/health`
+→ WebSocket endpoint is at `/v1/ws/chat`, not `/ws`.
+→ Use `wscat -c ws://localhost:9090/v1/ws/chat` for testing.
+
+**Push notification not received**
+→ Push is only registered on `/confirm`. Re-pair with `/pair` → `/confirm <code>`.
+→ Check that `TELEGRAM_BOT_TOKEN` is set and the bot can send messages.
+→ Push messages use the Telegram Bot API directly, bypassing the normal message pipeline.
 
 ### Log Locations
 
