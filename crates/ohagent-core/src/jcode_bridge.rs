@@ -107,6 +107,7 @@ impl SessionHandle {
 }
 
 use crate::model_router::ModelRouter;
+use crate::tools::ToolRegistry;
 
 /// Main bridge between ohAgent and Jcode.
 ///
@@ -117,6 +118,7 @@ pub struct JcodeBridge {
     global_session_id: Arc<RwLock<String>>,
     provider: Arc<dyn ProviderTrait>,
     router: Option<Arc<Mutex<ModelRouter>>>,
+    tool_registry: Arc<ToolRegistry>,
     swarm_members: Arc<RwLock<HashMap<String, SwarmMember>>>,
     swarms_by_id: Arc<RwLock<HashMap<String, HashSet<String>>>>,
     swarm_coordinators: Arc<RwLock<HashMap<String, String>>>,
@@ -136,6 +138,7 @@ impl JcodeBridge {
             global_session_id: Arc::new(RwLock::new(String::new())),
             provider,
             router: None,
+            tool_registry: Arc::new(ToolRegistry::new()),
             swarm_members: Arc::new(RwLock::new(HashMap::new())),
             swarms_by_id: Arc::new(RwLock::new(HashMap::new())),
             swarm_coordinators: Arc::new(RwLock::new(HashMap::new())),
@@ -148,6 +151,17 @@ impl JcodeBridge {
     pub fn with_router(mut self, router: Arc<Mutex<ModelRouter>>) -> Self {
         self.router = Some(router);
         self
+    }
+
+    /// Register tools that agents can invoke.
+    pub fn with_tools(mut self, registry: ToolRegistry) -> Self {
+        self.tool_registry = Arc::new(registry);
+        self
+    }
+
+    /// Get a reference to the tool registry.
+    pub fn tools(&self) -> &Arc<ToolRegistry> {
+        &self.tool_registry
     }
 
     /// Human-readable name of the provider (e.g. "deepseek", "anthropic").

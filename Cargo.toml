@@ -7,6 +7,7 @@ members = [
     "crates/ohagent-memory",
     "crates/ohagent-skills",
     "crates/ohagent-cron",
+    "crates/ohagent-swarm",
 ]
 
 [workspace.package]
@@ -41,3 +42,6 @@ dashmap = "6"
 rand = "0.8"
 rusqlite = { version = "0.32", features = ["bundled", "blob"] }
 shellexpand = "3"
+
+# Helpers
+ohagent-swarm = { path = "crates/ohagent-swarm" }

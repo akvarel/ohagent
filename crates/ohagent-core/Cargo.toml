@@ -28,6 +28,7 @@ chrono = { workspace = true }
 flate2 = { workspace = true }
 reqwest = { workspace = true }
 futures = { workspace = true }
+ohagent-swarm = { workspace = true }
 
 [dev-dependencies]
 jcode-provider-openrouter-runtime = { path = "../../jcode/crates/jcode-provider-openrouter-runtime" }
