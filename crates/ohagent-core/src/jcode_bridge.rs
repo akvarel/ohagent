@@ -155,6 +155,11 @@ impl JcodeBridge {
         self.provider.display_name()
     }
 
+    /// Get a reference to the underlying provider for direct API calls.
+    pub fn provider(&self) -> &Arc<dyn ProviderTrait> {
+        &self.provider
+    }
+
     /// Route a message to the best model and return the model name.
     ///
     /// If no router is configured, returns the default provider name.

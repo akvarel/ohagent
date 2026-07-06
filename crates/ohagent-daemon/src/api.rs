@@ -43,10 +43,13 @@ pub struct ApiState {
     pub keys_path: String,
 }
 
-/// Build the full API router (includes /health).
+/// Build the full API router (includes /health and OpenAI /v1).
 pub fn router(state: ApiState) -> Router {
     Router::new()
         .route("/health", get(health_handler))
+        // OpenAI-compatible endpoints for Open WebUI integration
+        .route("/v1/models", get(crate::openai_api::list_models_handler))
+        .route("/v1/chat/completions", post(crate::openai_api::chat_completions_handler))
         .route("/api/status", get(status_handler))
         .route("/api/keys", get(get_keys))
         .route("/api/keys", put(update_keys))

@@ -17,13 +17,17 @@ serde_json = "1"
 chrono = { workspace = true }
 toml = "0.8"
 shellexpand = { workspace = true }
+uuid = { workspace = true }
 ohagent-core = { path = "../ohagent-core" }
 ohagent-gateway = { path = "../ohagent-gateway" }
 ohagent-memory = { path = "../ohagent-memory" }
 ohagent-skills = { path = "../ohagent-skills" }
 jcode-base = { path = "../../jcode/crates/jcode-base" }
 jcode-provider-core = { path = "../../jcode/crates/jcode-provider-core" }
+jcode-message-types = { path = "../../jcode/crates/jcode-message-types" }
 jcode-provider-openrouter-runtime = { path = "../../jcode/crates/jcode-provider-openrouter-runtime" }
+futures = { workspace = true }
+tokio-stream = "0.1"
 
 [dev-dependencies]
 chrono = { workspace = true }

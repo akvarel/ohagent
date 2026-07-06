@@ -5,6 +5,7 @@
 //! hosts the messaging gateway, and serves the REST API.
 
 mod api;
+mod openai_api;
 
 use anyhow::Result;
 use clap::Parser;

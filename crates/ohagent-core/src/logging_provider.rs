@@ -115,7 +115,6 @@ impl Provider for LoggingProvider {
                     let log = Arc::clone(&self.message_log);
                     let tid = self.tenant_id.clone();
                     let t = turn;
-                    let sh2 = sh.clone();
                     move |response_text: String| {
                         if !response_text.is_empty() {
                             let resp_msg = vec![serde_json::json!({
