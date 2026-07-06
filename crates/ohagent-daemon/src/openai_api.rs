@@ -374,32 +374,42 @@ pub async fn chat_completions_handler(
         .unwrap()
         .as_secs();
 
-    let (messages, mut system) = convert_messages(&req.messages);
+    let (messages, system) = convert_messages(&req.messages);
     let input_tokens = ohagent_core::context_estimator::estimate_conversation_tokens(
         &messages, &system,
     );
 
-    // ── Rolling summary: inject compressed history for long conversations ──
-    if input_tokens > 80_000 {
-        if let Some(ref memory) = state.memory {
-            let tenant = "default";
-            let session_id = "default";
-            if let Ok(rs) = ohagent_memory::rolling_summary::load_or_create(
-                memory.store(), tenant, session_id,
-            ) {
-                if !rs.compressed_history.is_empty() {
-                    system = format!(
-                        "{}\n\n[COMPRESSED CONVERSATION HISTORY]\n{}",
-                        system, rs.compressed_history
-                    );
-                    tracing::info!(
-                        tokens_compressed = rs.tokens_compressed,
-                        "Injected rolling summary into system prompt"
-                    );
-                }
-            }
-        }
-    }
+    // ── Build layered system prompt (rules + skills + compressed history) ──
+    let system = if let Some(ref builder) = state.system_prompt_builder {
+        let budget = crate::system_prompt::PromptBudget::from_window(128_000);
+
+        let compressed = state.memory.as_ref().and_then(|mem| {
+            ohagent_memory::rolling_summary::load_or_create(
+                mem.store(), "default", "default",
+            )
+            .ok()
+            .and_then(|rs| if rs.compressed_history.is_empty() { None } else { Some(rs.compressed_history) })
+        });
+
+        let assembled = builder.assemble(
+            &system,
+            compressed.as_deref(),
+            &[], // memory RAG not yet wired
+            &budget,
+        );
+
+        tracing::info!(
+            rules_tokens = assembled.layer_tokens.rules,
+            skills_tokens = assembled.layer_tokens.skills,
+            compressed_tokens = assembled.layer_tokens.compressed_history,
+            needs_compression = assembled.needs_compression,
+            "Layered system prompt assembled"
+        );
+
+        assembled.system
+    } else {
+        system
+    };
 
     // ── Context-aware model routing when ModelRouter is available ──
     let routed: Option<ohagent_core::model_router::RoutedModel> = if let Some(ref router) = state.model_router {

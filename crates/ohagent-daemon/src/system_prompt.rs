@@ -122,6 +122,7 @@ pub struct LayerTokens {
 }
 
 /// Assembles the full system prompt from persistent + dynamic layers.
+#[derive(Debug, Clone)]
 pub struct SystemPromptBuilder {
     persistent: PersistentInstructions,
 }

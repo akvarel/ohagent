@@ -32,6 +32,7 @@ use ohagent_memory::engine::MemoryEngine;
 use ohagent_memory::models::MemoryConfig;
 use ohagent_skills::registry::SkillRegistry;
 use ohagent_skills::SkillConfig;
+use crate::system_prompt::{PersistentInstructions, SystemPromptBuilder, SkillPrompt};
 use jcode_provider_core::Provider;
 
 /// Register external provider runtimes (OpenRouter, OpenAI-compatible profiles).
@@ -106,6 +107,7 @@ struct Daemon {
     auth_config: auth::AuthConfig,
     rate_limiter: Arc<rate_limiter::RateLimiter>,
     metrics: Arc<metrics::Metrics>,
+    system_prompt_builder: Option<SystemPromptBuilder>,
     whatsapp: Option<Arc<WhatsAppAdapter>>,
     slack: Option<Arc<SlackAdapter>>,
 }
@@ -336,6 +338,46 @@ impl Daemon {
                 .expect("Failed to register Prometheus metrics"),
         );
 
+        // Build system prompt with AGENTS.md rules + skills
+        let system_prompt_builder = {
+            let cwd = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+            let agents_rules = SystemPromptBuilder::load_agents_rules(&cwd);
+
+            let skills_list: Vec<SkillPrompt> = skills
+                .as_ref()
+                .map(|reg| {
+                    reg.list("default", None, 100)
+                        .unwrap_or_default()
+                        .into_iter()
+                        .map(|s| SkillPrompt {
+                            id: s.id,
+                            name: s.name.clone(),
+                            trigger: s.triggers.join(", "),
+                            instructions: s.instructions,
+                        })
+                        .collect()
+                })
+                .unwrap_or_default();
+
+            let persistent = PersistentInstructions {
+                agents_rules,
+                skills: skills_list,
+                tenant_overrides: None,
+            };
+
+            if persistent.agents_rules.is_empty() && persistent.skills.is_empty() {
+                info!("SystemPromptBuilder: no rules or skills loaded");
+                None
+            } else {
+                info!(
+                    rules = persistent.agents_rules.len(),
+                    skills = persistent.skills.len(),
+                    "SystemPromptBuilder initialized"
+                );
+                Some(SystemPromptBuilder::new(persistent))
+            }
+        };
+
         Ok(Self {
             health_port,
             enable_telegram,
@@ -352,6 +394,7 @@ impl Daemon {
             auth_config,
             rate_limiter,
             metrics: prom_metrics,
+            system_prompt_builder,
             whatsapp,
             slack,
         })
@@ -369,6 +412,7 @@ impl Daemon {
             usage: self.usage.clone(),
             message_log: self.message_log.clone(),
             model_router: self.router.clone(),
+            system_prompt_builder: self.system_prompt_builder.clone(),
             start_time: self.start_time,
             keys_path: self.keys_path.clone(),
             vault: Arc::clone(&self.vault),

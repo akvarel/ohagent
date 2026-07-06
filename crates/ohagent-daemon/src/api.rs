@@ -45,6 +45,7 @@ pub struct ApiState {
     pub usage: Option<Arc<UsageTracker>>,
     pub message_log: Option<Arc<MessageLog>>,
     pub model_router: Option<Arc<std::sync::Mutex<ModelRouter>>>,
+    pub system_prompt_builder: Option<super::system_prompt::SystemPromptBuilder>,
     pub start_time: chrono::DateTime<chrono::Utc>,
     /// Path to keys config file
     pub keys_path: String,
