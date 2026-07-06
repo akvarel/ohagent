@@ -318,6 +318,127 @@ a warning and continues with other gateways (Telegram, etc.) still operational.
 
 ---
 
+## Swarm Orchestration (Phase 9)
+
+ohAgent can decompose complex tasks into a DAG of subtasks and execute them
+in parallel across multiple sub-agents.
+
+### Architecture
+
+```text
+TaskGraph (plan)   →   SwarmOrchestrator   →   subprocess agents
+    ↓                        ↓                        ↓
+ DAG nodes         spawns workers          jcode instances
+ with deps         tracks state            one per leaf task
+                   merges results           returns findings
+```
+
+### Task Kinds
+
+| Kind | Purpose |
+|---|---|
+| `explore` | Gather information, read docs, scan code |
+| `implement` | Write code, create files, run commands |
+| `verify` | Run tests, validate invariants |
+| `fix` | Apply corrections based on verify results |
+| `synthesize` | Combine results from dependencies |
+
+### Example Plan (JSON)
+
+```json
+{
+  "goal": "Build a Rust CLI tool",
+  "max_concurrency": 3,
+  "nodes": [
+    {
+      "id": "explore",
+      "label": "Research",
+      "kind": "explore",
+      "prompt": "Research best practices for Rust CLI argument parsing",
+      "priority": 0
+    },
+    {
+      "id": "implement",
+      "label": "Build",
+      "kind": "implement",
+      "prompt": "Write the Rust CLI tool using clap",
+      "depends_on": ["explore"],
+      "priority": 1
+    },
+    {
+      "id": "verify",
+      "label": "Test",
+      "kind": "verify",
+      "prompt": "Run cargo test and clippy on the new code",
+      "depends_on": ["implement"],
+      "priority": 1
+    }
+  ]
+}
+```
+
+### Configuration
+
+| Env / Config | Default | Description |
+|---|---|---|
+| `SWARM_MAX_CONCURRENCY` | 5 | Max parallel workers |
+| `SWARM_MAX_DEPTH` | 5 | Max DAG nesting depth |
+| `SWARM_TIMEOUT_SECS` | 600 | Per-worker timeout |
+
+### API
+
+The `swarm_run` tool is registered on the Jcode bridge and becomes available
+to agents. Agents can invoke it by name with a JSON plan.
+
+---
+
+## Vault Integration (Phase 10)
+
+ohAgent uses HashiCorp Vault as the primary secret store.
+Resolution order: **Vault → env vars → keys.toml (on disk)**.
+
+### Configuration
+
+| Variable | Default | Description |
+|---|---|---|
+| `VAULT_ADDR` | `http://localhost:8200` | Vault server address |
+| `VAULT_TOKEN` | (none) | Auth token; if set, Vault is enabled |
+| `VAULT_KV_PATH` | `kv` | KV secrets engine mount path |
+
+### Vault Paths
+
+Secrets are resolved at the following Vault paths:
+
+| Secret | Vault Path |
+|---|---|
+| DEEPSEEK_API_KEY | `secret/ohagent/providers/deepseek/api-key` |
+| ANTHROPIC_API_KEY | `secret/ohagent/providers/anthropic/api-key` |
+| OPENAI_API_KEY | `secret/ohagent/providers/openai/api-key` |
+| TELEGRAM_BOT_TOKEN | `secret/ohagent/telegram/bot-token` |
+
+### Auth Methods
+
+- **Token** — set `VAULT_TOKEN` env var (simplest, used in dev)
+- **Kubernetes** — auto-detects SA token at `/var/run/secrets/kubernetes.io/serviceaccount/token`
+- **AppRole** — role_id + secret_id
+- **Token File** — read token from a file (sidecar pattern)
+
+### API Endpoints
+
+```
+GET  /api/vault/health   → {"available": true, "healthy": true}
+GET  /api/vault/status   → {"available": true, "sealed": false, "token_set": true}
+GET  /api/status         → includes "vault_available": true/false
+```
+
+### Graceful Degradation
+
+If `VAULT_TOKEN` is not set, Vault is skipped and the daemon falls back to
+environment variables, then `~/.ohagent/keys.toml`. No Vault server is required
+for development — it is completely optional.
+
+---
+
 ## Usage Tracking & Message Logging (Phase 7)
 
 ohAgent tracks all LLM usage and can log all prompts/responses for audit.
