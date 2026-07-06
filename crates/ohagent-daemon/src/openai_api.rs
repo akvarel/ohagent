@@ -374,10 +374,32 @@ pub async fn chat_completions_handler(
         .unwrap()
         .as_secs();
 
-    let (messages, system) = convert_messages(&req.messages);
+    let (messages, mut system) = convert_messages(&req.messages);
     let input_tokens = ohagent_core::context_estimator::estimate_conversation_tokens(
         &messages, &system,
     );
+
+    // ── Rolling summary: inject compressed history for long conversations ──
+    if input_tokens > 80_000 {
+        if let Some(ref memory) = state.memory {
+            let tenant = "default";
+            let session_id = "default";
+            if let Ok(rs) = ohagent_memory::rolling_summary::load_or_create(
+                memory.store(), tenant, session_id,
+            ) {
+                if !rs.compressed_history.is_empty() {
+                    system = format!(
+                        "{}\n\n[COMPRESSED CONVERSATION HISTORY]\n{}",
+                        system, rs.compressed_history
+                    );
+                    tracing::info!(
+                        tokens_compressed = rs.tokens_compressed,
+                        "Injected rolling summary into system prompt"
+                    );
+                }
+            }
+        }
+    }
 
     // ── Context-aware model routing when ModelRouter is available ──
     let routed: Option<ohagent_core::model_router::RoutedModel> = if let Some(ref router) = state.model_router {
