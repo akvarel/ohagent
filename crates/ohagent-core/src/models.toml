@@ -17,6 +17,13 @@ display = "DeepSeek V4 Flash"
 capabilities = ["coding", "general_chat", "analysis"]
 cost_tier = "low"
 context = 1_000_000
+# Pricing: USD per 1M tokens (input / output)
+input_price = 0.14
+output_price = 0.28
+# Off-peak: 50% discount during UTC 16:30–00:30 (DeepSeek automatic)
+off_peak_discount = 0.50
+off_peak_start_utc = "16:30"
+off_peak_end_utc = "00:30"
 # Deprecated aliases: deepseek-chat (non-thinking), deepseek-reasoner (thinking mode)
 # These will stop working 2026-07-24 — use deepseek-v4-flash directly.
 
@@ -28,6 +35,8 @@ display = "GLM-5.2"
 capabilities = ["coding", "general_chat", "analysis"]
 cost_tier = "low"
 context = 1_000_000
+input_price = 1.40
+output_price = 4.40
 
 [[models]]
 id = "openai-gpt-4o-mini"
@@ -37,6 +46,8 @@ display = "GPT-4o Mini"
 capabilities = ["coding", "general_chat", "analysis", "creative_writing"]
 cost_tier = "low"
 context = 128_000
+input_price = 0.15
+output_price = 0.60
 
 [[models]]
 id = "claude-haiku-4-5"
@@ -46,6 +57,8 @@ display = "Claude Haiku 4.5"
 capabilities = ["coding", "general_chat", "analysis"]
 cost_tier = "low"
 context = 200_000
+input_price = 0.80
+output_price = 4.00
 
 # ── Tier: standard (balanced quality/cost) ──
 
@@ -57,6 +70,12 @@ display = "DeepSeek V4 Pro"
 capabilities = ["coding", "general_chat", "analysis", "reasoning"]
 cost_tier = "medium"
 context = 1_000_000
+input_price = 0.435
+output_price = 0.87
+# Off-peak: 50% discount during UTC 16:30–00:30
+off_peak_discount = 0.50
+off_peak_start_utc = "16:30"
+off_peak_end_utc = "00:30"
 
 [[models]]
 id = "openai-gpt-4o"
@@ -66,6 +85,8 @@ display = "GPT-4o"
 capabilities = ["coding", "general_chat", "analysis", "reasoning", "creative_writing"]
 cost_tier = "medium"
 context = 128_000
+input_price = 2.50
+output_price = 10.00
 
 [[models]]
 id = "claude-sonnet-4-6"
@@ -75,6 +96,8 @@ display = "Claude Sonnet 4.6"
 capabilities = ["coding", "general_chat", "analysis", "reasoning"]
 cost_tier = "medium"
 context = 200_000
+input_price = 3.00
+output_price = 15.00
 
 # ── Tier: premium (best quality, expensive) ──
 
@@ -86,6 +109,8 @@ display = "OpenAI o4-mini"
 capabilities = ["coding", "reasoning", "analysis"]
 cost_tier = "high"
 context = 200_000
+input_price = 1.10
+output_price = 4.40
 
 [[models]]
 id = "claude-opus-4-5"
@@ -95,6 +120,8 @@ display = "Claude Opus 4.5"
 capabilities = ["coding", "general_chat", "analysis", "reasoning", "creative_writing"]
 cost_tier = "high"
 context = 200_000
+input_price = 15.00
+output_price = 75.00
 
 # ── Tier: image generation (non-chat, separate API) ──
 

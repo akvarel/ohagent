@@ -2,10 +2,37 @@
 //!
 //! Tracks budget across providers and models, enforces limits,
 //! and provides β-based scheduling for the CMC controller.
+//!
+//! Prices are resolved from a `PricingProvider` trait, implemented
+//! by `ohagent-core::pricing::PricingRegistry` at integration time.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::time::{Duration, Instant};
+
+/// Trait for providing model prices. Implemented by PricingRegistry.
+pub trait PricingProvider: std::fmt::Debug {
+    fn price(&self, model_id: &str) -> (f64, f64); // (input_per_1M, output_per_1M)
+}
+
+/// Simple inline pricing provider (for tests or when registry is unavailable).
+#[derive(Debug, Clone)]
+pub struct InlinePricing {
+    input: f64,
+    output: f64,
+}
+
+impl InlinePricing {
+    pub fn new(input: f64, output: f64) -> Self {
+        Self { input, output }
+    }
+}
+
+impl PricingProvider for InlinePricing {
+    fn price(&self, _model_id: &str) -> (f64, f64) {
+        (self.input, self.output)
+    }
+}
 
 /// Budget configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -28,73 +55,41 @@ impl Default for BudgetConfig {
     }
 }
 
-/// Per-provider pricing (USD per 1M tokens).
-#[derive(Debug, Clone)]
-pub struct ProviderPricing {
-    pub prompt_price_per_m: f64,
-    pub completion_price_per_m: f64,
-}
-
-impl ProviderPricing {
-    pub fn deepseek() -> Self {
-        Self { prompt_price_per_m: 0.14, completion_price_per_m: 0.28 }
-    }
-    pub fn anthropic_sonnet() -> Self {
-        Self { prompt_price_per_m: 3.0, completion_price_per_m: 15.0 }
-    }
-    pub fn anthropic_opus() -> Self {
-        Self { prompt_price_per_m: 15.0, completion_price_per_m: 75.0 }
-    }
-    pub fn openai_gpt4o() -> Self {
-        Self { prompt_price_per_m: 2.5, completion_price_per_m: 10.0 }
-    }
-}
-
-/// Budget tracker — shared between CMC controller and ModelRouter.
+/// Budget tracker — reads prices via PricingProvider trait.
 #[derive(Debug)]
-pub struct BudgetTracker {
+pub struct BudgetTracker<P: PricingProvider> {
     config: BudgetConfig,
     tokens_used: u64,
     cost_cents_used: u64,
     started_at: Instant,
-    /// Per-model token counts
-    model_tokens: HashMap<String, u64>,
-    /// Pricing table
-    pricing: HashMap<String, ProviderPricing>,
+    per_model_tokens: HashMap<String, u64>,
+    pricing: P,
 }
 
-impl BudgetTracker {
-    pub fn new(config: BudgetConfig) -> Self {
-        let mut pricing = HashMap::new();
-        pricing.insert("deepseek-chat".into(), ProviderPricing::deepseek());
-        pricing.insert("deepseek-reasoner".into(), ProviderPricing::deepseek());
-        pricing.insert("claude-sonnet-4-6".into(), ProviderPricing::anthropic_sonnet());
-        pricing.insert("claude-opus-4-6".into(), ProviderPricing::anthropic_opus());
-        pricing.insert("gpt-4o".into(), ProviderPricing::openai_gpt4o());
-
+impl<P: PricingProvider> BudgetTracker<P> {
+    /// Create with a pricing provider.
+    pub fn new(config: BudgetConfig, pricing: P) -> Self {
         Self {
             config,
             tokens_used: 0,
             cost_cents_used: 0,
             started_at: Instant::now(),
-            model_tokens: HashMap::new(),
+            per_model_tokens: HashMap::new(),
             pricing,
         }
     }
 
-    /// Record token usage.
+    /// Record token usage — cost is calculated from PricingProvider.
     pub fn record(&mut self, model: &str, prompt_tokens: u64, completion_tokens: u64) {
         let total = prompt_tokens + completion_tokens;
         self.tokens_used += total;
-        *self.model_tokens.entry(model.to_string()).or_default() += total;
+        *self.per_model_tokens.entry(model.to_string()).or_default() += total;
 
-        // Calculate cost
-        if let Some(pricing) = self.pricing.get(model) {
-            let prompt_cost = (prompt_tokens as f64 / 1_000_000.0) * pricing.prompt_price_per_m;
-            let completion_cost = (completion_tokens as f64 / 1_000_000.0) * pricing.completion_price_per_m;
-            let total_cost = (prompt_cost + completion_cost) * 100.0; // to cents
-            self.cost_cents_used += total_cost as u64;
-        }
+        let (input_price, output_price) = self.pricing.price(model);
+        let prompt_cost = (prompt_tokens as f64 / 1_000_000.0) * input_price;
+        let completion_cost = (completion_tokens as f64 / 1_000_000.0) * output_price;
+        let cost = ((prompt_cost + completion_cost) * 100.0) as u64;
+        self.cost_cents_used += cost;
     }
 
     /// Check if budget is exceeded.
@@ -113,14 +108,8 @@ impl BudgetTracker {
     }
 
     /// Map remaining budget fraction to CMC β.
-    ///
-    /// When budget is full → β=1.0 (thorough)
-    /// When budget is half → β=0.5 (balanced)
-    /// When budget is low → β=0.1 (cheap)
     pub fn budget_to_beta(&self) -> f64 {
         let frac = self.remaining_fraction();
-        // Smooth mapping: frac → beta
-        // 1.0 → 1.0, 0.5 → 0.5, 0.0 → 0.1
         frac * 0.9 + 0.1
     }
 
@@ -135,6 +124,7 @@ impl BudgetTracker {
     pub fn cost_cents_used(&self) -> u64 { self.cost_cents_used }
     pub fn elapsed(&self) -> Duration { self.started_at.elapsed() }
     pub fn max_tokens(&self) -> u64 { self.config.max_tokens }
+    pub fn pricing(&self) -> &P { &self.pricing }
 
     /// Format budget as a human-readable string.
     pub fn status_line(&self) -> String {
@@ -155,8 +145,11 @@ mod tests {
 
     #[test]
     fn test_budget_tracking() {
-        let mut bt = BudgetTracker::new(BudgetConfig::default());
-        bt.record("deepseek-chat", 1000, 500);
+        let mut bt = BudgetTracker::new(
+            BudgetConfig::default(),
+            InlinePricing::new(0.14, 0.28),
+        );
+        bt.record("deepseek-v4-flash", 1000, 500);
         assert_eq!(bt.tokens_used(), 1500);
         assert!(!bt.is_exceeded());
     }
@@ -168,8 +161,8 @@ mod tests {
             max_cost_cents: 1000,
             enforce: true,
         };
-        let mut bt = BudgetTracker::new(config);
-        bt.record("deepseek-chat", 200, 100);
+        let mut bt = BudgetTracker::new(config, InlinePricing::new(0.14, 0.28));
+        bt.record("deepseek-v4-flash", 200, 100);
         assert!(bt.is_exceeded());
     }
 
@@ -180,7 +173,18 @@ mod tests {
             max_cost_cents: 1000,
             enforce: true,
         };
-        let bt = BudgetTracker::new(config);
-        assert!(bt.budget_to_beta() > 0.9); // Full budget → high beta
+        let bt = BudgetTracker::new(config, InlinePricing::new(0.14, 0.28));
+        assert!(bt.budget_to_beta() > 0.9);
+    }
+
+    #[test]
+    fn test_cost_from_pricing() {
+        let mut bt = BudgetTracker::new(
+            BudgetConfig { max_tokens: 1_000_000, max_cost_cents: 10_000, enforce: false },
+            InlinePricing::new(0.14, 0.28),
+        );
+        bt.record("deepseek-v4-flash", 1_000_000, 500_000);
+        // 1M * 0.14 + 0.5M * 0.28 = 0.14 + 0.14 = 0.28 USD = 28 cents
+        assert!(bt.cost_cents_used >= 27 && bt.cost_cents_used <= 29);
     }
 }

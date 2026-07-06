@@ -37,7 +37,7 @@ use jcode_provider_core::Provider;
 pub struct ModelEntry {
     /// Unique model ID (e.g. "deepseek-v4-flash")
     pub id: String,
-    /// Provider family: "deepseek", "openai", "anthropic", "openrouter", etc.
+    /// Provider family: "deepseek", "openai", "anthropic", "openrouter", "zhipu"
     pub provider: String,
     /// Environment variable that holds the API key
     pub api_key_env: String,
@@ -49,6 +49,21 @@ pub struct ModelEntry {
     pub cost_tier: String,
     /// Max context window in tokens
     pub context: u32,
+    /// USD per 1M input tokens (None for non-LLM models like image gen)
+    #[serde(default)]
+    pub input_price: Option<f64>,
+    /// USD per 1M output tokens
+    #[serde(default)]
+    pub output_price: Option<f64>,
+    /// Off-peak discount multiplier (0.0–1.0, e.g. 0.50 = 50% off)
+    #[serde(default)]
+    pub off_peak_discount: Option<f64>,
+    /// Off-peak window start in UTC (HH:MM format)
+    #[serde(default)]
+    pub off_peak_start_utc: Option<String>,
+    /// Off-peak window end in UTC (HH:MM format)
+    #[serde(default)]
+    pub off_peak_end_utc: Option<String>,
 }
 
 /// Top-level catalog config.

@@ -6,7 +6,7 @@
 use std::sync::Arc;
 use tracing::{debug, info};
 
-use crate::budget::BudgetTracker;
+use crate::budget::{BudgetTracker, PricingProvider};
 use crate::cmc::{CmcConfig, CmcController, CmcDecision, PoolStats};
 use crate::replay::ReplayEnv;
 
@@ -29,17 +29,17 @@ pub struct ReasoningStep {
 ///
 /// Wraps the CMC controller and manages the full reasoning lifecycle
 /// across multiple model calls.
-pub struct ReasoningRouter {
+pub struct ReasoningRouter<P: PricingProvider> {
     controller: CmcController,
-    budget: BudgetTracker,
+    budget: BudgetTracker<P>,
     replay: Option<ReplayEnv>,
     /// Record traces for replay optimization (enabled by default)
     record_traces: bool,
 }
 
-impl ReasoningRouter {
+impl<P: PricingProvider> ReasoningRouter<P> {
     /// Create a new reasoning router.
-    pub fn new(config: CmcConfig, budget: BudgetTracker) -> Self {
+    pub fn new(config: CmcConfig, budget: BudgetTracker<P>) -> Self {
         let controller = CmcController::new(config);
         Self {
             controller,
@@ -162,12 +162,12 @@ impl ReasoningRouter {
     }
 
     /// Get budget reference.
-    pub fn budget(&self) -> &BudgetTracker {
+    pub fn budget(&self) -> &BudgetTracker<P> {
         &self.budget
     }
 
     /// Get budget mutably.
-    pub fn budget_mut(&mut self) -> &mut BudgetTracker {
+    pub fn budget_mut(&mut self) -> &mut BudgetTracker<P> {
         &mut self.budget
     }
 
@@ -221,12 +221,16 @@ pub enum ReasoningAction {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::budget::BudgetConfig;
+    use crate::budget::{BudgetConfig, InlinePricing};
+
+    fn inline_pricing() -> InlinePricing {
+        InlinePricing::new(0.14, 0.28)
+    }
 
     #[test]
     fn test_router_initialization() {
         let config = CmcConfig::balanced();
-        let budget = BudgetTracker::new(BudgetConfig::default());
+        let budget = BudgetTracker::new(BudgetConfig::default(), inline_pricing());
         let mut router = ReasoningRouter::new(config, budget);
 
         // After init with one result, should be ready to decide
@@ -249,7 +253,7 @@ mod tests {
             max_tokens: 10,
             max_cost_cents: 1000,
             enforce: true,
-        });
+        }, inline_pricing());
         budget.record("deepseek-chat", 8, 2); // 10 tokens used
 
         let mut router = ReasoningRouter::new(config, budget);

@@ -26,6 +26,7 @@ use ohagent_core::model_router::{ModelRouter, RoutedModel};
 use ohagent_reasoning::budget::{BudgetTracker, BudgetConfig};
 use ohagent_reasoning::cmc::{CmcConfig, BranchState, PoolStats};
 use ohagent_reasoning::router::{ReasoningRouter, ReasoningAction, ReasoningStep};
+use ohagent_core::pricing::PricingRegistry;
 
 /// Result from an LLM call through the router.
 pub struct LlmCallResult {
@@ -42,7 +43,7 @@ pub struct LlmCallResult {
 /// Orchestrates the full CMC reasoning loop using the daemon's ModelRouter
 /// for model selection and LLM calls.
 pub struct CmcRouterIntegration {
-    pub reasoning: ReasoningRouter,
+    pub reasoning: ReasoningRouter<PricingRegistry>,
     model_router: Arc<ModelRouter>,
     tenant_id: String,
 }
@@ -54,9 +55,10 @@ impl CmcRouterIntegration {
         tenant_id: String,
         beta: f64,
         budget_config: BudgetConfig,
+        pricing: PricingRegistry,
     ) -> Self {
         let cmc_config = CmcConfig::new(beta);
-        let budget = BudgetTracker::new(budget_config);
+        let budget = BudgetTracker::new(budget_config, pricing);
         let reasoning = ReasoningRouter::new(cmc_config, budget);
 
         Self {

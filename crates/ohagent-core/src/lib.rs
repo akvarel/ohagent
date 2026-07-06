@@ -10,6 +10,7 @@ pub mod llm_classifier;
 pub mod logging_provider;
 pub mod message_log;
 pub mod model_router;
+pub mod pricing;
 pub mod s3_archive;
 pub mod session;
 pub mod tools;
