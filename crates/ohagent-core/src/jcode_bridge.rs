@@ -123,6 +123,7 @@ impl SessionHandle {
 
 use crate::model_router::ModelRouter;
 use crate::tools::ToolRegistry;
+use jcode_base::mcp::SharedMcpPool;
 
 /// Main bridge between ohAgent and Jcode.
 ///
@@ -134,6 +135,7 @@ pub struct JcodeBridge {
     provider: Arc<dyn ProviderTrait>,
     router: Option<Arc<Mutex<ModelRouter>>>,
     tool_registry: Arc<ToolRegistry>,
+    mcp_pool: Option<Arc<SharedMcpPool>>,
     swarm_members: Arc<RwLock<HashMap<String, SwarmMember>>>,
     swarms_by_id: Arc<RwLock<HashMap<String, HashSet<String>>>>,
     swarm_coordinators: Arc<RwLock<HashMap<String, String>>>,
@@ -154,6 +156,7 @@ impl JcodeBridge {
             provider,
             router: None,
             tool_registry: Arc::new(ToolRegistry::new()),
+            mcp_pool: None,
             swarm_members: Arc::new(RwLock::new(HashMap::new())),
             swarms_by_id: Arc::new(RwLock::new(HashMap::new())),
             swarm_coordinators: Arc::new(RwLock::new(HashMap::new())),
@@ -171,6 +174,15 @@ impl JcodeBridge {
     /// Register tools that agents can invoke.
     pub fn with_tools(mut self, registry: ToolRegistry) -> Self {
         self.tool_registry = Arc::new(registry);
+        self
+    }
+
+    /// Attach a shared MCP server pool for tool discovery.
+    ///
+    /// When set, all sessions created through this bridge will have access
+    /// to `mcp__<server>__<tool>` tools registered by the pool.
+    pub fn with_mcp_pool(mut self, pool: Arc<SharedMcpPool>) -> Self {
+        self.mcp_pool = Some(pool);
         self
     }
 
@@ -226,7 +238,7 @@ impl JcodeBridge {
             None, // provider_key_override
             None, // route_api_method_override
             None, // effort_override
-            None, // mcp_pool
+            self.mcp_pool.clone(), // shared MCP pool
             config.report_back_to.clone(),
         )
         .await

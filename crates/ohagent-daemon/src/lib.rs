@@ -35,6 +35,7 @@ use ohagent_skills::registry::SkillRegistry;
 use ohagent_skills::SkillConfig;
 use crate::system_prompt::{PersistentInstructions, SystemPromptBuilder, SkillPrompt};
 use jcode_provider_core::Provider;
+use jcode_base::mcp::SharedMcpPool;
 
 /// Register external provider runtimes (OpenRouter, OpenAI-compatible profiles).
 ///
@@ -115,6 +116,9 @@ struct Daemon {
     scheduler: Option<Arc<ohagent_core::scheduler::Scheduler>>,
     whatsapp: Option<Arc<WhatsAppAdapter>>,
     slack: Option<Arc<SlackAdapter>>,
+    /// Kept alive to own MCP server child processes (passed to bridge on startup).
+    #[allow(dead_code)]
+    mcp_pool: Option<Arc<SharedMcpPool>>,
 }
 
 impl Daemon {
@@ -288,6 +292,45 @@ impl Daemon {
             }
         };
 
+        // Initialize MCP server pool (shared across all sessions).
+        // Servers are defined in ~/.jcode/mcp.json (auto-imported from
+        // Claude Code / Codex CLI on first run).
+        let mcp_pool = {
+            let pool = Arc::new(SharedMcpPool::from_default_config());
+            let (connected, failures) = rt.block_on(pool.connect_all());
+            if !failures.is_empty() {
+                for (name, err) in &failures {
+                    tracing::warn!(
+                        server = %name,
+                        error = %err,
+                        "MCP server connection failed"
+                    );
+                }
+            }
+            if connected > 0 {
+                info!(
+                    connected = connected,
+                    failed = failures.len(),
+                    "MCP pool initialized"
+                );
+                Some(pool)
+            } else if failures.is_empty() {
+                // No servers configured — not an error
+                tracing::debug!("MCP pool: no servers configured in ~/.jcode/mcp.json");
+                None
+            } else {
+                tracing::warn!(
+                    failed = failures.len(),
+                    "MCP pool: all server connections failed"
+                );
+                None
+            }
+        };
+
+        if let Some(ref pool) = mcp_pool {
+            bridge = bridge.with_mcp_pool(Arc::clone(pool));
+        }
+
         let bridge = Arc::new(bridge);
 
         // Initialize memory engine
@@ -455,6 +498,7 @@ impl Daemon {
             scheduler: Some(Arc::new(ohagent_core::scheduler::Scheduler::new(push))),
             whatsapp,
             slack,
+            mcp_pool,
         })
     }
 
