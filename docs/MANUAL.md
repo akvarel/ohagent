@@ -76,6 +76,13 @@ cargo run --release -p ohagent-daemon
 | `ANTHROPIC_API_KEY` | Yes* | Anthropic API key (fallback) |
 | `OPENAI_API_KEY` | Yes* | OpenAI API key (fallback) |
 | `TELEGRAM_BOT_TOKEN` | For Telegram | Telegram Bot API token |
+| `WA_VERIFY_TOKEN` | For WhatsApp | Meta webhook verify token |
+| `WA_PHONE_ID` | For WhatsApp | WhatsApp Business phone number ID |
+| `WA_ACCESS_TOKEN` | For WhatsApp | Meta permanent access token |
+| `SLACK_BOT_TOKEN` | For Slack | Slack Bot User OAuth Token (xoxb-...) |
+| `SLACK_SIGNING_SECRET` | For Slack | Slack Events API signing secret |
+| `OPENAI_API_BASE` | Optional | OpenAI-compatible base URL for Open WebUI |
+| `OHAGENT_S3_BUCKET` | Optional | S3 bucket for message log archiving |
 
 \* At least one provider key must be set.
 
@@ -218,12 +225,147 @@ These endpoints can be used by any external tool or integration.
 
 ---
 
+## OpenAI-Compatible API (Phase 7)
+
+ohAgent exposes an OpenAI-compatible chat completions API, enabling drop-in
+integration with Open WebUI and other OpenAI SDK-compatible tools.
+
+### Endpoints
+
+```
+POST  /v1/chat/completions   → streaming (SSE) and non-streaming chat
+GET   /v1/models              → model list for client pickers
+```
+
+### Usage with Open WebUI
+
+1. In Open WebUI Admin Panel → Settings → Connections → OpenAI API
+2. Set Base URL to `http://ohagent:9090/v1`
+3. Set API Key to any non-empty value (not validated by ohAgent)
+4. Save — ohAgent models will appear in the model picker
+
+### Example curl
+
+```bash
+# Non-streaming
+curl -X POST http://localhost:9090/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "deepseek-chat",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+
+# Streaming (SSE)
+curl -X POST http://localhost:9090/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "deepseek-chat",
+    "messages": [{"role": "user", "content": "Tell me a joke"}],
+    "stream": true
+  }'
+```
+
+### Available Models
+
+`GET /v1/models` returns models from all configured providers: `deepseek-chat`,
+`deepseek-reasoner`, `claude-3-5-sonnet-*`, `gpt-4o`, etc.
+
+---
+
+## Multi-Platform Gateways (Phase 8)
+
+### WhatsApp (Meta Cloud API)
+
+Configure the WhatsApp adapter via environment variables:
+
+| Variable | Required | Description |
+|---|---|---|
+| `WA_VERIFY_TOKEN` | Yes | Verification token from Meta app dashboard |
+| `WA_PHONE_ID` | Yes | Phone number ID from Meta Business settings |
+| `WA_ACCESS_TOKEN` | Yes | Permanent access token from Meta Business |
+
+**Setup steps:**
+1. Create a Meta Business app at https://developers.facebook.com
+2. Add the WhatsApp product and configure a phone number
+3. Set the Webhook URL to `https://your-domain/webhooks/whatsapp`
+4. Set the Verify Token to match `WA_VERIFY_TOKEN`
+5. Subscribe to `messages` webhook field
+
+The webhook handles both the GET verification challenge and POST message events.
+
+### Slack (Events API)
+
+| Variable | Required | Description |
+|---|---|---|
+| `SLACK_BOT_TOKEN` | Yes | Bot User OAuth Token (xoxb-...) |
+| `SLACK_SIGNING_SECRET` | Yes | Signing Secret from Slack app settings |
+
+**Setup steps:**
+1. Create a Slack App at https://api.slack.com/apps
+2. Enable Events API under Event Subscriptions
+3. Set Request URL to `https://your-domain/webhooks/slack`
+4. Subscribe to `message.channels` and `app_mention` events
+5. Add OAuth scopes: `chat:write`, `channels:history`, `app_mentions:read`
+6. Install the app to your workspace
+
+The bot responds when mentioned (`@ohagent ...`) and strips the mention prefix
+before forwarding to the agent.
+
+### Graceful Degradation
+
+Both adapters are optional. If their env vars are not set, the daemon prints
+a warning and continues with other gateways (Telegram, etc.) still operational.
+
+---
+
+## Usage Tracking & Message Logging (Phase 7)
+
+ohAgent tracks all LLM usage and can log all prompts/responses for audit.
+
+### Usage Tracker
+
+- Tracks tokens (prompt + completion) and cost per model/provider/tenant
+- Stats available at `GET /api/usage/stats`
+- Recent events at `GET /api/usage/recent?limit=50`
+
+### Message Logging
+
+Per-tenant toggle (default ON), controlled via:
+```bash
+# Check current setting
+curl http://localhost:9090/api/logging/prefs/telegram_12345
+
+# Turn logging off
+curl -X PUT http://localhost:9090/api/logging/prefs/telegram_12345 \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": false}'
+```
+
+Logs are stored in SQLite (`~/.ohagent/message_log.db`) with gzip compression
+and archived to S3 Glacier after 30 days (requires `OHAGENT_S3_BUCKET` env var).
+
+### Telegram Commands
+
+| Command | Description |
+|---|---|
+| `/logging` | Show current logging status |
+| `/logging on` | Enable message logging |
+| `/logging off` | Disable message logging |
+
+---
+
 ## 4. Troubleshooting
 
 ### Common Errors
 
-**`TELEGRAM_BOT_TOKEN not set`**
-→ Set the env var or disable Telegram with `--telegram=false`.
+**`WA_VERIFY_TOKEN not set` / WhatsApp adapter disabled**
+→ Set the three WA_* env vars to enable WhatsApp. The daemon continues with other gateways.
+
+**`SLACK_BOT_TOKEN not set` / Slack adapter disabled**
+→ Set SLACK_BOT_TOKEN and SLACK_SIGNING_SECRET to enable Slack.
+
+**Webhook verification fails** (WhatsApp/Slack)
+→ Check that the verify token / signing secret matches the dashboard, and that the webhook URL is publicly accessible.
 
 **`DEEPSEEK_API_KEY not set` / provider not configured**
 → Export your API key or set it via Vault.
