@@ -109,6 +109,7 @@ struct Daemon {
     rate_limiter: Arc<rate_limiter::RateLimiter>,
     metrics: Arc<metrics::Metrics>,
     system_prompt_builder: Option<SystemPromptBuilder>,
+    session_store: Option<Arc<ohagent_core::session_store::SessionStore>>,
     whatsapp: Option<Arc<WhatsAppAdapter>>,
     slack: Option<Arc<SlackAdapter>>,
 }
@@ -375,6 +376,36 @@ impl Daemon {
             }
         };
 
+        // Initialize session store for daemon restart persistence
+        let session_store = match ohagent_core::session_store::SessionStore::open(
+            &shellexpand::tilde("~/.ohagent/sessions.db").to_string(),
+        ) {
+            Ok(ss) => {
+                let cleaned = ss.cleanup_stale(30).unwrap_or(0);
+                let active = ss.list_active().unwrap_or_default();
+                info!(
+                    active_sessions = active.len(),
+                    stale_cleaned = cleaned,
+                    "Session store initialized"
+                );
+                if !active.is_empty() {
+                    for s in &active {
+                        tracing::debug!(
+                            tenant = %s.tenant_id,
+                            session = %s.session_hash,
+                            messages = s.message_count,
+                            "Recovered active session"
+                        );
+                    }
+                }
+                Some(Arc::new(ss))
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "Session store not available");
+                None
+            }
+        };
+
         Ok(Self {
             health_port,
             enable_telegram,
@@ -392,6 +423,7 @@ impl Daemon {
             rate_limiter,
             metrics: prom_metrics,
             system_prompt_builder,
+            session_store,
             whatsapp,
             slack,
         })
@@ -410,6 +442,7 @@ impl Daemon {
             message_log: self.message_log.clone(),
             model_router: self.router.clone(),
             system_prompt_builder: self.system_prompt_builder.clone(),
+            session_store: self.session_store.clone(),
             start_time: self.start_time,
             keys_path: self.keys_path.clone(),
             vault: Arc::clone(&self.vault),

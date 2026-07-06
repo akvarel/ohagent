@@ -173,6 +173,20 @@ async fn handle_ws(ws: WebSocket, state: ApiState) {
                         &jcode_msgs, &system,
                     );
 
+                    // ── Session heartbeat ──
+                    if let Some(ref ss) = state.session_store {
+                        let tenant = "default";
+                        let shash = &messages.first()
+                            .map(|m| {
+                                use std::hash::{Hash, Hasher};
+                                let mut h = std::collections::hash_map::DefaultHasher::new();
+                                m.content.hash(&mut h);
+                                format!("{:x}", h.finish())
+                            })
+                            .unwrap_or_else(|| "default".into());
+                        let _ = ss.heartbeat(tenant, shash, messages.len() as u32, input_tokens as u64, ".");
+                    }
+
                     // Re-route now that we have the actual user message
                     let active_provider = if let Some(ref router) = state.model_router {
                         match router.lock() {

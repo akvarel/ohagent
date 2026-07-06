@@ -18,7 +18,7 @@ use std::sync::Arc;
 use axum::{
     extract::{Path, Query, State},
     middleware,
-    routing::{get, post, put},
+    routing::{delete, get, post, put},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
@@ -27,6 +27,7 @@ use ohagent_core::jcode_bridge::JcodeBridge;
 use ohagent_core::model_router::ModelRouter;
 use ohagent_core::usage_tracker::UsageTracker;
 use ohagent_core::message_log::MessageLog;
+use ohagent_core::session_store::SessionStore;
 use ohagent_core::vault::VaultClient;
 use ohagent_memory::engine::MemoryEngine;
 use ohagent_skills::evaluator;
@@ -46,6 +47,7 @@ pub struct ApiState {
     pub message_log: Option<Arc<MessageLog>>,
     pub model_router: Option<Arc<std::sync::Mutex<ModelRouter>>>,
     pub system_prompt_builder: Option<super::system_prompt::SystemPromptBuilder>,
+    pub session_store: Option<Arc<SessionStore>>,
     pub start_time: chrono::DateTime<chrono::Utc>,
     /// Path to keys config file
     pub keys_path: String,
@@ -96,6 +98,8 @@ pub fn router(state: ApiState) -> Router {
         .route("/api/skills/{id}/record", post(record_skill_usage))
         .route("/api/memory", get(query_memory))
         .route("/api/memory/{id}", get(get_memory))
+        .route("/api/sessions", get(list_sessions_handler))
+        .route("/api/sessions/{tenant_id}/{session_hash}", delete(delete_session_handler))
         .merge(webhooks)
         .with_state(state)
         .layer(middleware::from_fn(auth::require_auth))
@@ -567,4 +571,43 @@ async fn vault_status(State(state): State<ApiState>) -> Json<serde_json::Value> 
         "sealed": sealed,
         "token_set": available,
     }))
+}
+
+// ── Sessions ──
+
+#[derive(Serialize)]
+struct SessionInfo {
+    tenant_id: String,
+    session_hash: String,
+    last_activity: String,
+    message_count: u32,
+    total_tokens: u64,
+    project_dir: String,
+}
+
+async fn list_sessions_handler(
+    State(state): State<ApiState>,
+) -> Result<Json<Vec<SessionInfo>>, axum::http::StatusCode> {
+    let store = state.session_store.as_ref().ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
+    let sessions = store.list_active().map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(Json(
+        sessions.into_iter().map(|s| SessionInfo {
+            tenant_id: s.tenant_id,
+            session_hash: s.session_hash,
+            last_activity: s.last_activity.to_rfc3339(),
+            message_count: s.message_count,
+            total_tokens: s.total_tokens,
+            project_dir: s.project_dir,
+        }).collect()
+    ))
+}
+
+async fn delete_session_handler(
+    State(state): State<ApiState>,
+    Path((tenant_id, session_hash)): Path<(String, String)>,
+) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
+    let store = state.session_store.as_ref().ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
+    store.delete_session(&tenant_id, &session_hash)
+        .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(Json(serde_json::json!({"ok": true, "tenant_id": tenant_id, "session_hash": session_hash})))
 }

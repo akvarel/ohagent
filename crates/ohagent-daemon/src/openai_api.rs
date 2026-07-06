@@ -475,6 +475,22 @@ pub async fn chat_completions_handler(
         None
     };
 
+    // ── Session heartbeat: persist active session for daemon restart recovery ──
+    if let Some(ref ss) = state.session_store {
+        let tenant = "default";
+        // Derive stable session_hash from first user message
+        let session_hash = &req.messages.first()
+            .map(|m| {
+                use std::hash::{Hash, Hasher};
+                let mut h = std::collections::hash_map::DefaultHasher::new();
+                m.content.hash(&mut h);
+                format!("{:x}", h.finish())
+            })
+            .unwrap_or_else(|| "default".into());
+        let total_messages = req.messages.len() as u32;
+        let _ = ss.heartbeat(tenant, session_hash, total_messages, input_tokens as u64, ".");
+    }
+
     if req.stream {
         handle_streaming(state, req, messages, system, request_id, created, input_tokens, routed).await
     } else {
