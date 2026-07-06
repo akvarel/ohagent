@@ -1,0 +1,118 @@
+# ohAgent Daemon — K8s Deployment
+#
+# Secrets are resolved via Vault (VAULT_TOKEN injected by Vault Agent sidecar).
+# No plain K8s Secrets with actual values — all secrets live in Vault.
+#
+# Install:
+#   kubectl apply -k k8s/overlays/dev    # dev
+#   kubectl apply -k k8s/overlays/prod   # prod
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ohagent-daemon
+  namespace: ohagent
+  labels:
+    app: ohagent
+    tier: agent
+    component: daemon
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: ohagent
+      component: daemon
+  template:
+    metadata:
+      labels:
+        app: ohagent
+        tier: agent
+        component: daemon
+    spec:
+      # Vault Agent sidecar injects VAULT_TOKEN from a shared memory volume
+      shareProcessNamespace: true
+      containers:
+        - name: daemon
+          image: rg.pl-waw.scw.cloud/orangehat/ohagent-daemon:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 9090
+              name: api
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: ohagent-config
+          env:
+            # Vault token injected by Vault Agent init/sidecar container
+            - name: VAULT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ohagent-vault-token
+                  key: token
+                  optional: true
+          volumeMounts:
+            - name: data
+              mountPath: /home/jcode/.ohagent
+            - name: vault-token
+              mountPath: /vault
+              readOnly: true
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "2Gi"
+              cpu: "2000m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9090
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9090
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 9090
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 30
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: ohagent-data
+        - name: vault-token
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Mi
+---
+# Service: ClusterIP for internal access (Open WebUI, other services)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ohagent
+  namespace: ohagent
+  labels:
+    app: ohagent
+spec:
+  selector:
+    app: ohagent
+    component: daemon
+  ports:
+    - port: 9090
+      targetPort: 9090
+      name: api
+      protocol: TCP
+  type: ClusterIP

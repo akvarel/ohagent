@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ohagent-config
+  namespace: ohagent
+  labels:
+    app: ohagent
+data:
+  # Non-secret configuration
+  VAULT_ADDR: "http://vault.ohagent.svc.cluster.local:8200"
+  VAULT_KV_PATH: "kv"
+  # Vault token is injected from Vault sidecar, not stored here
+  RUST_LOG: "info"
+  OPENAI_API_BASE: "http://ohagent.ohagent.svc.cluster.local:9090/v1"
+  # Health port
+  OHAGENT_HEALTH_PORT: "9090"
+  # Logging defaults
+  OHAGENT_S3_BUCKET: ""  # Set in overlay if S3 archiving is enabled
+  # Grafana / Loki labels
+  OTEL_SERVICE_NAME: "ohagent"

@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ohagent-data
+  namespace: ohagent
+  labels:
+    app: ohagent
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  # storageClassName is set by the overlay (dev: local-path, prod: cloud disk)

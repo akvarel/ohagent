@@ -1,0 +1,25 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ohagent
+
+resources:
+  - ../../base
+
+nameSuffix: -prod
+
+patches:
+  - target:
+      kind: PersistentVolumeClaim
+      name: ohagent-data
+    patch: |-
+      - op: add
+        path: /spec/storageClassName
+        value: "scw-bssd"  # Scaleway Block SSD
+      - op: replace
+        path: /spec/resources/requests/storage
+        value: "50Gi"
+
+images:
+  - name: rg.pl-waw.scw.cloud/orangehat/ohagent-daemon
+    newTag: stable

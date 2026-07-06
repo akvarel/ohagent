@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ohagent
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - pvc.yaml
+  - deployment.yaml
+  - hpa.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: ohagent
+
+images:
+  - name: rg.pl-waw.scw.cloud/orangehat/ohagent-daemon
+    newTag: latest
