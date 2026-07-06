@@ -166,6 +166,7 @@ impl WhatsAppAdapter {
                             text,
                             lang: Lang::En,
                             platform: "whatsapp".into(),
+                            attachment: None,
                         };
 
                         if let Some(response) = dispatcher.handle_message(incoming).await {

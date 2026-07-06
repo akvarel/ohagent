@@ -141,6 +141,7 @@ impl SlackAdapter {
                 text: cleaned,
                 lang: Lang::En,
                 platform: "slack".into(),
+            attachment: None,
             };
 
             if let Some(response) = dispatcher.handle_message(incoming).await {

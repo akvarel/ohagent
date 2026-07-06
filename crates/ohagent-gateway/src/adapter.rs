@@ -8,6 +8,19 @@ use std::sync::Arc;
 use ohagent_core::jcode_bridge::JcodeBridge;
 use crate::i18n::Lang;
 
+/// An incoming file/photo attachment.
+#[derive(Debug, Clone)]
+pub struct FileAttachment {
+    /// Local path where the file was saved.
+    pub local_path: String,
+    /// Original file name (if available).
+    pub file_name: Option<String>,
+    /// MIME type (if detectable).
+    pub mime_type: Option<String>,
+    /// File size in bytes.
+    pub size_bytes: u64,
+}
+
 /// Information about an incoming message from any platform.
 #[derive(Debug, Clone)]
 pub struct IncomingMessage {
@@ -23,6 +36,8 @@ pub struct IncomingMessage {
     pub lang: Lang,
     /// Platform name (e.g. "telegram", "discord").
     pub platform: String,
+    /// Optional file attachment (photo, document, etc.).
+    pub attachment: Option<FileAttachment>,
 }
 
 /// An outgoing message to be sent to a platform.

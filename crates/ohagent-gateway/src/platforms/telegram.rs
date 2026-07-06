@@ -12,7 +12,7 @@ use teloxide::{
 };
 use tracing::{info, warn};
 
-use crate::adapter::{IncomingMessage, OutgoingMessage, PlatformAdapter};
+use crate::adapter::{FileAttachment, IncomingMessage, OutgoingMessage, PlatformAdapter};
 use crate::dispatch::Dispatcher;
 use crate::i18n::Lang;
 use crate::pairing::PairingManager;
@@ -222,11 +222,6 @@ async fn handle_message(
     msg: Message,
     state: TelegramState,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let text = match msg.text() {
-        Some(text) => text.to_string(),
-        None => return Ok(()),
-    };
-
     let user = msg.from.as_ref();
     let user_id = user
         .map(|u| u.id.to_string())
@@ -237,10 +232,70 @@ async fn handle_message(
         user.and_then(|u| u.language_code.as_deref()),
     );
 
+    // ── Handle photo messages ──
+    let attachment = if let Some(photos) = msg.photo() {
+        // Take the largest photo (last in array)
+        let largest = photos.last();
+        match largest {
+            Some(photo) => {
+                match download_telegram_file(&bot, &photo.file.id, "photo.jpg").await {
+                    Ok(local_path) => {
+                        info!(chat_id = %chat_id, path = %local_path, "Photo received and saved");
+                        Some(FileAttachment {
+                            local_path,
+                            file_name: Some("photo.jpg".into()),
+                            mime_type: Some("image/jpeg".into()),
+                            size_bytes: photo.file.size as u64,
+                        })
+                    }
+                    Err(e) => {
+                        warn!(error = %e, "Failed to download photo");
+                        None
+                    }
+                }
+            }
+            None => None,
+        }
+    // ── Handle document messages ──
+    } else if let Some(doc) = msg.document() {
+        let file_name = doc.file_name.clone().unwrap_or_else(|| "document.bin".into());
+        match download_telegram_file(&bot, &doc.file.id, &file_name).await {
+            Ok(local_path) => {
+                info!(chat_id = %chat_id, path = %local_path, name = %file_name, "Document received and saved");
+                Some(FileAttachment {
+                    local_path,
+                    file_name: Some(file_name),
+                    mime_type: doc.mime_type.as_ref().map(|m| m.essence_str().to_string()),
+                    size_bytes: doc.file.size as u64,
+                })
+            }
+            Err(e) => {
+                warn!(error = %e, "Failed to download document");
+                None
+            }
+        }
+    } else {
+        None
+    };
+
+    // ── Handle text (may exist alongside photo/document caption) ──
+    let caption = msg.caption().unwrap_or("").to_string();
+    let text_body = msg.text().unwrap_or("").to_string();
+    let text = if !text_body.is_empty() {
+        text_body
+    } else if !caption.is_empty() {
+        caption
+    } else if attachment.is_some() {
+        "[photo/file]".to_string()
+    } else {
+        return Ok(());
+    };
+
     info!(
         user_id = %user_id,
         chat_id = %chat_id,
         text_len = text.len(),
+        has_attachment = attachment.is_some(),
         "Telegram message received"
     );
 
@@ -248,9 +303,10 @@ async fn handle_message(
         chat_id: chat_id.clone(),
         user_id: user_id.clone(),
         tenant_id: format!("telegram_{user_id}"),
-        text: text.clone(),
+        text,
         lang,
         platform: "telegram".into(),
+        attachment,
     };
 
     // Send typing indicator
@@ -272,6 +328,36 @@ async fn handle_message(
     }
 
     Ok(())
+}
+
+/// Download a file from Telegram's servers and save locally.
+async fn download_telegram_file(
+    bot: &Bot,
+    file_id: &str,
+    file_name: &str,
+) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    use teloxide::net::Download;
+    use std::io::Write as _;
+
+    let file = bot.get_file(file_id).await?;
+    let upload_dir = shellexpand::tilde("~/.ohagent/uploads").to_string();
+    std::fs::create_dir_all(&upload_dir)?;
+
+    let safe_name = file_name.replace(['/', '\\', ' '], "_");
+    let path = format!("{}/{}", upload_dir, safe_name);
+
+    let mut dest = std::fs::File::create(&path)?;
+    let mut stream = bot.download_file_stream(&file.path);
+    // Collect all bytes via .bytes_stream() or iterate
+    // teloxide's download_file_stream returns Stream<Item = Result<Bytes, ...>>
+    use futures::StreamExt;
+    while let Some(chunk) = stream.next().await {
+        let data = chunk?;
+        std::io::Write::write_all(&mut dest, &data)?;
+    }
+    dest.flush()?;
+
+    Ok(path)
 }
 
 /// Handle slash commands.
@@ -319,6 +405,7 @@ async fn handle_command(
         text: format!("/{command} {args}"),
         lang,
         platform: "telegram".into(),
+        attachment: None,
     };
 
     if let Some(response) = state
