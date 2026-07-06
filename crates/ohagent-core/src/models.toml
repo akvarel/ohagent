@@ -14,7 +14,7 @@ id = "deepseek-v4-flash"
 provider = "deepseek"
 api_key_env = "DEEPSEEK_API_KEY"
 display = "DeepSeek V4 Flash"
-capabilities = ["coding", "general_chat", "analysis"]
+capabilities = ["coding", "general_chat", "analysis", "translation"]
 cost_tier = "low"
 context = 1_000_000
 # Pricing: USD per 1M tokens (input / output)
@@ -158,6 +158,50 @@ display = "Kling v1.6 (via OpenRouter)"
 capabilities = ["video_gen"]
 cost_tier = "high"
 context = 0
+
+# ── Tier: specialized (voice, OCR, translation, embedding) ──
+
+[[models]]
+id = "whisper-1"
+provider = "openai"
+api_key_env = "OPENAI_API_KEY"
+display = "Whisper (OpenAI)"
+capabilities = ["voice_to_text"]
+cost_tier = "low"
+context = 0
+# Audio models: context window not applicable
+
+[[models]]
+id = "gpt-4o-transcribe"
+provider = "openai"
+api_key_env = "OPENAI_API_KEY"
+display = "GPT-4o Audio Transcription"
+capabilities = ["voice_to_text"]
+cost_tier = "medium"
+context = 128_000
+# GPT-4o native audio transcription
+
+[[models]]
+id = "gpt-4o-ocr"
+provider = "openai"
+api_key_env = "OPENAI_API_KEY"
+display = "GPT-4o Vision (OCR)"
+capabilities = ["ocr", "general_chat"]
+cost_tier = "medium"
+context = 128_000
+# GPT-4o's vision mode handles OCR natively
+
+# ── Embedding models ──
+
+[[models]]
+id = "text-embedding-3-small"
+provider = "openai"
+api_key_env = "OPENAI_API_KEY"
+display = "OpenAI Embedding 3 Small"
+capabilities = ["embedding"]
+cost_tier = "low"
+context = 0
+# Embedding models have fixed input limits, not conversational context
 
 # ── Defaults ──
 

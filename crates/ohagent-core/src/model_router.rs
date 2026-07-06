@@ -113,20 +113,38 @@ impl Default for CatalogDefaults {
 
 // ── Task classification ──
 
-/// Capability tags set by the classifier.
+/// Capability tags set by the classifier or self-declared by models.
+///
+/// # Two sources of truth
+///
+/// **Classifier-driven** (detected from user message by `classify_task`):
+/// Coding, Reasoning, Analysis, GeneralChat, CreativeWriting.
+///
+/// **Model-declared** (model advertises in `models.toml`, router trusts it):
+/// ImageGen, VideoGen, VoiceToText, Ocr, Translation, Embedding.
+///
+/// For model-declared capabilities, `classify_task` may detect keywords
+/// as a hint, but the final authority is the model's `capabilities` field.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Capability {
+    // ── Classifier-driven (keyword detection) ──
     Coding,
     Reasoning,
     Analysis,
     GeneralChat,
     CreativeWriting,
+
+    // ── Model-declared (model self-advertises in models.toml) ──
     ImageGen,
     VideoGen,
+    VoiceToText,
+    Ocr,
+    Translation,
+    Embedding,
 }
 
 impl Capability {
-    fn as_str(&self) -> &'static str {
+    pub fn as_str(&self) -> &'static str {
         match self {
             Capability::Coding => "coding",
             Capability::Reasoning => "reasoning",
@@ -135,7 +153,42 @@ impl Capability {
             Capability::CreativeWriting => "creative_writing",
             Capability::ImageGen => "image_gen",
             Capability::VideoGen => "video_gen",
+            Capability::VoiceToText => "voice_to_text",
+            Capability::Ocr => "ocr",
+            Capability::Translation => "translation",
+            Capability::Embedding => "embedding",
         }
+    }
+
+    /// Parse from a models.toml capability string (with fallback).
+    /// Unknown strings are returned as None — the router ignores them.
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "coding" => Some(Capability::Coding),
+            "reasoning" => Some(Capability::Reasoning),
+            "analysis" => Some(Capability::Analysis),
+            "general_chat" => Some(Capability::GeneralChat),
+            "creative_writing" => Some(Capability::CreativeWriting),
+            "image_gen" => Some(Capability::ImageGen),
+            "video_gen" => Some(Capability::VideoGen),
+            "voice_to_text" => Some(Capability::VoiceToText),
+            "ocr" => Some(Capability::Ocr),
+            "translation" => Some(Capability::Translation),
+            "embedding" => Some(Capability::Embedding),
+            _ => None,
+        }
+    }
+
+    /// Whether this capability is model-declared (not keyword-detected).
+    pub fn is_model_declared(&self) -> bool {
+        matches!(self,
+            Capability::ImageGen
+            | Capability::VideoGen
+            | Capability::VoiceToText
+            | Capability::Ocr
+            | Capability::Translation
+            | Capability::Embedding
+        )
     }
 }
 
@@ -162,6 +215,36 @@ pub fn classify_task(message: &str) -> Vec<Capability> {
     {
         caps.push(Capability::VideoGen);
         return caps;
+    }
+
+    // Voice-to-text patterns (model-declared; keywords act as hints)
+    if lower.contains("transcribe") || lower.contains("speech to text")
+        || lower.contains("voice to text") || lower.contains("audio to text")
+        || lower.contains("dictation") || (lower.contains("audio") && lower.contains("text"))
+    {
+        caps.push(Capability::VoiceToText);
+        return caps; // Exclusive — needs specialized model
+    }
+
+    // OCR patterns (model-declared; keywords act as hints)
+    if lower.contains("ocr") || lower.contains("optical character")
+        || lower.contains("extract text from") && (lower.contains("image") || lower.contains("photo") || lower.contains("scan") || lower.contains("pdf"))
+        || lower.contains("read text from") && (lower.contains("image") || lower.contains("photo"))
+        || lower.contains("scan document")
+    {
+        caps.push(Capability::Ocr);
+        return caps; // Exclusive — needs specialized model
+    }
+
+    // Translation patterns
+    if lower.contains("translate") || lower.contains("translation")
+        || lower.contains("переведи") || lower.contains("перевод")
+        || (lower.contains("to ") && (lower.contains("english") || lower.contains("russian") || lower.contains("latvian")
+            || lower.contains("german") || lower.contains("french") || lower.contains("spanish"))
+            && lower.contains("translate"))
+    {
+        caps.push(Capability::Translation);
+        // Translation is NOT exclusive — can also be general_chat
     }
 
     // Coding patterns
@@ -795,6 +878,60 @@ mod tests {
     }
 
     #[test]
+    fn test_classify_voice_to_text() {
+        let caps = classify_task("transcribe this audio recording to text");
+        assert!(caps.contains(&Capability::VoiceToText));
+        assert_eq!(caps.len(), 1, "Voice-to-text should be exclusive");
+    }
+
+    #[test]
+    fn test_classify_ocr() {
+        let caps = classify_task("extract text from this scanned pdf");
+        assert!(caps.contains(&Capability::Ocr));
+        assert_eq!(caps.len(), 1, "OCR should be exclusive");
+    }
+
+    #[test]
+    fn test_classify_translation() {
+        let caps = classify_task("translate this document to russian");
+        assert!(caps.contains(&Capability::Translation));
+        // Translation is NOT exclusive — general_chat also applies
+    }
+
+    #[test]
+    fn test_classify_translate_ru() {
+        let caps = classify_task("переведи этот текст на английский");
+        assert!(caps.contains(&Capability::Translation));
+    }
+
+    #[test]
+    fn test_capability_parse_roundtrip() {
+        for cap in &[
+            Capability::Coding, Capability::VoiceToText, Capability::Ocr,
+            Capability::Translation, Capability::Embedding,
+        ] {
+            let s = cap.as_str();
+            let parsed = Capability::from_str(s);
+            assert_eq!(parsed, Some(cap.clone()), "Roundtrip failed for {s}");
+        }
+    }
+
+    #[test]
+    fn test_unknown_capability_is_none() {
+        assert_eq!(Capability::from_str("nonexistent_capability"), None);
+    }
+
+    #[test]
+    fn test_model_declared_flag() {
+        assert!(Capability::VoiceToText.is_model_declared());
+        assert!(Capability::Ocr.is_model_declared());
+        assert!(Capability::Embedding.is_model_declared());
+        assert!(Capability::ImageGen.is_model_declared());
+        assert!(!Capability::Coding.is_model_declared());
+        assert!(!Capability::GeneralChat.is_model_declared());
+    }
+
+    #[test]
     fn test_catalog_parses() {
         let catalog_str = include_str!("models.toml");
         let catalog: ModelCatalog = toml::from_str(catalog_str).unwrap();
@@ -825,5 +962,27 @@ mod tests {
         let diag = router.diagnostics();
         assert!(diag.contains_key("coding"));
         assert!(diag.contains_key("image_gen"));
+        // New capabilities should appear in diagnostics
+        assert!(diag.contains_key("voice_to_text"), "voice_to_text not in diagnostics");
+        assert!(diag.contains_key("ocr"), "ocr not in diagnostics");
+        assert!(diag.contains_key("embedding"), "embedding not in diagnostics");
+    }
+
+    #[test]
+    fn test_route_voice_to_text() {
+        let router = ModelRouter::load().unwrap();
+        let found = router.find_model(&[Capability::VoiceToText], None);
+        if std::env::var("OPENAI_API_KEY").is_ok() {
+            assert!(found.is_some(), "Should find a voice-to-text model");
+        }
+    }
+
+    #[test]
+    fn test_route_ocr() {
+        let router = ModelRouter::load().unwrap();
+        let found = router.find_model(&[Capability::Ocr], None);
+        if std::env::var("OPENAI_API_KEY").is_ok() {
+            assert!(found.is_some(), "Should find an OCR model");
+        }
     }
 }
