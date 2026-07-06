@@ -545,23 +545,6 @@ async fn handle_streaming(
     }
 }
 
-fn estimate_tokens(system: &str, messages: &[Message]) -> u32 {
-    let sys_chars = system.len();
-    let msg_chars: usize = messages
-        .iter()
-        .map(|m| {
-            m.content
-                .iter()
-                .map(|c| match c {
-                    ContentBlock::Text { text, .. } => text.len(),
-                    _ => 0,
-                })
-                .sum::<usize>()
-        })
-        .sum();
-    ((sys_chars + msg_chars) / 4).max(1) as u32
-}
-
 fn error_response(msg: &str) -> Response {
     let body = serde_json::json!({
         "error": {
