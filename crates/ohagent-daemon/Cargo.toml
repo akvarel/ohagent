@@ -12,7 +12,7 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 anyhow = { workspace = true }
 clap = { workspace = true }
-axum = "0.8"
+axum = { version = "0.8", features = ["ws"] }
 serde_json = "1"
 chrono = { workspace = true }
 toml = "0.8"

@@ -80,6 +80,8 @@ pub fn router(state: ApiState) -> Router {
         .route("/v1/models/status", get(crate::openai_api::model_status_handler))
         .route("/v1/models/toggle", post(crate::openai_api::toggle_model_handler))
         .route("/v1/chat/completions", post(crate::openai_api::chat_completions_handler))
+        // WebSocket real-time streaming (instead of SSE polling)
+        .route("/v1/ws/chat", get(crate::ws::ws_chat_handler))
         .route("/api/status", get(status_handler))
         .route("/api/keys", get(get_keys))
         .route("/api/keys", put(update_keys))

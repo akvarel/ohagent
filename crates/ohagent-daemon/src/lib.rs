@@ -14,6 +14,7 @@ mod rate_limiter;
 mod reasoning;
 mod system_prompt;
 mod webhooks;
+mod ws;
 
 use anyhow::Result;
 use clap::Parser;
