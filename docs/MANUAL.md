@@ -510,6 +510,47 @@ HPA scales based on CPU (target 70%) and memory (target 80%):
 
 ---
 
+## E2E Testing (Phase 12)
+
+ohAgent includes a Cucumber/Gherkin test suite that runs end-to-end scenarios
+against a live daemon.
+
+### Running Tests
+
+```bash
+# Build and run E2E tests (starts daemon subprocess on port 19090)
+cargo test -p ohagent-daemon --test e2e
+
+# Run only a specific feature
+cargo test -p ohagent-daemon --test e2e -- --name "health"
+```
+
+### Feature Files
+
+| File | Scenarios |
+|---|---|
+| `features/health.feature` | Health check, status endpoint, TCP connectivity |
+| `features/openai_api.feature` | Model listing, streaming/non-streaming chat, error handling |
+| `features/vault.feature` | Vault health, seal status, graceful unavailability |
+| `features/skills.feature` | Skill listing, status filter, tenant queries |
+| `features/memory.feature` | Memory search, empty query defaults |
+
+### Architecture
+
+```text
+cargo test --test e2e
+  → spawns ohagent-daemon (port 19090, VAULT_TOKEN="")
+  → waits for /health to respond
+  → runs .feature scenarios via cucumber-rs
+  → each step: HTTP request → JSON assertion
+  → cleanup: kill daemon + orphan processes
+```
+
+The test daemon runs with `VAULT_TOKEN=""` so Vault scenarios test
+graceful degradation without a real Vault server.
+
+---
+
 ## Usage Tracking & Message Logging (Phase 7)
 
 ohAgent tracks all LLM usage and can log all prompts/responses for audit.
