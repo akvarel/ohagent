@@ -385,6 +385,11 @@ pub async fn chat_completions_handler(
         let project_dir = std::env::current_dir()
             .unwrap_or_else(|_| std::path::PathBuf::from("."));
 
+        // User's last message — for skills-on-demand + memory RAG
+        let user_message = req.messages.last()
+            .map(|m| m.content.as_str())
+            .unwrap_or("");
+
         let compressed = state.memory.as_ref().and_then(|mem| {
             ohagent_memory::rolling_summary::load_or_create(
                 mem.store(), "default", "default",
@@ -393,11 +398,34 @@ pub async fn chat_completions_handler(
             .and_then(|rs| if rs.compressed_history.is_empty() { None } else { Some(rs.compressed_history) })
         });
 
+        // ── Memory RAG: search for relevant facts ──
+        let rag_strings: Vec<String> = if let Some(ref mem) = state.memory {
+            match mem.search("default", user_message) {
+                Ok(results) if !results.is_empty() => {
+                    let count = results.len();
+                    let strings: Vec<String> = results
+                        .into_iter()
+                        .take(5) // top 5
+                        .map(|r| format!("[{}] {}", r.entry.id, r.entry.content))
+                        .collect();
+                    tracing::info!(
+                        rag_results = count,
+                        "Memory RAG retrieved relevant facts"
+                    );
+                    strings
+                }
+                _ => Vec::new(),
+            }
+        } else {
+            Vec::new()
+        };
+
         let assembled = builder.assemble(
             &project_dir,
+            user_message,
             &system,
             compressed.as_deref(),
-            &[], // memory RAG not yet wired
+            &rag_strings,
             &budget,
         );
 

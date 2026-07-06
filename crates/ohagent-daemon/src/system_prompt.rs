@@ -206,6 +206,7 @@ impl SystemPromptBuilder {
     /// Assemble the full system prompt for a request.
     ///
     /// `project_dir` — current working directory; AGENTS.md re-read from here.
+    /// `user_message` — the user's last message, used for skills-on-demand filtering.
     /// `conversation_messages` — raw messages for this turn (layer 5).
     /// `compressed_history` — from RollingSummary, if available (layer 4).
     /// `memory_rag` — relevant memories from MemoryEngine.search() (layer 3).
@@ -213,6 +214,7 @@ impl SystemPromptBuilder {
     pub fn assemble(
         &self,
         project_dir: &PathBuf,
+        user_message: &str,
         conversation_messages: &str,
         compressed_history: Option<&str>,
         memory_rag: &[String],
@@ -226,8 +228,9 @@ impl SystemPromptBuilder {
         let rules_text = trim_to_budget(&rules_text, budget.rules_max);
         layer_tokens.rules = estimate_tokens(&rules_text);
 
-        // ── Layer 2: Skills (static, loaded once at startup) ──
-        let skills_text = Self::format_skills_static(&self.skills);
+        // ── Layer 2: Skills (filtered: only those matching user message) ──
+        let relevant_skills = Self::find_relevant_skills(&self.skills, user_message);
+        let skills_text = Self::format_skills_static(&relevant_skills);
         let skills_text = trim_to_budget(&skills_text, budget.skills_max);
         layer_tokens.skills = estimate_tokens(&skills_text);
 
@@ -316,6 +319,59 @@ impl SystemPromptBuilder {
         }
         out
     }
+
+    /// Filter skills by trigger keyword match against the user's message.
+    ///
+    /// Only skills whose trigger phrases appear in the message are included.
+    /// If no skills match, returns all skills as fallback (so the agent can
+    /// still discover available skills).
+    fn find_relevant_skills(all_skills: &[SkillPrompt], user_message: &str) -> Vec<SkillPrompt> {
+        if user_message.trim().is_empty() || all_skills.is_empty() {
+            return all_skills.to_vec();
+        }
+
+        let msg_lower = user_message.to_lowercase();
+
+        let matched: Vec<SkillPrompt> = all_skills
+            .iter()
+            .filter(|s| {
+                s.trigger
+                    .split(',')
+                    .map(|t| t.trim().to_lowercase())
+                    .any(|trigger| {
+                        // Direct substring match
+                        if msg_lower.contains(&trigger) {
+                            return true;
+                        }
+                        // Word-level fuzzy: any trigger word (3+ chars) appears
+                        // as a substring anywhere in the message
+                        trigger.split_whitespace().any(|word| {
+                            if word.len() < 3 {
+                                return false;
+                            }
+                            if msg_lower.contains(word) {
+                                return true;
+                            }
+                            // Prefix match: "testing" should match "test" in message
+                            for prefix_len in (4..=word.len()).rev() {
+                                if msg_lower.contains(&word[..prefix_len]) {
+                                    return true;
+                                }
+                            }
+                            false
+                        })
+                    })
+            })
+            .cloned()
+            .collect();
+
+        // Fallback: if nothing matched, return all to avoid skill blindness
+        if matched.is_empty() {
+            all_skills.to_vec()
+        } else {
+            matched
+        }
+    }
 }
 
 impl LayerTokens {
@@ -358,12 +414,20 @@ mod tests {
 
     fn test_builder() -> SystemPromptBuilder {
         SystemPromptBuilder::new(
-            vec![SkillPrompt {
-                id: "s1".into(),
-                name: "test-skill".into(),
-                trigger: "when testing".into(),
-                instructions: "Do thing.".into(),
-            }],
+            vec![
+                SkillPrompt {
+                    id: "s1".into(),
+                    name: "test-skill".into(),
+                    trigger: "when testing".into(),
+                    instructions: "Do thing.".into(),
+                },
+                SkillPrompt {
+                    id: "s2".into(),
+                    name: "deploy".into(),
+                    trigger: "deploy, k8s, kubernetes".into(),
+                    instructions: "Deploy to cluster.".into(),
+                },
+            ],
             None,
         )
     }
@@ -385,14 +449,14 @@ mod tests {
         let cwd = PathBuf::from(".");
 
         // Short conversation
-        let result = builder.assemble(&cwd, "hello", None, &[], &budget);
+        let result = builder.assemble(&cwd, "hello", "hello", None, &[], &budget);
         assert!(!result.needs_compression);
         assert!(result.system.contains("── SKILLS ──"));
         assert!(result.system.contains("test-skill"));
 
         // Very long conversation — should need compression
         let long_conv = "long message. ".repeat(50_000);
-        let result = builder.assemble(&cwd, &long_conv, None, &[], &budget);
+        let result = builder.assemble(&cwd, "long", &long_conv, None, &[], &budget);
         assert!(result.needs_compression);
     }
 
@@ -404,6 +468,7 @@ mod tests {
 
         let result = builder.assemble(
             &cwd,
+            "hello",
             "hello",
             Some("compressed: user wanted pizza"),
             &[],
@@ -424,7 +489,7 @@ mod tests {
         let builder = test_builder();
         let budget = PromptBudget::from_window(128_000);
 
-        let result = builder.assemble(&tmp, "hello", None, &[], &budget);
+        let result = builder.assemble(&tmp, "hello", "hello", None, &[], &budget);
         assert!(result.system.contains("Test Project"));
         assert!(result.system.contains("always test"));
 
@@ -441,8 +506,8 @@ mod tests {
         let cwd_a = PathBuf::from("/tmp/a");
         let cwd_b = PathBuf::from("/tmp/b");
 
-        let result_a = builder.assemble(&cwd_a, "hello", None, &[], &budget);
-        let result_b = builder.assemble(&cwd_b, "hello", None, &[], &budget);
+        let result_a = builder.assemble(&cwd_a, "hi", "hi", None, &[], &budget);
+        let result_b = builder.assemble(&cwd_b, "hi", "hi", None, &[], &budget);
 
         // Both should assemble without panicking
         assert!(!result_a.system.is_empty());
@@ -464,8 +529,58 @@ mod tests {
 
         // Even with non-existent project_dir, global rules should load
         // (if ~/.AGENTS.md exists on this machine)
-        let result = builder.assemble(&PathBuf::from("/nonexistent"), "hi", None, &[], &budget);
+        let result = builder.assemble(&PathBuf::from("/nonexistent"), "hi", "hi", None, &[], &budget);
         // Should not panic — just might not have rules if ~/.AGENTS.md doesn't exist
         assert!(!result.system.is_empty());
+    }
+
+    #[test]
+    fn test_skills_on_demand_filtering() {
+        let builder = test_builder();
+        let budget = PromptBudget::from_window(128_000);
+        let cwd = PathBuf::from(".");
+
+        // Query about deployment — only deploy skill should appear in skills section
+        let result = builder.assemble(
+            &cwd, "deploy to kubernetes", "deploy to kubernetes",
+            None, &[], &budget,
+        );
+        let skills_section = extract_skills_section(&result.system);
+        assert!(skills_section.contains("/deploy"), "expected deploy skill");
+        assert!(!skills_section.contains("test-skill"), "test-skill should not appear for deploy query");
+
+        // Query about testing — only test skill should appear in skills section
+        let result = builder.assemble(
+            &cwd, "run the test suite", "run the test suite",
+            None, &[], &budget,
+        );
+        let skills_section = extract_skills_section(&result.system);
+        assert!(skills_section.contains("test-skill"), "expected test-skill");
+        assert!(!skills_section.contains("/deploy"), "deploy skill should not appear for testing query");
+
+        // Unrelated query — all skills fall back
+        let result = builder.assemble(
+            &cwd, "hello world", "hello world",
+            None, &[], &budget,
+        );
+        // Fallback: all skills included
+        assert!(result.system.contains("── SKILLS ──"));
+        assert!(result.system.contains("test-skill"));
+    }
+}
+
+/// Helper: extract the SKILLS section from an assembled prompt.
+fn extract_skills_section(prompt: &str) -> &str {
+    if let Some(skills_start) = prompt.find("── SKILLS ──") {
+        let after_skills = &prompt[skills_start..];
+        if let Some(next_section) = after_skills.find("── RELEVANT") {
+            &after_skills[..next_section]
+        } else if let Some(next_section) = after_skills.find("── CONVERSATION") {
+            &after_skills[..next_section]
+        } else {
+            after_skills
+        }
+    } else {
+        prompt
     }
 }
