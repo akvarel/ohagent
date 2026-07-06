@@ -252,6 +252,11 @@ impl ModelRouter {
         })
     }
 
+    /// Get the catalog (used by API to expose model list).
+    pub fn catalog(&self) -> &[ModelEntry] {
+        &self.catalog.models
+    }
+
     /// List all models in the catalog.
     pub fn list_models(&self) -> &[ModelEntry] {
         &self.catalog.models
@@ -399,6 +404,16 @@ impl ModelRouter {
                 std::env::set_var("OPENROUTER_API_KEY", &key);
                 multi.set_model(&format!("openrouter:{}", entry.id))
                     .with_context(|| format!("Failed to set model openrouter:{}", entry.id))?;
+            }
+            "zhipu" => {
+                // Zhipu / Z.ai — OpenAI-compatible API
+                let key = std::env::var(&entry.api_key_env)
+                    .with_context(|| format!("{} not set", entry.api_key_env))?;
+                std::env::set_var("OPENAI_API_KEY", &key);
+                // Route through openai provider with custom base URL set via env
+                std::env::set_var("OPENAI_BASE_URL", "https://api.z.ai/v1");
+                multi.set_model(&format!("openai:{}", entry.id))
+                    .with_context(|| format!("Failed to set model openai:{}", entry.id))?;
             }
             _ => {
                 // Unknown provider — try as openrouter model

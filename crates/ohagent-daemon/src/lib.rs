@@ -363,6 +363,7 @@ impl Daemon {
             skills: self.skills.clone(),
             usage: self.usage.clone(),
             message_log: self.message_log.clone(),
+            model_router: self.router.clone(),
             start_time: self.start_time,
             keys_path: self.keys_path.clone(),
             vault: Arc::clone(&self.vault),

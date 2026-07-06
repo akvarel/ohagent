@@ -24,6 +24,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 
 use ohagent_core::jcode_bridge::JcodeBridge;
+use ohagent_core::model_router::ModelRouter;
 use ohagent_core::usage_tracker::UsageTracker;
 use ohagent_core::message_log::MessageLog;
 use ohagent_core::vault::VaultClient;
@@ -43,6 +44,7 @@ pub struct ApiState {
     pub skills: Option<Arc<SkillRegistry>>,
     pub usage: Option<Arc<UsageTracker>>,
     pub message_log: Option<Arc<MessageLog>>,
+    pub model_router: Option<Arc<std::sync::Mutex<ModelRouter>>>,
     pub start_time: chrono::DateTime<chrono::Utc>,
     /// Path to keys config file
     pub keys_path: String,
@@ -72,6 +74,8 @@ pub fn router(state: ApiState) -> Router {
         .route("/metrics", get(crate::metrics::metrics_handler))
         // OpenAI-compatible endpoints for Open WebUI integration
         .route("/v1/models", get(crate::openai_api::list_models_handler))
+        .route("/v1/models/prefs", get(crate::openai_api::get_model_prefs))
+        .route("/v1/models/prefs", post(crate::openai_api::set_model_pref))
         .route("/v1/chat/completions", post(crate::openai_api::chat_completions_handler))
         .route("/api/status", get(status_handler))
         .route("/api/keys", get(get_keys))

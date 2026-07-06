@@ -3,6 +3,9 @@
 # Each model entry defines capabilities, pricing, and provider.
 # API keys come from environment (or Vault). Models are tried in order
 # within the same capability tier — first available wins.
+#
+# Models are also exposed via GET /v1/models for Open WebUI picker.
+# Preferences can be set via GET/POST /v1/models/prefs (tenant-scoped).
 
 # ── Tier: budget (cheap, fast, for simple tasks) ──
 
@@ -13,7 +16,18 @@ api_key_env = "DEEPSEEK_API_KEY"
 display = "DeepSeek V4 Flash"
 capabilities = ["coding", "general_chat", "analysis"]
 cost_tier = "low"
-context = 128_000
+context = 1_000_000
+# Deprecated aliases: deepseek-chat (non-thinking), deepseek-reasoner (thinking mode)
+# These will stop working 2026-07-24 — use deepseek-v4-flash directly.
+
+[[models]]
+id = "glm-5.2"
+provider = "zhipu"
+api_key_env = "ZHIPU_API_KEY"
+display = "GLM-5.2"
+capabilities = ["coding", "general_chat", "analysis"]
+cost_tier = "low"
+context = 1_000_000
 
 [[models]]
 id = "openai-gpt-4o-mini"
@@ -36,13 +50,13 @@ context = 200_000
 # ── Tier: standard (balanced quality/cost) ──
 
 [[models]]
-id = "deepseek-v4"
+id = "deepseek-v4-pro"
 provider = "deepseek"
 api_key_env = "DEEPSEEK_API_KEY"
-display = "DeepSeek V4"
+display = "DeepSeek V4 Pro"
 capabilities = ["coding", "general_chat", "analysis", "reasoning"]
 cost_tier = "medium"
-context = 128_000
+context = 1_000_000
 
 [[models]]
 id = "openai-gpt-4o"
@@ -116,9 +130,6 @@ context = 0
 # ── Defaults ──
 
 [defaults]
-# Which capability to use when no task pattern is detected
 fallback_capability = "general_chat"
-# Default cost tier (budget unless task needs more)
 default_tier = "low"
-# Max tier to auto-select (never auto-select premium without user request)
 max_auto_tier = "medium"

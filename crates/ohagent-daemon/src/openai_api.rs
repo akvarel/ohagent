@@ -22,13 +22,12 @@ use axum::{
 use futures::StreamExt;
 use jcode_message_types::{ContentBlock, Message, Role, StreamEvent};
 use serde::{Deserialize, Serialize};
-
 use crate::api::ApiState;
 
 // ── /v1/models handler ──
 
 #[derive(Debug, Serialize)]
-pub struct ModelEntry {
+pub struct ModelInfo {
     pub id: String,
     pub object: String,
     pub created: u64,
@@ -38,34 +37,127 @@ pub struct ModelEntry {
 #[derive(Debug, Serialize)]
 pub struct ModelList {
     pub object: String,
-    pub data: Vec<ModelEntry>,
+    pub data: Vec<ModelInfo>,
 }
 
-/// GET /v1/models — list available models for Open WebUI.
-pub async fn list_models_handler() -> Json<ModelList> {
-    // Return a static list of known models. Open WebUI uses this for the model picker.
-    let models = vec![
-        ("deepseek-v4-flash", "deepseek"),
-        ("deepseek-v4", "deepseek"),
-        ("claude-haiku-4-5", "anthropic"),
-        ("claude-sonnet-4-6", "anthropic"),
-        ("claude-opus-4-5", "anthropic"),
-        ("gpt-4o-mini", "openai"),
-        ("gpt-4o", "openai"),
-    ];
+/// GET /v1/models — list available models from the catalog.
+/// Dynamic: reads from the ModelRouter, so models.toml changes take effect live.
+pub async fn list_models_handler(State(state): State<ApiState>) -> Json<ModelList> {
+    let models: Vec<ModelInfo> = if let Some(ref router) = state.model_router {
+        match router.lock() {
+            Ok(r) => r
+                .catalog()
+                .iter()
+                .map(|m| ModelInfo {
+                    id: m.id.clone(),
+                    object: "model".into(),
+                    created: 1_700_000_000,
+                    owned_by: m.provider.clone(),
+                })
+                .collect(),
+            Err(_) => vec![],
+        }
+    } else {
+        vec![]
+    };
 
     Json(ModelList {
         object: "list".into(),
-        data: models
-            .into_iter()
-            .map(|(id, owner)| ModelEntry {
-                id: id.into(),
-                object: "model".into(),
-                created: 1_700_000_000,
-                owned_by: owner.into(),
-            })
-            .collect(),
+        data: models,
     })
+}
+
+// ── /v1/models/prefs handler ──
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ModelPref {
+    pub capability: String,
+    pub model_id: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ModelPrefs {
+    pub tenant: String,
+    pub prefs: Vec<ModelPref>,
+}
+
+/// GET /v1/models/prefs?tenant=X — get model preferences for a tenant.
+pub async fn get_model_prefs(
+    State(state): State<ApiState>,
+    axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> Json<ModelPrefs> {
+    let tenant = params.get("tenant").map(|t| t.as_str()).unwrap_or("default");
+
+    let prefs = if let Some(ref router) = state.model_router {
+        match router.lock() {
+            Ok(r) => {
+                let map = r.list_prefs(tenant);
+                map.into_iter()
+                    .map(|(capability, model_id)| ModelPref {
+                        capability,
+                        model_id,
+                    })
+                    .collect()
+            }
+            Err(_) => vec![],
+        }
+    } else {
+        vec![]
+    };
+
+    Json(ModelPrefs {
+        tenant: tenant.to_string(),
+        prefs,
+    })
+}
+
+/// POST /v1/models/prefs — set a model preference.
+/// Body: {"tenant": "...", "capability": "...", "model_id": "..."}
+pub async fn set_model_pref(
+    State(state): State<ApiState>,
+    Json(body): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
+    let tenant = body["tenant"].as_str().unwrap_or("default");
+    let capability = body["capability"]
+        .as_str()
+        .ok_or_else(|| {
+            (
+                axum::http::StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "capability required"})),
+            )
+        })?;
+    let model_id = body["model_id"].as_str().ok_or_else(|| {
+        (
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "model_id required"})),
+        )
+    })?;
+
+    let router = state.model_router.as_ref().ok_or_else(|| {
+        (
+            axum::http::StatusCode::SERVICE_UNAVAILABLE,
+            Json(serde_json::json!({"error": "model router not available"})),
+        )
+    })?;
+
+    match router.lock() {
+        Ok(mut r) => match r.set_pref(tenant, capability, model_id) {
+            Ok(()) => Ok(Json(serde_json::json!({
+                "ok": true,
+                "tenant": tenant,
+                "capability": capability,
+                "model_id": model_id
+            }))),
+            Err(e) => Err((
+                axum::http::StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": format!("{}", e)})),
+            )),
+        },
+        Err(_) => Err((
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": "lock failed"})),
+        )),
+    }
 }
 
 // ── Request types (OpenAI format) ──
