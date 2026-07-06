@@ -439,6 +439,77 @@ for development — it is completely optional.
 
 ---
 
+## Kubernetes Deployment (Phase 11)
+
+ohAgent ships with production-ready K8s manifests using Kustomize.
+
+### Quick Deploy
+
+```bash
+# Dev (reduced resources, local-path storage)
+kubectl apply -k k8s/overlays/dev
+
+# Production (full resources, Scaleway SSD)
+kubectl apply -k k8s/overlays/prod
+```
+
+### Architecture
+
+```text
+┌─────────────────────────────────────────┐
+│ Namespace: ohagent                        │
+│                                           │
+│  ┌──────────────────┐  ┌──────────────┐  │
+│  │ ohagent-daemon   │  │ Vault Agent  │  │
+│  │ (Deployment 1)   │  │ (sidecar)    │  │
+│  │ port 9090        │  │ inject token │  │
+│  └────────┬─────────┘  └──────────────┘  │
+│           │                                │
+│  ┌────────▼─────────┐                     │
+│  │ Service: ohagent │  ClusterIP :9090    │
+│  └────────┬─────────┘                     │
+│           │                                │
+│  ┌────────▼─────────┐                     │
+│  │   HPA            │  1–5 replicas       │
+│  └──────────────────┘                     │
+│                                           │
+│  ┌──────────────────┐                     │
+│  │ PVC: ohagent-data│  10Gi RWO           │
+│  └──────────────────┘                     │
+└───────────────────────────────────────────┘
+```
+
+### Resources
+
+| Resource | Requests | Limits | Notes |
+|---|---|---|---|
+| CPU | 250m | 2000m | Burstable for LLM calls |
+| Memory | 256Mi | 2Gi | SQLite cache + model data |
+| Storage | 10Gi | — | SQLite DBs, message logs |
+
+### Secrets
+
+All secrets are stored in Vault, never in K8s Secrets:
+- `VAULT_TOKEN` is injected via Vault Agent sidecar
+- Provider API keys resolved from `secret/ohagent/providers/*`
+- Bot tokens from `secret/ohagent/telegram/bot-token`
+
+### Health Probes
+
+- **Liveness:** HTTP `GET /health` every 30s (15s initial delay)
+- **Readiness:** HTTP `GET /health` every 10s (5s initial delay)
+- **Startup:** HTTP `GET /health` every 5s, 30 retries before kill
+
+### Autoscaling
+
+HPA scales based on CPU (target 70%) and memory (target 80%):
+- Min: 1 replica
+- Max: 5 replicas
+- Scale-down: 50% per 60s after 5min stabilization
+- Scale-up: 100% per 30s after 1min stabilization
+
+---
+
 ## Usage Tracking & Message Logging (Phase 7)
 
 ohAgent tracks all LLM usage and can log all prompts/responses for audit.
