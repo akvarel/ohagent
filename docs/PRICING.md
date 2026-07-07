@@ -19,6 +19,9 @@ Prices in EUR unless marked with $ (USD). SiliconFlow added July 7, 2026.
 | 🥈 | **DeepSeek** | deepseek-v4-flash | 0.14 | 0.28 | Direct API, MIT license |
 | 🥈 | **Scaleway** | mistral-small-3.2 | 0.15 | 0.35 | General chat, GDPR-safe |
 | 🥈 | **Scaleway** | qwen3-coder-30b | 0.20 | 0.80 | Code, EU-hosted |
+| 🥈 | **Z.ai (Zhipu)** | GLM-4.5-Air (106B MoE) | **€0.02** | **€0.11** | Cheapest direct API, hybrid |
+| 🥈 | **Z.ai (Zhipu)** | GLM-4.7 (355B MoE) | **€0.05** | **€0.29** | Agent + reasoning |
+| 🥈 | **Z.ai (Zhipu)** | GLM-5.2 (744B MoE) | **€0.17** | **€0.53** | 1M ctx, #1 agentic |
 | 🥈 | **SiliconFlow** | Ling-flash-2.0 | **$0.14** | **$0.57** | Lightweight MoE, 100B |
 | | **SiliconFlow** | Nex-N2-Pro | **$0.50** | **$2.50** | Agentic coding SOTA |
 | | **SiliconFlow** | Qwen3.5-397B-A17B | **$0.39** | **$2.34** | Heavy reasoning MoE |

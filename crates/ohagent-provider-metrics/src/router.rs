@@ -96,7 +96,8 @@ impl DynamicRouter {
 
             let quality_base = match record.provider.as_str() {
                 "anthropic" => 0.95, "openai" => 0.90, "deepseek" => 0.85,
-                "siliconflow" => 0.75, "scaleway" => 0.80, _ => 0.70,
+                "zai" => 0.85,       "siliconflow" => 0.75, "scaleway" => 0.80,
+                _ => 0.70,
             };
             let cap_match = task_capabilities.len() as f64 / record.capabilities.len().max(1) as f64;
             let quality_score = quality_base * (0.5 + 0.5 * cap_match);
@@ -154,6 +155,9 @@ fn estimated_speed(provider: &str, model_id: &str) -> (f64, u64) {
         ("siliconflow", m) if m.contains("8B") || m.contains("9B") => (120.0, 800),
         ("siliconflow", m) if m.contains("Hy3") => (90.0, 1200),
         ("siliconflow", m) if m.contains("GLM") => (58.0, 2000),
+        ("zai", m) if m.contains("glm-5.2") => (58.0, 2000),           // Direct API — similar perf
+        ("zai", m) if m.contains("glm-4.5") => (80.0, 1200),           // Smaller model = faster
+        ("zai", _) => (50.0, 2500),
         ("siliconflow", _) => (60.0, 1500),
         ("scaleway", _) => (50.0, 2000),
         ("openai", m) if m.contains("mini") => (54.0, 1939),          // Real benchmark Jul 7

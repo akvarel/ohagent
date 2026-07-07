@@ -188,7 +188,8 @@ impl InfraLauncherPlugin {
             .find(|w| w.starts_with("provider="))
             .map(|w| w.trim_start_matches("provider=").to_string())
             .or_else(|| {
-                if text_lower.contains("siliconflow:") || text_lower.contains("sf:") { Some("siliconflow".into()) }
+                if text_lower.contains("zai:") || text_lower.contains("zhipu:") { Some("zai".into()) }
+                else if text_lower.contains("siliconflow:") || text_lower.contains("sf:") { Some("siliconflow".into()) }
                 else if text_lower.contains("scaleway:") || text_lower.contains("scw:") { Some("scaleway".into()) }
                 else if text_lower.contains("hetzner:") || text_lower.contains("hz:") { Some("hetzner".into()) }
                 else { None }
@@ -474,7 +475,26 @@ impl InfraLauncherPlugin {
                 }
             }
 
-            _ => format!("[INFRA] Unknown provider: {}. Try: siliconflow, scaleway, scaleway-serverless, hetzner", req.provider),
+            "zai" | "zhipu" => {
+                format!(r#"[INFRA] Z.ai / Zhipu API
+  Provider: Zhipu AI (open.bigmodel.cn)
+  Models: GLM-5.2 (1M ctx, #1 agentic), GLM-5.1, GLM-5, GLM-4.7, GLM-4.5-Air
+  Pricing: ¥0.50-10.00/M tok (CNY) — extremely cheap direct API
+  Also available on SiliconFlow (USD pricing, easier for non-China access)
+
+  Direct API:
+    curl https://open.bigmodel.cn/api/paas/v4/chat/completions \
+      -H "Authorization: Bearer $ZAI_API_KEY" \
+      -d '{{"model":"glm-5.2","messages":[{{"role":"user","content":"..."}}]}}'
+
+  Via SiliconFlow (recommended for Western users):
+    /deploy sf:GLM-5.2
+
+  Requires: ZAI_API_KEY env var (register at open.bigmodel.cn)"#,
+                )
+            }
+
+            _ => format!("[INFRA] Unknown provider: {}. Try: zai, siliconflow, scaleway, scaleway-serverless, hetzner", req.provider),
         }
     }
 }

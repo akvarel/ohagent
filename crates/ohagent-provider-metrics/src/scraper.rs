@@ -48,6 +48,15 @@ impl PriceScraper {
             price("scaleway", "pixtral-12b-2409",                    0.20,  0.20, "EUR", None, 131_000, 131_000, vec!["chat","vision"]),
             price("scaleway", "gemma-3-27b-it",                      0.25,  0.50, "EUR", None, 131_000, 131_000, vec!["chat","vision"]),
 
+            // Z.ai / Zhipu (CNY, converted at ~0.13 EUR)
+            // GLM-5.2: 1M context, #1 agentic coding (June 2026 benchmarks)
+            // Available directly at open.bigmodel.cn AND via SiliconFlow
+            price("zai", "glm-5.2",      0.17, 0.53, "EUR", Some(0.034),1_049_000,262_000,vec!["chat","code"]),
+            price("zai", "glm-5.1",      0.15, 0.49, "EUR", Some(0.078),  205_000,131_000,vec!["chat","code"]),
+            price("zai", "glm-5",        0.12, 0.33, "EUR", Some(0.026),  205_000,131_000,vec!["chat","code"]),
+            price("zai", "glm-4.7",      0.05, 0.29, "EUR", None,           205_000,205_000,vec!["chat","code"]),
+            price("zai", "glm-4.5-air",  0.02, 0.11, "EUR", None,           131_000,131_000,vec!["chat"]),
+
             // DeepSeek (EUR) — from api-docs.deepseek.com Jul 2026
             price("deepseek", "deepseek-v4-flash",   0.14,  0.28, "EUR", Some(0.028), 1_049_000, 393_000, vec!["chat"]),
             price("deepseek", "deepseek-v4-pro",     1.60,  3.14, "EUR", Some(0.135), 1_049_000, 393_000, vec!["chat","code"]),
