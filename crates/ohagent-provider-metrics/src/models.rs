@@ -1,7 +1,38 @@
-//! Data models: price records, speed benchmarks, routing decisions.
+//! Data models: price records, speed benchmarks, routing decisions, provider discovery.
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+
+
+// ── Pricing ──
+
+/// How the provider charges for this model.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PricingModel {
+    /// Per 1M tokens (chat, code models) — input + output prices
+    PerMillionTokens,
+    /// Per image generated (FLUX, Qwen-Image)
+    PerImage,
+    /// Per video generated (Wan2.2)
+    PerVideo,
+    /// Per audio minute (Whisper, TTS)
+    PerAudioMinute,
+    /// Per 1M UTF-8 bytes (IndexTTS, Fish-Speech)
+    PerMillionBytes,
+}
+
+impl PricingModel {
+    pub fn unit_label(&self) -> &'static str {
+        match self {
+            PricingModel::PerMillionTokens => "M tokens",
+            PricingModel::PerImage => "image",
+            PricingModel::PerVideo => "video",
+            PricingModel::PerAudioMinute => "audio minute",
+            PricingModel::PerMillionBytes => "M UTF-8 bytes",
+        }
+    }
+}
 
 /// A price record scraped from a provider.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -9,44 +40,60 @@ pub struct PriceRecord {
     pub id: String,
     pub provider: String,
     pub model_id: String,
-    pub input_price_per_mtok: f64,
-    pub output_price_per_mtok: f64,
-    pub currency: String,         // "USD", "EUR", "CNY"
-    pub cached_input_price: Option<f64>, // for providers with cache discounts
+    pub pricing_model: PricingModel,
+    /// Price per unit: per 1M tokens / per image / per video / per audio minute
+    pub input_price_per_unit: f64,
+    pub output_price_per_unit: f64,
+    /// Cached input price (prompt caching discount)
+    pub cached_input_price_per_unit: Option<f64>,
+    pub currency: String,
     pub context_window: Option<u64>,
     pub max_output_tokens: Option<u64>,
-    pub capabilities: Vec<String>, // ["chat", "code", "vision", "audio"]
+    pub capabilities: Vec<String>,
     pub scraped_at: DateTime<Utc>,
     pub source_url: String,
 }
 
-/// A speed benchmark result.
+impl PriceRecord {
+    /// Estimated cost in EUR for an API call.
+    pub fn estimated_cost_eur(&self, prompt_tokens: u64, completion_tokens: u64) -> f64 {
+        let rate = match self.currency.as_str() {
+            "USD" => 0.92, "CNY" => 0.13, _ => 1.0,
+        };
+        match self.pricing_model {
+            PricingModel::PerMillionTokens => {
+                let input_cost = (prompt_tokens as f64 / 1_000_000.0) * self.input_price_per_unit;
+                let output_cost = (completion_tokens as f64 / 1_000_000.0) * self.output_price_per_unit;
+                (input_cost + output_cost) * rate
+            }
+            // Non-token models: return input_price as flat per-unit cost
+            PricingModel::PerImage | PricingModel::PerVideo | PricingModel::PerAudioMinute | PricingModel::PerMillionBytes => {
+                self.input_price_per_unit * rate
+            }
+        }
+    }
+}
+
+// ── Speed ──
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpeedRecord {
     pub id: String,
     pub provider: String,
     pub model_id: String,
-    /// Median time to first token (ms)
     pub ttf_ms: u64,
-    /// Median total latency (ms) for a ~500 token completion
     pub total_latency_ms: u64,
-    /// Tokens per second (output)
     pub tokens_per_second: f64,
-    /// P95 latency (ms)
     pub p95_latency_ms: u64,
-    /// Prompt tokens used in benchmark
     pub prompt_tokens: u32,
-    /// Completion tokens received
     pub completion_tokens: u32,
-    /// Number of samples
     pub samples: u32,
-    /// When the benchmark ran
     pub measured_at: DateTime<Utc>,
-    /// Error message if benchmark failed
     pub error: Option<String>,
 }
 
-/// A routing decision: which provider+model to use for a task.
+// ── Routing ──
+
 #[derive(Debug, Clone, Serialize)]
 pub struct RoutingDecision {
     pub provider: String,
@@ -67,17 +114,10 @@ pub struct RoutingAlternative {
     pub tps: f64,
 }
 
-/// Quality tiers for routing preferences.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum QualityTier {
-    Budget,      // Cheapest, decent quality
-    Balanced,    // Good balance (default)
-    Performance, // Best speed
-    Quality,     // Best output quality
-}
+pub enum QualityTier { Budget, Balanced, Performance, Quality }
 
-/// Router configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RouterConfig {
     pub quality_tier: QualityTier,
@@ -88,35 +128,32 @@ pub struct RouterConfig {
 
 impl Default for RouterConfig {
     fn default() -> Self {
-        Self {
-            quality_tier: QualityTier::Balanced,
-            max_budget_eur_per_1k: None,
-            prefer_eu: false,
-            prefer_open_source: false,
-        }
+        Self { quality_tier: QualityTier::Balanced, max_budget_eur_per_1k: None, prefer_eu: false, prefer_open_source: false }
     }
 }
 
-/// Provider info with known base URLs and pricing pages.
+// ── Provider Discovery ──
+
 #[derive(Debug, Clone)]
 pub struct ProviderInfo {
     pub name: String,
+    /// Auto-discovered API base URL (set to None for manual/project-based URLs)
     pub api_base_url: Option<String>,
     pub pricing_url: Option<String>,
     pub currency: String,
     pub is_eu: bool,
 }
 
-/// Known providers with their metadata.
+/// Known providers with metadata — validated July 2026.
 pub fn known_providers() -> Vec<ProviderInfo> {
     vec![
-        ProviderInfo { name: "siliconflow".into(),    api_base_url: Some("https://api.siliconflow.com/v1".into()),   pricing_url: Some("https://siliconflow.com/models".into()),             currency: "USD".into(), is_eu: false },
-        ProviderInfo { name: "zai".into(),            api_base_url: Some("https://open.bigmodel.cn/api/paas/v4".into()), pricing_url: Some("https://open.bigmodel.cn/pricing".into()), currency: "CNY".into(), is_eu: false },
-        ProviderInfo { name: "scaleway".into(),       api_base_url: None, /* https://api.scaleway.ai/<project-id>/v1 */ pricing_url: Some("https://www.scaleway.com/en/pricing/model-as-a-service/".into()), currency: "EUR".into(), is_eu: true },
-        ProviderInfo { name: "deepseek".into(),       api_base_url: Some("https://api.deepseek.com/v1".into()),      pricing_url: Some("https://api-docs.deepseek.com/quick_start/pricing".into()), currency: "EUR".into(), is_eu: false },
-        ProviderInfo { name: "openai".into(),         api_base_url: Some("https://api.openai.com/v1".into()),   pricing_url: Some("https://openai.com/api/pricing/".into()),          currency: "USD".into(), is_eu: false },
-        ProviderInfo { name: "anthropic".into(),      api_base_url: Some("https://api.anthropic.com/v1".into()), pricing_url: Some("https://www.anthropic.com/pricing".into()),         currency: "USD".into(), is_eu: false },
-        ProviderInfo { name: "hetzner".into(),        api_base_url: None,                                            pricing_url: Some("https://www.hetzner.com/cloud".into()),           currency: "EUR".into(), is_eu: true },
-        ProviderInfo { name: "groq".into(),           api_base_url: Some("https://api.groq.com/openai/v1".into()), pricing_url: Some("https://groq.com/pricing/".into()),                currency: "USD".into(), is_eu: false },
+        ProviderInfo { name: "siliconflow".into(), api_base_url: Some("https://api.siliconflow.com/v1".into()), pricing_url: Some("https://siliconflow.com/models".into()), currency: "USD".into(), is_eu: false },
+        ProviderInfo { name: "scaleway".into(),    api_base_url: None, /* per-project: https://api.scaleway.ai/<id>/v1 */ pricing_url: Some("https://www.scaleway.com/en/pricing/model-as-a-service/".into()), currency: "EUR".into(), is_eu: true },
+        ProviderInfo { name: "deepseek".into(),    api_base_url: Some("https://api.deepseek.com/v1".into()), pricing_url: Some("https://api-docs.deepseek.com/quick_start/pricing".into()), currency: "EUR".into(), is_eu: false },
+        ProviderInfo { name: "zai".into(),         api_base_url: Some("https://open.bigmodel.cn/api/paas/v4".into()), pricing_url: Some("https://open.bigmodel.cn/pricing".into()), currency: "CNY".into(), is_eu: false },
+        ProviderInfo { name: "openai".into(),      api_base_url: Some("https://api.openai.com/v1".into()), pricing_url: Some("https://openai.com/api/pricing/".into()), currency: "USD".into(), is_eu: false },
+        ProviderInfo { name: "anthropic".into(),   api_base_url: Some("https://api.anthropic.com/v1".into()), pricing_url: Some("https://www.anthropic.com/pricing".into()), currency: "USD".into(), is_eu: false },
+        ProviderInfo { name: "groq".into(),        api_base_url: Some("https://api.groq.com/openai/v1".into()), pricing_url: Some("https://groq.com/pricing/".into()), currency: "USD".into(), is_eu: false },
+        ProviderInfo { name: "hetzner".into(),     api_base_url: None, /* GPU only, not a chat API */ pricing_url: Some("https://www.hetzner.com/cloud".into()), currency: "EUR".into(), is_eu: true },
     ]
 }

@@ -37,9 +37,11 @@ impl DynamicRouter {
     ) -> Result<RoutingDecision, String> {
         let prices = self.store.get_all_latest_prices()?;
 
-        // Filter: must have all required capabilities
+        // Filter: must have all required capabilities AND be token-based (for now)
         let candidates: Vec<&PriceRecord> = prices.iter().filter(|p| {
             if config.prefer_eu && p.provider != "scaleway" { return false; }
+            // Only route token-based models — images/video/audio are special-purpose
+            if p.pricing_model != crate::models::PricingModel::PerMillionTokens && p.pricing_model != crate::models::PricingModel::PerMillionBytes { return false; }
             task_capabilities.iter().all(|cap| p.capabilities.iter().any(|c| c == *cap))
         }).collect();
 
@@ -66,7 +68,7 @@ impl DynamicRouter {
         }
 
         let max_cost: f64 = candidates.iter()
-            .map(|p| to_eur(&p.currency, p.input_price_per_mtok * estimated_prompt_tokens as f64 / 1_000_000.0 + p.output_price_per_mtok * estimated_output_tokens as f64 / 1_000_000.0))
+            .map(|p| p.estimated_cost_eur(estimated_prompt_tokens, estimated_output_tokens))
             .fold(0.0, f64::max).max(0.001);
 
         let max_tps: f64 = 200.0;
@@ -74,10 +76,7 @@ impl DynamicRouter {
         let mut scored: Vec<CandidateScore> = Vec::new();
 
         for record in &candidates {
-            let cost = to_eur(&record.currency,
-                record.input_price_per_mtok * estimated_prompt_tokens as f64 / 1_000_000.0
-                + record.output_price_per_mtok * estimated_output_tokens as f64 / 1_000_000.0
-            );
+            let cost = record.estimated_cost_eur(estimated_prompt_tokens, estimated_output_tokens);
 
             if let Some(max_budget) = config.max_budget_eur_per_1k {
                 let cost_per_1k = cost * 1000.0 / (estimated_prompt_tokens + estimated_output_tokens) as f64;
