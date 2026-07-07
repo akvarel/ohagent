@@ -1,8 +1,9 @@
-"""Full end-to-end receipt pipeline: PreClassify → BBox → Crop → OCR → Arbiter.
+"""Full end-to-end receipt pipeline: PreClassify → BBox → Crop → Transcribe → Parse → Arbiter.
 
-Single script. One photo in, validated JSONs out.
-Uses: Scaleway Mistral-small (preclassify), GLM-4.6V (bbox), Mistral-small (OCR),
-      ReceiptArbiter (validation).
+Mistral-small CANNOT read Latvian receipt text (proven: 100% hallucination on 4 receipts).
+GLM-4.6V-flashx transcription is actually CHEAPER (€0.0002 vs €0.0003) AND accurate.
+
+Pipeline: Mistral-small (preclassify) → GLM-4.6V (bbox) → GLM-4.6V-flashx (transcribe) → regex (parse) → arbiter
 """
 
 import base64, json, time, urllib.request, os, sys, re
@@ -25,6 +26,128 @@ SCW_PROJECT = keys.get("SCW_PROJECT_ID", "65e0d091-bc74-485c-8e03-1471b62e110b")
 SCW_BASE = f"https://api.scaleway.ai/{SCW_PROJECT}/v1"
 ZAI_KEY = keys["ZAI_API_KEY"]
 ZAI_BASE = "https://api.z.ai/api/paas/v4"
+
+# ─── Helper functions (must be defined before use) ──
+
+def _parse_transcription(text: str) -> dict:
+    """Parse transcribed receipt text with regex. Deterministic, no LLM."""
+    lines = text.split('\n')
+    result = {
+        "store_name": "", "address": "", "reg_nr": "", "vat_nr": "",
+        "date": "", "time": "", "receipt_number": "",
+        "items": [],
+        "subtotal": 0.0, "vat_amount": 0.0, "vat_percent": None,
+        "total": 0.0, "currency": "EUR",
+        "payment_method": "", "payment_amount": 0.0, "change": 0.0,
+        "bank_name": "", "bank_iban": "", "bank_swift": "",
+    }
+
+    if not text or len(text) < 10:
+        return result
+
+    # ── Store name: first meaningful line ──
+    for line in lines:
+        line = line.strip()
+        if not line or re.match(r'^\d', line): continue
+        if any(kw in line.lower() for kw in ('kase', 'dok', 's/n', 'fa:', 'ceks', 'kartes')):
+            continue
+        if len(line) > 4:
+            result["store_name"] = line.strip('"').strip()
+            break
+
+    # ── Address ──
+    for line in lines:
+        if re.search(r'(iela|gatve|R[īi]ga|J[ūu]rmala|Kuld[īi]ga|Ulbroka|LV-\d{4})', line, re.IGNORECASE):
+            result["address"] = line.strip()
+            break
+
+    # ── Reg nr ──
+    m = re.search(r'(?:LV)?\b(\d{8,11})\b', text)
+    if m:
+        nr = m.group(1)
+        if nr.startswith('4'):
+            result["reg_nr"] = nr
+
+    # ── VAT nr ──
+    m = re.search(r'(?:PVN|LV)\s*(?:LV)?\s*(\d{11})', text, re.IGNORECASE)
+    if m: result["vat_nr"] = f"LV{m.group(1)}"
+
+    # ── Date ──
+    m = re.search(r'(\d{1,2}[./]\d{1,2}[./]\d{2,4})', text)
+    if m: result["date"] = m.group(1)
+    if not result["date"]:
+        m = re.search(r'(\d{4}[./-]\d{2}[./-]\d{2})', text)
+        if m: result["date"] = m.group(1)
+
+    # ── Time ──
+    m = re.search(r'(\d{1,2}:\d{2}(?::\d{2})?)', text)
+    if m: result["time"] = m.group(1)
+
+    # ── Receipt number ──
+    for pat in [r'(?:Nr\.|#)\s*(\d[\d/-]+)', r'S/N:\s*(\S+)', r'Izdruka\s+Nr\.\s*(\d+)']:
+        m = re.search(pat, text)
+        if m:
+            result["receipt_number"] = m.group(1)
+            break
+
+    # ── Items ──
+    for line in lines:
+        line = line.strip()
+        if not line or len(line) < 8: continue
+        if any(kw in line.lower() for kw in ('summa','kopa','pvn','maksa','atlik','paid','ceks',
+                'darīj','paldies','s/n','kase','kartes','dok','nr','fa:','sanie','izdot')):
+            continue
+
+        # "Name N x P T" or "Name N gab x P"
+        m = re.search(r'(.+?)\s+(\d+)\s*(?:gab\s*)?[xX×]\s*(\d+(?:[.,]\d+)?)', line)
+        if m:
+            name = m.group(1).strip()
+            qty = _n(m.group(2))
+            price = _n(m.group(3))
+            result["items"].append({"name": name[:80], "quantity": qty, "unit_price": price, "total_price": price * qty})
+            continue
+
+        # "Name N P,P E" (no x)
+        m = re.search(r'^(.+?)\s+(\d+)\s+(\d{1,3}[.,]\d{2})\s+(\d{1,3}[.,]\d{2})\s*E?\s*$', line)
+        if m:
+            name = m.group(1).strip()
+            qty = _n(m.group(2))
+            unit = _n(m.group(3))
+            total = _n(m.group(4))
+            result["items"].append({"name": name[:80], "quantity": qty, "unit_price": unit, "total_price": total})
+
+    # ── Totals ──
+    m = re.search(r'(?:Kopsumm?[aā]|KOP[ĀA]|Summa)\s*(?:EUR)?\s*(\d{1,3}[.,]\d{2})', text, re.IGNORECASE)
+    if m: result["total"] = _n(m.group(1))
+
+    # Subtotal / Neto
+    m = re.search(r'(?:Neto|Bez\s*PVN)\s+(\d{1,3}[.,]\d{2})', text, re.IGNORECASE)
+    if m: result["subtotal"] = _n(m.group(1))
+
+    # VAT
+    m = re.search(r'PVN\S*\s+(?:-?\w\s+)?(\d+)[%]?\s+(\d{1,3}[.,]\d{2})', text, re.IGNORECASE)
+    if m:
+        result["vat_percent"] = _n(m.group(1))
+        result["vat_amount"] = _n(m.group(2))
+
+    # Payment
+    m = re.search(r'(?:Samaks[āa]ts?|SK\s*(?:\.|NAUDA))\s*(?:EUR)?\s*(\d{1,3}[.,]\d{2})', text, re.IGNORECASE)
+    if m: result["payment_amount"] = _n(m.group(1))
+
+    # Change
+    m = re.search(r'(?:Izdots|ATLIKUMS)\s*(?:EUR)?\s*(\d{1,3}[.,]\d{2})', text, re.IGNORECASE)
+    if m: result["change"] = _n(m.group(1))
+
+    # Cash
+    if re.search(r'(?:SK\s*(?:\.|NAUDA)|skaidr[āa])', text, re.IGNORECASE):
+        result["payment_method"] = "Cash"
+
+    return result
+
+
+def _n(s: str) -> float:
+    try: return float(s.replace(",", "."))
+    except: return 0.0
 
 # ─── Image ──────────────────────────────────────
 img = Image.open(IMG_PATH)
@@ -164,59 +287,52 @@ for r in receipts:
     print(f"   ✅ {fname.name}: {cropped.size[0]}×{cropped.size[1]}, rotate={angle}°")
 
 # ═════════════════════════════════════════════════
-# STEP 3: OCR each receipt — Mistral-small
+# STEP 3: Transcribe each receipt — GLM-4.6V-flashx
 # ═════════════════════════════════════════════════
-print(f"\n🔍 STEP 3: OCR ({len(cropped_files)} receipts)")
+print(f"\n📝 STEP 3: Transcribe ({len(cropped_files)} receipts) — GLM-4.6V-flashx")
 
-OCR_PROMPT = "Extract ALL visible text from this receipt. Return JSON: store_name, address, reg_nr, vat_nr, phone, date, time, receipt_number, items[{name, quantity, unit_price, total_price}], subtotal, vat_amount, vat_percent, total, currency, payment_method, payment_amount, change, bank_name, bank_iban, bank_swift, raw_text_dump. Keep raw_text_dump SHORT — only the printed text, one line per field."
+TRANSCRIBE_PROMPT = "Copy ALL text visible on this receipt EXACTLY as printed. Line by line. Do not interpret. Do not translate. Just transcribe every character. Return ONLY the transcribed text, nothing else."
 
 all_ocr = []
 for fpath in cropped_files:
     b64_local = base64.b64encode(Path(fpath).read_bytes()).decode()
 
     body = json.dumps({
-        "model": "mistral-small-3.2-24b-instruct-2506",
-        "messages": [
-            {"role": "system", "content": OCR_PROMPT},
-            {"role": "user", "content": [
-                {"type": "text", "text": "Extract all data from this receipt."},
-                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_local}"}},
-            ]},
-        ],
-        "max_tokens": 8192, "temperature": 0,
-        "response_format": {"type": "json_object"},
+        "model": "glm-4.6v-flashx",
+        "messages": [{"role": "user", "content": [
+            {"type": "text", "text": TRANSCRIBE_PROMPT},
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64_local}"}},
+        ]}],
+        "max_tokens": 2000, "temperature": 0,
+        "thinking": {"type": "disabled"},
     }).encode()
 
     t0 = time.time()
     try:
-        req = urllib.request.Request(f"{SCW_BASE}/chat/completions", body,
-            {"Authorization": f"Bearer {SCW_KEY}", "Content-Type": "application/json"})
+        req = urllib.request.Request(f"{ZAI_BASE}/chat/completions", body,
+            {"Authorization": f"Bearer {ZAI_KEY}", "Content-Type": "application/json"})
         resp = urllib.request.urlopen(req, timeout=180)
         data = json.loads(resp.read())
         elapsed = time.time() - t0
         usage = data.get("usage", {})
         pt_i, ct_i = usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0)
-        content_i = data["choices"][0]["message"]["content"] or ""
+        transcription = data["choices"][0]["message"]["content"] or ""
 
-        parsed = None
-        try: parsed = json.loads(content_i)
-        except:
-            m = re.search(r'\{.*\}', content_i, re.DOTALL)
-            if m:
-                try: parsed = json.loads(m.group(0))
-                except: pass
-
-        cost_i = (pt_i/1e6*0.15 + ct_i/1e6*0.35)
+        cost_i = (pt_i/1e6*1.0 + ct_i/1e6*5.0) * 0.13  # CNY→EUR, flashx pricing
         total_cost += cost_i
         total_time += elapsed
+
+        # Parse transcription with regex into structured JSON
+        parsed = _parse_transcription(transcription)
+        parsed["raw_text_dump"] = transcription
 
         result = {"file": fpath.name, "ttf_s": round(elapsed,1), "cost_eur": round(cost_i,6),
                    "prompt_tok": pt_i, "comp_tok": ct_i, "data": parsed}
         all_ocr.append(result)
 
-        store = parsed.get("store_name","?") if parsed else "?"
-        total_val = parsed.get("total","?") if parsed else "?"
-        items_n = len(parsed.get("items",[])) if parsed else 0
+        store = parsed.get("store_name","?")
+        total_val = parsed.get("total","?")
+        items_n = len(parsed.get("items",[]))
         print(f"   ✅ {fpath.name}: {elapsed:.1f}s, {pt_i}+{ct_i} tok, €{cost_i:.4f}, \"{store}\" total=€{total_val}, {items_n} items")
 
     except Exception as e:
