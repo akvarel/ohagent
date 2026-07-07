@@ -291,24 +291,35 @@ def validate_full(model_data: dict, model_name: str = "") -> ArbiterVerdict:
     )
     n_items = len(items)
 
-    # 1. Items sum
+    # 1. Items sum — with auto-correction for VAT allocation lines
     if n_items > 0 and subtotal > 0:
-        diff = abs(item_sum - subtotal)
-        ok = diff <= EPSILON
-        math_checks["items_sum"] = {
-            "ok": ok,
-            "detail": f"Σ items=€{item_sum:.2f} vs subtotal=€{subtotal:.2f} (Δ=€{diff:.2f})"
-        }
-        if not ok:
-            score -= 20
-            issues.append(f"items_sum: €{item_sum:.2f} ≠ subtotal €{subtotal:.2f}")
-            # Try regex items
-            if regex_data.get("items"):
-                rsum = sum(it["total_price"] for it in regex_data["items"])
-                if subtotal > 0 and abs(rsum - subtotal) <= EPSILON:
-                    model_data["items"] = regex_data["items"]
-                    fixes.append(f"items: replaced model items with regex (Σ=€{rsum:.2f})")
-                    score += 15
+        # Detect "Preces attiecinata" pattern — these are VAT allocation lines, not real items
+        allocation_items = [it for it in items if "attiecin" in str(it.get("name", "")).lower()]
+
+        if allocation_items and len(allocation_items) == n_items:
+            # All items are VAT allocation — sum of their prices != subtotal by design
+            # The real items are not on this receipt; just accept the totals as-is
+            math_checks["items_sum"] = {
+                "ok": True,
+                "detail": f"VAT allocation lines (not real items): Σ=€{item_sum:.2f}, subtotal=€{subtotal:.2f}"
+            }
+        else:
+            diff = abs(item_sum - subtotal)
+            ok = diff <= EPSILON
+            math_checks["items_sum"] = {
+                "ok": ok,
+                "detail": f"Σ items=€{item_sum:.2f} vs subtotal=€{subtotal:.2f} (Δ=€{diff:.2f})"
+            }
+            if not ok:
+                score -= 20
+                issues.append(f"items_sum: €{item_sum:.2f} ≠ subtotal €{subtotal:.2f}")
+                # Try regex items
+                if regex_data.get("items"):
+                    rsum = sum(it["total_price"] for it in regex_data["items"])
+                    if subtotal > 0 and abs(rsum - subtotal) <= EPSILON:
+                        model_data["items"] = regex_data["items"]
+                        fixes.append(f"items: replaced model items with regex (Σ=€{rsum:.2f})")
+                        score += 15
 
     # 2. VAT
     if vat_pct and vat_pct > 0 and subtotal > 0 and vat_amount > 0:
@@ -459,16 +470,16 @@ def re_extract(cropped_img_path: str) -> Optional[dict]:
     if not cropped_img_path or not Path(cropped_img_path).exists():
         return None
     b64 = base64.b64encode(Path(cropped_img_path).read_bytes()).decode()
-    # Pixtral only — GPT-4o-mini hallucinated on all 4 receipts.
-    # "SIA Tirdzniecības nams Kivis" for Kurs, "Rimi" for Pigu Latvia.
-    # Never use GPT-4o-mini for structured receipt OCR.
-    for model, provider, base, key in [
-        ("pixtral-12b-2409", "scaleway", SCW_BASE, SCW_KEY),
+    # Fallback: Mistral-small with higher max_tokens.
+    # Pixtral returns HTTP 400 on these images.
+    # GPT-4o-mini hallucinates (see MODEL-GUIDE.md).
+    for model, provider, base, key, max_tok in [
+        ("mistral-small-3.2-24b-instruct-2506", "scaleway", SCW_BASE, SCW_KEY, 8192),
     ]:
         if not key: continue
         try:
             body = json.dumps({
-                "model": model, "max_tokens": 8192, "temperature": 0,
+                "model": model, "max_tokens": max_tok, "temperature": 0,
                 "response_format": {"type": "json_object"},
                 "messages": [{"role": "system", "content":
                     "Extract ALL visible text from this receipt. Return JSON: store_name, address, "
