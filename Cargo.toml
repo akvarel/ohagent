@@ -14,6 +14,8 @@ members = [
     "crates/ohagent-pii-redactor",
     "crates/ohagent-infra-launcher",
     "crates/ohagent-provider-metrics",
+    "crates/ohagent-aggregator-core",
+    "crates/ohagent-aggregator-plugin",
 ]
 
 [workspace.package]

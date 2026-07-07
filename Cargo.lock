@@ -4382,6 +4382,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "ohagent-aggregator-core"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "hex",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "thiserror 2.0.18",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "ohagent-aggregator-plugin"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "hmac 0.12.1",
+ "ohagent-aggregator-core",
+ "ohagent-plugins",
+ "serde_json",
+ "sha2 0.10.9",
+ "shellexpand",
+ "tracing",
+]
+
+[[package]]
 name = "ohagent-core"
 version = "0.1.0"
 dependencies = [

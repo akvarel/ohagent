@@ -1,0 +1,19 @@
+[package]
+name = "ohagent-aggregator-plugin"
+version = "0.1.0"
+edition = "2021"
+license = "Proprietary"
+description = "ohAggregator Plugin — multi-provider API aggregation with billing (closed source)"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+ohagent-plugins = { path = "../ohagent-plugins" }
+ohagent-aggregator-core = { path = "../ohagent-aggregator-core" }
+serde_json = "1"
+tracing = "0.1"
+base64 = "0.22"
+hmac = "0.12"
+sha2 = "0.10"
+shellexpand = "3"
