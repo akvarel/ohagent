@@ -12,6 +12,7 @@ members = [
     "crates/ohagent-desktop-mcp",
     "crates/ohagent-plugins",
     "crates/ohagent-pii-redactor",
+    "crates/ohagent-infra-launcher",
 ]
 
 [workspace.package]

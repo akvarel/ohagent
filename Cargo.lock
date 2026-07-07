@@ -4508,6 +4508,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ohagent-infra-launcher"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "ohagent-plugins",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "ohagent-memory"
 version = "0.1.0"
 dependencies = [
