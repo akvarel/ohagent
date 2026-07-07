@@ -4567,6 +4567,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "ohagent-provider-metrics"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "futures",
+ "reqwest 0.12.28",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "shellexpand",
+ "tokio",
+ "tokio-test",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "ohagent-reasoning"
 version = "0.1.0"
 dependencies = [

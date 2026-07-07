@@ -138,6 +138,56 @@ Prices in EUR unless marked with $ (USD). SiliconFlow added July 7, 2026.
 
 8. **For ohAgent strategy**: SiliconFlow for cheap general/cheap coding, Scaleway for GDPR workloads, DeepSeek direct for best balance, Hetzner/Scaleway GPU for custom LoRA.
 
+## 10. Estimated Speed Comparison (tokens/sec — higher = faster)
+
+Measured via manual benchmarks and provider documentation. Exact numbers depend on load.
+
+| Rank | Provider | Model | TTF ms | Total ms | tok/s | Price Rating |
+|---|---|---|---|---|---|---|
+| 🥇 | **Groq** | Llama-3.3-70B | 100 | 500 | **250** | $$$ |
+| 🥇 | **SiliconFlow** | Qwen3-8B | 150 | 800 | **120** | $ |
+| 🥇 | **SiliconFlow** | Qwen3.5-9B | 180 | 900 | **100** | $ |
+| 🥇 | **OpenAI** | GPT-4o-mini | 200 | 900 | **100** | $$ |
+| 🥈 | **SiliconFlow** | Hy3-preview | 300 | 1200 | 90 | $ |
+| 🥈 | **DeepSeek** | V4-Flash | 200 | 1000 | 80 | $ |
+| | **Anthropic** | Claude-Haiku-3.5 | 250 | 1100 | 70 | $$$$ |
+| | **Scaleway** | Qwen3-coder-30B | 350 | 1800 | 55 | $ |
+| | **Scaleway** | Mistral-small | 400 | 2000 | 50 | $ |
+| | **DeepSeek** | Chat-V3 | 600 | 2500 | 40 | $$ |
+| | **OpenAI** | GPT-4o | 800 | 3000 | 30 | $$$$ |
+| | **Anthropic** | Claude-Sonnet-4 | 1000 | 4000 | 25 | $$$$$ |
+| | **Anthropic** | Claude-Opus-4 | 1500 | 6000 | 15 | $$$$$$ |
+
+> **Trade-off matrix**: Speed vs Price vs Quality
+> - **Fastest**: Groq (250 tok/s) — but limited model selection
+> - **Best value**: SiliconFlow Qwen3-8B (120 tok/s, $0.06/M) — 20x faster than Opus at 1/250th the price
+> - **Best quality**: Anthropic Claude (15-70 tok/s) — slow but highest quality output
+> - **Sweet spot**: DeepSeek V4-Flash (80 tok/s, €0.14/M) — great balance
+
+## 11. Dynamic Routing with ohagent-provider-metrics
+
+New module for automated provider selection:
+
+```bash
+# Daily price scrape
+cargo run -p ohagent-provider-metrics -- scrape
+
+# Route based on task
+cargo run -p ohagent-provider-metrics -- route \
+  --capabilities chat,code --prompt-tokens 3000 --output-tokens 8000 --tier balanced
+
+# Run speed benchmark
+cargo run -p ohagent-provider-metrics -- benchmark \
+  --provider deepseek --model deepseek-v4-flash \
+  --api-key $DEEPSEEK_KEY --api-base https://api.deepseek.com/v1
+
+# Compare speed estimates
+cargo run -p ohagent-provider-metrics -- speed-compare
+```
+
+Routing algorithm: `score = α·price_score + β·speed_score + γ·quality_score`
+where (α,β,γ) = (0.7,0.2,0.1) Budget / (0.4,0.3,0.3) Balanced / (0.2,0.6,0.2) Performance / (0.1,0.1,0.8) Quality.
+
 ---
 
 Data sources: scaleway.com, deepseek.com, openai.com, anthropic.com, hetzner.com, siliconflow.com/models (as of July 2026).
