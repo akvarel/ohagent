@@ -68,23 +68,57 @@ cargo run --release -p ohagent-daemon
 | `--health-port` | `9090` | Health check HTTP port |
 | `--telegram` | `true` | Enable Telegram gateway |
 
-### Environment Variables (via Vault)
+### Environment Variables (via Vault → env → keys.toml)
+
+ohAgent resolves secrets in priority order: **Vault → environment variables → `~/.ohagent/keys.toml`**.
 
 | Variable | Required | Description |
 |---|---|---|
 | `DEEPSEEK_API_KEY` | Yes* | DeepSeek API key |
+| `SF_API_KEY` | Recommended | SiliconFlow API key (200+ models) |
+| `SCW_SECRET_KEY` | Optional | Scaleway Secret Key (Serverless + GPU) |
 | `ANTHROPIC_API_KEY` | Yes* | Anthropic API key (fallback) |
 | `OPENAI_API_KEY` | Yes* | OpenAI API key (fallback) |
+| `GROQ_API_KEY` | Optional | Groq API key (fastest inference) |
 | `TELEGRAM_BOT_TOKEN` | For Telegram | Telegram Bot API token |
+| `HETZNER_API_TOKEN` | For GPU infra | Hetzner Cloud API token |
 | `WA_VERIFY_TOKEN` | For WhatsApp | Meta webhook verify token |
 | `WA_PHONE_ID` | For WhatsApp | WhatsApp Business phone number ID |
 | `WA_ACCESS_TOKEN` | For WhatsApp | Meta permanent access token |
 | `SLACK_BOT_TOKEN` | For Slack | Slack Bot User OAuth Token (xoxb-...) |
 | `SLACK_SIGNING_SECRET` | For Slack | Slack Events API signing secret |
+| `OHAGENT_API_KEY` | Optional | API auth key for dashboard/audit endpoints |
 | `OPENAI_API_BASE` | Optional | OpenAI-compatible base URL for Open WebUI |
 | `OHAGENT_S3_BUCKET` | Optional | S3 bucket for message log archiving |
+| `OHAGENT_CMC_ENABLED` | Optional | Set to `1` to enable CMC reasoning |
 
 \* At least one provider key must be set.
+
+### `~/.ohagent/keys.toml` Example
+
+```toml
+[keys]
+DEEPSEEK_API_KEY = "sk-c02a719..."
+SF_API_KEY = "sk-sf-abc123..."
+SCW_SECRET_KEY = "scw-secret-xyz..."
+ANTHROPIC_API_KEY = "sk-ant-api03-..."
+OPENAI_API_KEY = "sk-proj-..."
+GROQ_API_KEY = "gsk_..."
+HETZNER_API_TOKEN = "..."
+TELEGRAM_BOT_TOKEN = "123456:ABC-DEF"
+```
+
+### Vault Paths
+
+| Secret | Vault Path |
+|---|---|
+| DEEPSEEK_API_KEY | `secret/ohagent/providers/deepseek/api-key` |
+| SF_API_KEY | `secret/ohagent/providers/siliconflow/api-key` |
+| SCW_SECRET_KEY | `secret/ohagent/providers/scaleway/secret-key` |
+| ANTHROPIC_API_KEY | `secret/ohagent/providers/anthropic/api-key` |
+| OPENAI_API_KEY | `secret/ohagent/providers/openai/api-key` |
+| GROQ_API_KEY | `secret/ohagent/providers/groq/api-key` |
+| TELEGRAM_BOT_TOKEN | `secret/ohagent/telegram/bot-token` |
 
 ### Health Check
 
