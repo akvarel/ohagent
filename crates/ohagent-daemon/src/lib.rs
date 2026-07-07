@@ -176,7 +176,7 @@ impl Daemon {
 
         // Resolve provider API keys via Vault → env → keys.toml
         let rt = tokio::runtime::Handle::current();
-        let (deepseek_key, anthropic_key, openai_key, siliconflow_key, zai_key, scaleway_key, groq_key) = rt.block_on(async {
+        let (deepseek_key, anthropic_key, openai_key, siliconflow_key, zai_key, scaleway_key, scaleway_project, groq_key) = rt.block_on(async {
             let dk = resolve_secret(
                 &vault,
                 "providers/deepseek/api-key",
@@ -207,6 +207,12 @@ impl Daemon {
                 "SCW_SECRET_KEY",
                 &keys_config,
             ).await;
+            let swp = resolve_secret(
+                &vault,
+                "providers/scaleway/project-id",
+                "SCW_PROJECT_ID",
+                &keys_config,
+            ).await;
             let gk = resolve_secret(
                 &vault,
                 "providers/groq/api-key",
@@ -219,7 +225,7 @@ impl Daemon {
                 "ZAI_API_KEY",
                 &keys_config,
             ).await;
-            (dk, ak, ok, sfk, zk, swk, gk)
+            (dk, ak, ok, sfk, zk, swk, swp, gk)
         });
 
         // Set resolved keys into env for jcode provider resolution
@@ -240,6 +246,9 @@ impl Daemon {
         }
         if let Some(ref key) = scaleway_key {
             std::env::set_var("SCW_SECRET_KEY", key);
+        }
+        if let Some(ref key) = scaleway_project {
+            std::env::set_var("SCW_PROJECT_ID", key);
         }
         if let Some(ref key) = groq_key {
             std::env::set_var("GROQ_API_KEY", key);

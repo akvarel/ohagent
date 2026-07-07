@@ -112,7 +112,7 @@ pub fn known_providers() -> Vec<ProviderInfo> {
     vec![
         ProviderInfo { name: "siliconflow".into(),    api_base_url: Some("https://api.siliconflow.cn/v1".into()),   pricing_url: Some("https://siliconflow.com/models".into()),             currency: "USD".into(), is_eu: false },
         ProviderInfo { name: "zai".into(),            api_base_url: Some("https://open.bigmodel.cn/api/paas/v4".into()), pricing_url: Some("https://open.bigmodel.cn/pricing".into()), currency: "CNY".into(), is_eu: false },
-        ProviderInfo { name: "scaleway".into(),       api_base_url: Some("https://api.scaleway.com/generative/v1".into()), pricing_url: Some("https://www.scaleway.com/en/pricing/model-as-a-service/".into()), currency: "EUR".into(), is_eu: true },
+        ProviderInfo { name: "scaleway".into(),       api_base_url: None, /* https://api.scaleway.ai/<project-id>/v1 */ pricing_url: Some("https://www.scaleway.com/en/pricing/model-as-a-service/".into()), currency: "EUR".into(), is_eu: true },
         ProviderInfo { name: "deepseek".into(),       api_base_url: Some("https://api.deepseek.com/v1".into()),      pricing_url: Some("https://api-docs.deepseek.com/quick_start/pricing".into()), currency: "EUR".into(), is_eu: false },
         ProviderInfo { name: "openai".into(),         api_base_url: Some("https://api.openai.com/v1".into()),   pricing_url: Some("https://openai.com/api/pricing/".into()),          currency: "USD".into(), is_eu: false },
         ProviderInfo { name: "anthropic".into(),      api_base_url: Some("https://api.anthropic.com/v1".into()), pricing_url: Some("https://www.anthropic.com/pricing".into()),         currency: "USD".into(), is_eu: false },
