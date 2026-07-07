@@ -12,6 +12,7 @@ pub mod discovery;
 pub mod benchmark;
 pub mod router;
 pub mod preclassifier;
+pub mod receipt_validator;
 
 pub use models::*;
 pub use store::MetricsStore;
@@ -20,3 +21,4 @@ pub use discovery::known_prices;
 pub use benchmark::{SpeedBenchmark, BenchmarkConfig};
 pub use router::DynamicRouter;
 pub use preclassifier::{PreClassifier, PreClassifierConfig};
+pub use receipt_validator::{validate_receipt, ReceiptData, ReceiptItem, ReceiptVerdict};
