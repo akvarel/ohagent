@@ -10,6 +10,8 @@ members = [
     "crates/ohagent-swarm",
     "crates/ohagent-reasoning",
     "crates/ohagent-desktop-mcp",
+    "crates/ohagent-plugins",
+    "crates/ohagent-pii-redactor",
 ]
 
 [workspace.package]

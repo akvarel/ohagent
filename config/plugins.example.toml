@@ -1,0 +1,30 @@
+# ohAgent Plugin Pipeline Configuration
+# 
+# Plugins are loaded from ~/.ohagent/plugins/ in the order listed below.
+# Each plugin is a .so file implementing the MessagePlugin trait.
+#
+# Example for PII redaction:
+#   1. Build: cd crates/ohagent-pii-redactor && cargo build --release
+#   2. Copy:  cp target/release/libohagent_pii_redactor.so ~/.ohagent/plugins/
+#   3. Config: set enabled = true below
+#
+# For production deployment:
+#   - Plugins are distributed as pre-built binaries with license keys
+#   - License validation happens inside the plugin's init() method
+#   - All processing is local — no data leaves the machine
+
+[[plugins]]
+file = "libohagent_pii_redactor.so"
+enabled = false  # Set to true to enable PII redaction
+config = {}
+
+# Future plugins (examples):
+# [[plugins]]
+# file = "ohagent-audit-logger.so"
+# enabled = true
+# config = { log_dir = "/var/log/ohagent/audit" }
+#
+# [[plugins]]
+# file = "ohagent-custom-router.so"
+# enabled = true
+# config = { preferred_model = "deepseek-v4-flash" }

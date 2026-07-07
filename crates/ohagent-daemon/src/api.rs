@@ -34,6 +34,7 @@ use ohagent_memory::engine::MemoryEngine;
 use ohagent_skills::evaluator;
 use ohagent_skills::models::SkillStatus;
 use ohagent_skills::registry::SkillRegistry;
+use ohagent_plugins::PluginManager;
 
 use crate::auth::{self, AuthState};
 use crate::metrics::{self, MetricsState};
@@ -52,6 +53,7 @@ pub struct ApiState {
     pub tool_registry: Option<Arc<ohagent_core::tools::ToolRegistry>>,
     pub push: Option<Arc<PushService>>,
     pub scheduler: Option<Arc<ohagent_core::scheduler::Scheduler>>,
+    pub plugin_manager: Option<Arc<PluginManager>>,
     pub start_time: chrono::DateTime<chrono::Utc>,
     /// Path to keys config file
     pub keys_path: String,

@@ -443,6 +443,51 @@ pub async fn chat_completions_handler(
         system
     };
 
+    // ── Plugin pipeline: redact PII/secrets before reaching the LLM ──
+    let (messages, system) = if let Some(ref pm) = state.plugin_manager {
+        let user_msg = req.messages.last()
+            .map(|m| m.content.as_str())
+            .unwrap_or("");
+        let mut plugin_msg = ohagent_plugins::PluginMessage::new(
+            user_msg.to_string(),
+            "default".to_string(),
+            "openai-api".to_string(),
+        );
+        match pm.run_pipeline(plugin_msg) {
+            Ok(Some(processed)) => {
+                if !processed.redaction_log.is_empty() {
+                    tracing::info!(
+                        redactions = processed.redaction_log.len(),
+                        plugin = "openai-api",
+                        "Plugin pipeline redacted sensitive data"
+                    );
+                }
+                if processed.text != user_msg {
+                    // Rebuild messages with redacted text
+                    let mut new_messages = messages;
+                    if let Some(last) = new_messages.last_mut() {
+                        if let Some(jcode_message_types::ContentBlock::Text { ref mut text, .. }) = last.content.first_mut() {
+                            *text = processed.text;
+                        }
+                    }
+                    (new_messages, system)
+                } else {
+                    (messages, system)
+                }
+            }
+            Ok(None) => {
+                tracing::warn!("Plugin pipeline blocked the message");
+                return error_response("Message blocked by security policy");
+            }
+            Err(e) => {
+                tracing::warn!(error = %e, "Plugin pipeline error — passing through");
+                (messages, system)
+            }
+        }
+    } else {
+        (messages, system)
+    };
+
     // ── Context-aware model routing when ModelRouter is available ──
     let routed: Option<ohagent_core::model_router::RoutedModel> = if let Some(ref router) = state.model_router {
         let msg = req.messages.last()

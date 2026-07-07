@@ -19,6 +19,7 @@ toml = "0.8"
 shellexpand = { workspace = true }
 uuid = { workspace = true }
 ohagent-core = { path = "../ohagent-core" }
+ohagent-plugins = { path = "../ohagent-plugins" }
 ohagent-gateway = { path = "../ohagent-gateway" }
 ohagent-memory = { path = "../ohagent-memory" }
 ohagent-skills = { path = "../ohagent-skills" }

@@ -36,6 +36,7 @@ use ohagent_skills::SkillConfig;
 use crate::system_prompt::{PersistentInstructions, SystemPromptBuilder, SkillPrompt};
 use jcode_provider_core::Provider;
 use jcode_base::mcp::SharedMcpPool;
+use ohagent_plugins::PluginManager;
 
 /// Register external provider runtimes (OpenRouter, OpenAI-compatible profiles).
 ///
@@ -119,6 +120,7 @@ struct Daemon {
     /// Kept alive to own MCP server child processes (passed to bridge on startup).
     #[allow(dead_code)]
     mcp_pool: Option<Arc<SharedMcpPool>>,
+    plugin_manager: Arc<PluginManager>,
 }
 
 impl Daemon {
@@ -475,6 +477,26 @@ impl Daemon {
             }
         };
 
+        // Initialize plugin pipeline
+        let plugin_config_path = shellexpand::tilde("~/.ohagent/plugins.toml").to_string();
+        let plugin_config: ohagent_plugins::PluginConfig =
+            match std::fs::read_to_string(&plugin_config_path) {
+                Ok(content) => toml::from_str(&content).unwrap_or_default(),
+                Err(_) => {
+                    tracing::debug!("No plugins.toml found — plugin pipeline disabled");
+                    ohagent_plugins::PluginConfig::default()
+                }
+            };
+        let plugin_dir = shellexpand::tilde("~/.ohagent/plugins").to_string();
+        let mut plugin_manager = PluginManager::new(
+            std::path::PathBuf::from(&plugin_dir),
+            plugin_config,
+        );
+        let loaded = plugin_manager.load_all();
+        if loaded > 0 {
+            info!(loaded, "Plugin pipeline initialized");
+        }
+
         Ok(Self {
             health_port,
             enable_telegram,
@@ -499,6 +521,7 @@ impl Daemon {
             whatsapp,
             slack,
             mcp_pool,
+            plugin_manager: Arc::new(plugin_manager),
         })
     }
 
@@ -519,6 +542,7 @@ impl Daemon {
             tool_registry: self.tool_registry.clone(),
             push: self.push.clone(),
             scheduler: self.scheduler.clone(),
+            plugin_manager: Some(Arc::clone(&self.plugin_manager)),
             start_time: self.start_time,
             keys_path: self.keys_path.clone(),
             vault: Arc::clone(&self.vault),
