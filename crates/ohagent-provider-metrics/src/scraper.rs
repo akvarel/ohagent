@@ -47,6 +47,8 @@ impl PriceScraper {
             price("scaleway", "qwen3.5-397b-a17b",                   0.60,  3.60, "EUR", None, 131_000, 131_000, vec!["chat","vision"]),
             price("scaleway", "pixtral-12b-2409",                    0.20,  0.20, "EUR", None, 131_000, 131_000, vec!["chat","vision"]),
             price("scaleway", "gemma-3-27b-it",                      0.25,  0.50, "EUR", None, 131_000, 131_000, vec!["chat","vision"]),
+            // Audio transcription
+            price("scaleway", "whisper-large-v3",                   0.0,   0.0,  "EUR", None,       0,      0, vec!["audio"]), // €0.003/min, not per-token
 
             // Z.ai / Zhipu (CNY, converted at ~0.13 EUR)
             // GLM-5.2: 1M context, #1 agentic coding (June 2026 benchmarks)
