@@ -81,8 +81,15 @@ def parse_raw_dump_full(raw: str) -> dict:
         if len(line) > 5:
             # Strip trailing address/reg nr-like suffixes
             name = line.strip('"').strip()
-            # Remove address suffix: "Lubanas iela 103, Riga" etc
-            name = re.sub(r'\s+(Lubanas|Jūrmalas|Liel[āa]|Dartijas)\s+.*$', '', name)
+            # Remove address suffix and everything after it
+            name = re.sub(r'\s+(Lubanas|Jūrmalas|Liel[āa]|Dartijas|Gunara|Br[īi]vadzes|Krasta|Krassta)\s+.*$', '', name)
+            # Remove reg nr suffix: "SIA BARIJA Jurmalas..." → stop at first number after store name
+            name = re.sub(r'\s+(?:Reg|PVN|LV|Tel|EKA|DOK|S/N|PwV)\b.*$', '', name, flags=re.IGNORECASE)
+            # Cap at 60 chars — store names don't exceed this
+            if len(name) > 60:
+                # Take just the first ~4 words
+                words = name.split()
+                name = ' '.join(words[:4])
             result["store_name"] = name
             break
 
@@ -285,11 +292,28 @@ def validate_full(model_data: dict, model_name: str = "") -> ArbiterVerdict:
     payment = _to_f(model_data.get("payment_amount"))
     change = _to_f(model_data.get("change"))
 
-    item_sum = sum(
-        _to_f(it.get("quantity", 1)) * _to_f(it.get("total_price") or it.get("unit_price", 0))
-        for it in items if _to_f(it.get("total_price") or it.get("unit_price", 0)) > 0
-    )
+    item_sum = 0.0
     n_items = len(items)
+    if n_items > 0:
+        for it in items:
+            qty = _to_f(it.get("quantity", 1))
+            unit = _to_f(it.get("unit_price", 0))
+            item_total = _to_f(it.get("total_price", 0))
+
+            if item_total > 0:
+                # If unit_price ≈ item_total, item_total is per-unit — use qty × item_total
+                # Otherwise item_total is already quantity-inclusive — use as-is
+                if unit > 0 and abs(unit - item_total) <= EPSILON:
+                    # "unit_price: 6.90, total_price: 6.90" → qty × item_total
+                    item_sum += qty * item_total
+                elif qty > 1 and abs(item_total / qty - unit) <= EPSILON:
+                    # "unit_price: 6.90, total_price: 13.80, qty: 2" → use item_total as-is
+                    item_sum += item_total
+                else:
+                    # Ambiguous — prefer item_total
+                    item_sum += item_total
+            elif unit > 0:
+                item_sum += qty * unit
 
     # 1. Items sum — with auto-correction for VAT allocation lines
     if n_items > 0 and subtotal > 0:
@@ -401,8 +425,13 @@ def validate_full(model_data: dict, model_name: str = "") -> ArbiterVerdict:
 
         # Check if model value appears in raw dump
         in_raw = False
-        if model_val and raw and len(model_val) > 2:
-            model_norm = re.sub(r'[\s\-"\'.,]', '', model_val.lower())
+        model_val_clean = model_val.strip()
+        # "Not visible" / "Nav redzams" / "Not available" = legitimate empty
+        is_legit_empty = model_val_clean.lower() in ("", "not visible", "nav redzams", "n/a", "not available", "none")
+        if is_legit_empty:
+            in_raw = True  # Don't flag as hallucination — model correctly reported it can't see this
+        elif model_val_clean and raw and len(model_val_clean) > 2:
+            model_norm = re.sub(r'[\s\-"\'.,]', '', model_val_clean.lower())
             raw_norm = re.sub(r'[\s\-"\'.,]', '', raw.lower())
             in_raw = model_norm in raw_norm
 
@@ -414,11 +443,11 @@ def validate_full(model_data: dict, model_name: str = "") -> ArbiterVerdict:
         fc = FieldCheck(field, model_val, regex_val, matches, in_raw)
         field_checks.append(fc)
 
-        if critical and not in_raw and model_val:
+        if critical and not in_raw and model_val and not is_legit_empty:
             score -= 5
             issues.append(f"{field}: '{model_val}' not found in raw_text_dump — possible hallucination")
 
-        if critical and model_val and regex_val and not matches:
+        if critical and model_val and regex_val and not matches and not is_legit_empty:
             score -= 3
             issues.append(f"{field}: model='{model_val}' ≠ regex='{regex_val}'")
 
