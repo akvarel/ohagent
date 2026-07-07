@@ -215,12 +215,51 @@
         658,
         998
       ],
-      "ttf_s": 28.9,
-      "prompt_tok": 456,
-      "comp_tok": 4096,
-      "cost_eur": 0.001502,
-      "data": null,
-      "raw_text": "{\n  \"store_name\": \"Dati Juns\",\n  \"address\": \"Riga, LV-1003\",\n  \"reg_nr\": \"43002635\",\n  \"vat_nr\": \"LV100310010\",\n  \"date\": \"2021. 07. 21.\",\n  \"time\": \"17:31\",\n  \"receipt_number\": \"000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      "ttf_s": 4.9,
+      "prompt_tok": 307,
+      "comp_tok": 582,
+      "cost_eur": 0.0002,
+      "data": {
+        "store_name": "Pigu Latvia",
+        "address": "Dartijas iela 52, Riga, LV-1003",
+        "reg_nr": "40002635",
+        "vat_nr": "LV1003001010",
+        "date": "27.07",
+        "time": "17:17",
+        "items": [
+          {
+            "name": "AduLT Shop (Adulti Veikals)",
+            "quantity": 1,
+            "unit_price": 58.16,
+            "total_price": 58.16
+          },
+          {
+            "name": "Ceks",
+            "quantity": 1,
+            "unit_price": 0.39,
+            "total_price": 0.39
+          },
+          {
+            "name": "Pienazis",
+            "quantity": 1,
+            "unit_price": 0.95,
+            "total_price": 0.95
+          }
+        ],
+        "subtotal": 59.45,
+        "vat_amount": 1.45,
+        "vat_percent": "21%",
+        "total": 70.9,
+        "currency": "EUR",
+        "payment_method": "Cash",
+        "payment_amount": 70.9,
+        "change": 0.0,
+        "bank_name": "Swedbank",
+        "bank_iban": "LV72RIKV0004004985100",
+        "bank_swift": "RIKLV22",
+        "raw_text_dump": "Pigu Latvia Dartijas iela 52, Riga, LV-1003 Reg.Nr.40002635 S/N:NR0201001010 VAT Nr.LV1003001010 27.07 17:17 01 AduLT Shop (Adulti Veikals) 1 58.16 58.16 E 02 Ceks 1 0.39 0.39 E 03 Pienazis 1 0.95 0.95 E Subtotal: 59.45 VAT 21%: 1.45 Total: 70.90 Cash 70.90 Change: 0.00 Swedbank LV72RIKV0004004985100 RIKLV22"
+      },
+      "raw_text": "Pigu Latvia Dartijas iela 52, Riga, LV-1003 Reg.Nr.40002635 S/N:NR0201001010 VAT Nr.LV1003001010 27.07 17:17 01 AduLT Shop (Adulti Veikals) 1 58.16 58.16 E 02 Ceks 1 0.39 0.39 E 03 Pienazis 1 0.95 0.95 E Subtotal: 59.45 VAT 21%: 1.45 Total: 70.90 Cash 70.90 Change: 0.00 Swedbank LV72RIKV0004004985100 RIKLV22"
     }
   ],
   "total_cost_eur": 0.0022255499999999998
