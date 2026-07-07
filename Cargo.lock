@@ -4599,9 +4599,11 @@ dependencies = [
 name = "ohagent-provider-metrics"
 version = "0.1.0"
 dependencies = [
+ "base64 0.22.1",
  "chrono",
  "clap",
  "futures",
+ "log",
  "reqwest 0.12.28",
  "rusqlite",
  "serde",

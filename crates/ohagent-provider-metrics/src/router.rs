@@ -15,7 +15,7 @@
 //! - Performance: α=0.2, β=0.6, γ=0.2
 //! - Quality:     α=0.1, β=0.1, γ=0.8
 
-use crate::models::{PriceRecord, QualityTier, RouterConfig, RoutingAlternative, RoutingDecision};
+use crate::models::{PriceRecord, QualityTier, RouterConfig, RoutingAlternative, RoutingDecision, DocumentCount};
 use crate::store::MetricsStore;
 
 pub struct DynamicRouter {
@@ -28,12 +28,18 @@ impl DynamicRouter {
     }
 
     /// Route a task to the best provider+model given constraints.
+    ///
+    /// If `doc_count` is Multiple(2+), only models with `multi_doc` capability
+    /// are considered — this ensures multi-receipt images go to GLM-4.6V.
+    /// If `doc_count` is Single, the `multi_doc` capability is NOT required,
+    /// and the cheapest vision model wins.
     pub fn route(
         &self,
         task_capabilities: &[&str],
         estimated_prompt_tokens: u64,
         estimated_output_tokens: u64,
         config: &RouterConfig,
+        doc_count: DocumentCount,
     ) -> Result<RoutingDecision, String> {
         let prices = self.store.get_all_latest_prices()?;
 
@@ -42,6 +48,10 @@ impl DynamicRouter {
             if config.prefer_eu && p.provider != "scaleway" { return false; }
             // Only route token-based models — images/video/audio are special-purpose
             if p.pricing_model != crate::models::PricingModel::PerMillionTokens && p.pricing_model != crate::models::PricingModel::PerMillionBytes { return false; }
+            // Multi-doc routing: if 2+ documents detected, model MUST have multi_doc capability
+            if doc_count.is_multi() && !p.capabilities.iter().any(|c| c == "multi_doc") {
+                return false;
+            }
             task_capabilities.iter().all(|cap| p.capabilities.iter().any(|c| c == *cap))
         }).collect();
 
@@ -200,10 +210,57 @@ mod tests {
         rt.block_on(scraper.scrape_all(&store)).unwrap();
         let router = DynamicRouter::new(store);
         let config = RouterConfig { quality_tier: QualityTier::Budget, ..Default::default() };
-        let decision = router.route(&["chat"], 1000, 2000, &config).unwrap();
+        let decision = router.route(&["chat"], 1000, 2000, &config, DocumentCount::Unknown).unwrap();
         assert!(
             decision.provider == "siliconflow" || decision.provider == "deepseek" || decision.provider == "scaleway" || decision.provider == "zai",
             "Budget should pick cheapest, got {}", decision.provider
+        );
+    }
+
+    #[test]
+    fn test_routing_multi_doc_detected() {
+        // When pre-classifier finds 4 documents, only multi_doc models are candidates.
+        // GLM-4.6V should win because it has multi_doc capability with quality=0.95.
+        let store = MetricsStore::open("/tmp/ohagent_test_router_multidoc.db").unwrap();
+        let scraper = PriceScraper::new();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(scraper.scrape_all(&store)).unwrap();
+        let router = DynamicRouter::new(store);
+        let config = RouterConfig { quality_tier: QualityTier::Quality, ..Default::default() };
+
+        // 4 documents detected → multi_doc routing
+        let decision = router.route(&["vision"], 1000, 2000, &config, DocumentCount::Multiple(4)).unwrap();
+
+        // Must be a multi_doc model — GLM-4.6V family
+        assert!(
+            decision.model_id.contains("glm-4.6v") || decision.model_id.contains("GLM-5V"),
+            "Multi-doc should route to GLM-4.6V/GLM-5V, got {} from {}",
+            decision.model_id, decision.provider
+        );
+        println!("Multi-doc (4 receipts) routed to: {}/{} — cost €{:.6}, latency {}ms",
+            decision.provider, decision.model_id, decision.estimated_cost_eur, decision.estimated_latency_ms);
+    }
+
+    #[test]
+    fn test_routing_single_doc_uses_cheapest() {
+        // When pre-classifier finds 1 document, cheapest vision model wins (Scaleway Mistral-small).
+        let store = MetricsStore::open("/tmp/ohagent_test_router_single.db").unwrap();
+        let scraper = PriceScraper::new();
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(scraper.scrape_all(&store)).unwrap();
+        let router = DynamicRouter::new(store);
+        let config = RouterConfig { quality_tier: QualityTier::Budget, ..Default::default() };
+
+        let decision = router.route(&["vision"], 1000, 2000, &config, DocumentCount::Single).unwrap();
+
+        println!("Single doc routed to: {}/{} — cost €{:.6}",
+            decision.provider, decision.model_id, decision.estimated_cost_eur);
+
+        // Single document → should be cheap, not GLM-4.6V full (that's expensive for single doc)
+        assert!(
+            !decision.model_id.contains("glm-4.6v") || decision.model_id.contains("flash"),
+            "Single doc should NOT use expensive GLM-4.6V full, got {}",
+            decision.model_id
         );
     }
 
@@ -215,7 +272,7 @@ mod tests {
         rt.block_on(scraper.scrape_all(&store)).unwrap();
         let router = DynamicRouter::new(store);
         let config = RouterConfig { quality_tier: QualityTier::Balanced, prefer_eu: true, ..Default::default() };
-        let decision = router.route(&["chat"], 1000, 2000, &config).unwrap();
+        let decision = router.route(&["chat"], 1000, 2000, &config, DocumentCount::Unknown).unwrap();
         assert_eq!(decision.provider, "scaleway", "EU preference failed, got {}", decision.provider);
     }
 }

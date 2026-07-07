@@ -11,6 +11,7 @@ pub mod scraper;
 pub mod discovery;
 pub mod benchmark;
 pub mod router;
+pub mod preclassifier;
 
 pub use models::*;
 pub use store::MetricsStore;
@@ -18,3 +19,4 @@ pub use scraper::PriceScraper;
 pub use discovery::known_prices;
 pub use benchmark::{SpeedBenchmark, BenchmarkConfig};
 pub use router::DynamicRouter;
+pub use preclassifier::{PreClassifier, PreClassifierConfig};

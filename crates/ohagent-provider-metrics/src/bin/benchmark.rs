@@ -7,7 +7,7 @@
 
 use ohagent_provider_metrics::{
     MetricsStore, PriceScraper, SpeedBenchmark, BenchmarkConfig, DynamicRouter,
-    RouterConfig, QualityTier,
+    RouterConfig, QualityTier, DocumentCount,
 };
 
 #[derive(Debug, clap::Parser)]
@@ -86,7 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 },
                 ..Default::default()
             };
-            let decision = router.route(&caps, prompt_tokens, output_tokens, &config)?;
+            let decision = router.route(&caps, prompt_tokens, output_tokens, &config, DocumentCount::Unknown)?;
             println!("{}", serde_json::to_string_pretty(&decision)?);
         }
         Command::SpeedCompare => {

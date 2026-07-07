@@ -6,6 +6,41 @@ use serde::{Deserialize, Serialize};
 
 // ── Pricing ──
 
+/// How many documents were detected in an image by the pre-classifier.
+/// Used to route: Single → cheapest vision model, Multiple → GLM-4.6V.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum DocumentCount {
+    /// Not yet classified — router falls back to normal vision routing
+    Unknown,
+    /// Exactly 1 document/receipt/page — use cheapest model
+    Single,
+    /// N distinct documents (2+) — use multi_doc-capable model (GLM-4.6V)
+    Multiple(u8),
+}
+
+impl DocumentCount {
+    pub fn is_multi(&self) -> bool {
+        matches!(self, DocumentCount::Multiple(_))
+    }
+
+    pub fn count(&self) -> u8 {
+        match self {
+            DocumentCount::Unknown => 0,
+            DocumentCount::Single => 1,
+            DocumentCount::Multiple(n) => *n,
+        }
+    }
+}
+
+impl std::fmt::Display for DocumentCount {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DocumentCount::Unknown => write!(f, "unknown"),
+            DocumentCount::Single => write!(f, "single"),
+            DocumentCount::Multiple(n) => write!(f, "{} documents", n),
+        }
+    }
+}
 /// How the provider charges for this model.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
