@@ -1,6 +1,6 @@
 # Docker Compose — local development environment for ohAgent
 #
-# Starts: ohagent-daemon + Vault (dev mode)
+# Starts: ohagent-daemon + Vault (dev mode) + Vault seeder
 #
 # Usage:
 #   docker compose up -d
@@ -9,7 +9,11 @@
 #
 # Vault (dev mode):
 #   http://localhost:8200 — root token is "dev-root-token"
-#   Secrets path: secret/ohagent/
+#   Secrets are auto-seeded from ~/.ohagent/keys.toml on first start
+#
+# Adding keys:
+#   ./scripts/setup-keys.sh              # write to ~/.ohagent/keys.toml
+#   docker compose up -d                 # vault-seeder pushes them to Vault
 
 version: "3.9"
 
@@ -35,6 +39,70 @@ services:
     networks:
       - ohagent-net
 
+  # ── Vault Seeder — pushes keys from keys.toml into Vault on first start ──
+  vault-seeder:
+    image: alpine:latest
+    container_name: ohagent-vault-seeder
+    depends_on:
+      vault:
+        condition: service_healthy
+    volumes:
+      - ~/.ohagent/keys.toml:/seed/keys.toml:ro
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "==> Checking for keys.toml..."
+        if [ ! -f /seed/keys.toml ]; then
+          echo "No keys.toml found — Vault will start empty. Run: ./scripts/setup-keys.sh"
+          exit 0
+        fi
+        echo "==> Seeding Vault from keys.toml..."
+        apk add --no-cache curl python3 > /dev/null 2>&1
+        TOKEN="dev-root-token"
+        VAULT="http://vault:8200"
+        python3 -c "
+import sys, re, subprocess, json
+with open('/seed/keys.toml') as f:
+    content = f.read()
+# Parse TOML keys section
+in_keys = False
+for line in content.split('\n'):
+    line = line.strip()
+    if line.startswith('[keys]'):
+        in_keys = True
+        continue
+    if line.startswith('[') and in_keys:
+        in_keys = False
+    if not in_keys or '=' not in line or line.startswith('#'):
+        continue
+    key, val = line.split('=', 1)
+    key = key.strip()
+    val = val.strip().strip('\"')
+    if not val:
+        continue
+    # Map to Vault path
+    vault_path = f'secret/ohagent/providers/{key.lower().replace(\"_\",\"-\")}/api-key'
+    if key == 'SCW_SECRET_KEY':
+        vault_path = 'secret/ohagent/providers/scaleway/secret-key'
+    elif key == 'TELEGRAM_BOT_TOKEN':
+        vault_path = 'secret/ohagent/telegram/bot-token'
+    elif key == 'HETZNER_API_TOKEN':
+        vault_path = 'secret/ohagent/providers/hetzner/api-token'
+    cmd = ['curl', '-s', '-X', 'POST', f'{VAULT}/v1/{vault_path}',
+           '-H', f'X-Vault-Token: {TOKEN}',
+           '-H', 'Content-Type: application/json',
+           '-d', json.dumps({'data': {'api-key': val}})]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.returncode == 0:
+        print(f'  ✅ {vault_path}')
+    else:
+        print(f'  ❌ {vault_path}: {result.stderr}')
+"
+        echo "==> Vault seeding complete"
+    networks:
+      - ohagent-net
+    restart: "no"
+
   # ── ohAgent Daemon ──
   ohagent:
     build:
@@ -44,12 +112,16 @@ services:
     ports:
       - "9090:9090"
     environment:
-      # Provider API keys (set these or use Vault below)
+      # Provider API keys — resolved via Vault (preferred) or env fallback
       DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      SF_API_KEY: ${SF_API_KEY:-}
+      SCW_SECRET_KEY: ${SCW_SECRET_KEY:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
       # Platform tokens
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      HETZNER_API_TOKEN: ${HETZNER_API_TOKEN:-}
       WA_VERIFY_TOKEN: ${WA_VERIFY_TOKEN:-}
       WA_PHONE_ID: ${WA_PHONE_ID:-}
       WA_ACCESS_TOKEN: ${WA_ACCESS_TOKEN:-}
@@ -65,9 +137,12 @@ services:
       RUST_LOG: ${RUST_LOG:-info}
     volumes:
       - ohagent-data:/home/jcode/.ohagent
+      - ~/.ohagent/plugins:/opt/ohagent/plugins:ro
     depends_on:
       vault:
         condition: service_healthy
+      vault-seeder:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
       interval: 30s
