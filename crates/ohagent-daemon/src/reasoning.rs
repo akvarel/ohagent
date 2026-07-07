@@ -19,7 +19,7 @@
 //! - Stops via EMA gate (not just raw confidence)
 //! - Saves 30-50% tokens vs naive consensus.
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tracing::{debug, info, warn};
 
 use ohagent_core::model_router::{ModelRouter, RoutedModel};
@@ -44,14 +44,14 @@ pub struct LlmCallResult {
 /// for model selection and LLM calls.
 pub struct CmcRouterIntegration {
     pub reasoning: ReasoningRouter<PricingRegistry>,
-    model_router: Arc<ModelRouter>,
+    model_router: Arc<Mutex<ModelRouter>>,
     tenant_id: String,
 }
 
 impl CmcRouterIntegration {
     /// Create a new integration.
     pub fn new(
-        model_router: Arc<ModelRouter>,
+        model_router: Arc<Mutex<ModelRouter>>,
         tenant_id: String,
         beta: f64,
         budget_config: BudgetConfig,
@@ -78,6 +78,7 @@ impl CmcRouterIntegration {
 
         for i in 0..batch_size {
             let routed = self.model_router
+                .lock().map_err(|e| format!("Model router lock: {e}"))?
                 .route(&self.tenant_id, message)
                 .map_err(|e| format!("Model routing failed: {e}"))?;
 
@@ -141,6 +142,7 @@ impl CmcRouterIntegration {
                 ReasoningAction::Probe { allocations } => {
                     for (branch_idx, steps) in &allocations {
                         let routed = self.model_router
+                            .lock().map_err(|e| format!("Router lock: {e}"))?
                             .route(&self.tenant_id, message)
                             .map_err(|e| format!("Routing failed: {e}"))?;
 
@@ -166,6 +168,7 @@ impl CmcRouterIntegration {
                     info!(%count, "CMC widening — spawning more branches");
                     for _ in 0..count {
                         let routed = self.model_router
+                            .lock().map_err(|e| format!("Router lock: {e}"))?
                             .route(&self.tenant_id, message)
                             .map_err(|e| format!("Routing failed: {e}"))?;
 
