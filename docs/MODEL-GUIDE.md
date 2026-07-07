@@ -275,6 +275,13 @@ Thinking consumes budget → empty output. Always use `thinking: disabled`.
 
 Permanent HTTP 429. Rate limit never lifts. Use flashx instead.
 
+### ❌ NEVER: Use GPT-4o-mini for structured document OCR
+
+GPT-4o-mini hallucinated on ALL 4 Latvian receipts in testing:
+replaced correct store names with fantasies ("Kivis" for Kurs, "Rimi" for Pigu Latvia),
+and invented items ("Kefīrs, Sviests, Saldējums"). Math passed but data was fiction.
+**GPT-4o-mini is structurally incapable of reading small receipt text reliably.**
+
 ### ❌ NEVER: Trust OCR without raw_text_dump
 
 Models hallucinate. Without `raw_text_dump`, no way to verify.
