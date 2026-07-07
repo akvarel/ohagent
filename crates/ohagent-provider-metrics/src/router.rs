@@ -147,16 +147,16 @@ impl DynamicRouter {
 
 fn estimated_speed(provider: &str, model_id: &str) -> (f64, u64) {
     match (provider, model_id) {
-        ("deepseek", m) if m.contains("v4-flash") => (46.0, 2221),  // Real benchmark
-        ("deepseek", m) if m.contains("v4-pro") => (18.3, 6506),     // Real benchmark
-        ("deepseek", m) if m.contains("chat") => (55.3, 1889),        // Deprecated — migrating to V4-Flash
-        ("deepseek", m) if m.contains("reasoner") => (31.2, 3432),    // Deprecated — migrating to V4-Pro
+        ("deepseek", m) if m.contains("v4-flash") => (45.4, 2288),  // Real benchmark Jul 7
+        ("deepseek", m) if m.contains("v4-pro") => (25.9, 4567),     // Real benchmark Jul 7
+        ("deepseek", m) if m.contains("chat") => (48.5, 2041),        // Deprecated — migrating to V4-Flash
+        ("deepseek", m) if m.contains("reasoner") => (50.0, 2235),    // Deprecated — includes thinking bloat
         ("siliconflow", m) if m.contains("8B") || m.contains("9B") => (120.0, 800),
         ("siliconflow", m) if m.contains("Hy3") => (90.0, 1200),
         ("siliconflow", m) if m.contains("GLM") => (58.0, 2000),
         ("siliconflow", _) => (60.0, 1500),
         ("scaleway", _) => (50.0, 2000),
-        ("openai", m) if m.contains("mini") => (100.0, 900),
+        ("openai", m) if m.contains("mini") => (54.0, 1939),          // Real benchmark Jul 7
         ("openai", _) => (30.0, 3000),
         ("anthropic", m) if m.contains("haiku") => (70.0, 1100),
         ("anthropic", _) => (25.0, 4000),

@@ -145,25 +145,33 @@ Prices in EUR unless marked with $ (USD). SiliconFlow added July 7, 2026.
 
 ### Streaming (TTF = time-to-first-token)
 
+✅ = measured (`ohagent-metrics benchmark`, July 7, 2026, 3 samples each).
+≈ = estimated from provider docs / community data.
+
 | Rank | Model | TTF ms | tok/s | Price €/M | Source |
 |---|---|---|---|---|---|
-| 🥇 | DeepSeek V4-Flash | **2,221** ✅ | **46.0** ✅ | 0.14 | Real |
-| 🥈 | DeepSeek V4-Pro (1.6T MoE) | **6,506** ✅ | **18.3** ✅ | 1.60 | Real |
-| | ~~DeepSeek Chat V3~~ | ~~1,889~~ ✅ | ~~55.3~~ ✅ | 0.27 | ⚠️ Deprecated |
-| | ~~DeepSeek Reasoner R1~~ | ~~3,432~~ ✅ | ~~31.2~~ ✅ | 0.55 | ⚠️ Deprecated |
+| 🥇 | OpenAI GPT-4o-mini | **1,939** ✅ | **54.0** ✅ | 0.15 | Real |
+| 🥇 | DeepSeek Chat V3 | **2,041** ✅ | **48.5** ✅ | 0.27 | ⚠️ Deprecated |
+| 🥇 | DeepSeek Reasoner R1 | **2,235** ✅ | **50.0** ✅ | 0.55 | ⚠️ Deprecated |
+| 🥇 | DeepSeek V4-Flash | **2,288** ✅ | **45.4** ✅ | 0.14 | Real |
+| 🥈 | DeepSeek V4-Pro (1.6T MoE) | **4,567** ✅ | **25.9** ✅ | 1.60 | Real |
 | | Groq Llama 3.3-70B | ~100 | ≈250 | — | LPU hardware |
-| | GPT-4o-mini | ~200 | ≈100 | 0.15 | Docs |
 | | GLM-5.2 (SiliconFlow) | ~500 | ≈58 | 1.30 | Agentic #1 |
+| | Scaleway Mistral-small | — | — | 0.15 | ⚠️ Needs project setup |
 
-### Non-Streaming Throughput (800 tokens output)
+> **Note**: Reasoner appears fast (50 TPS) because it streams "thinking" tokens.
+> Real useful output is slower — the 50 TPS includes chain-of-thought bloat.
+
+### Non-Streaming Throughput (800 tokens output, 2 runs each)
 
 | Rank | Model | Total time | tok/s | Cost/req |
 |---|---|---|---|---|
-| 🥇 | DeepSeek V4-Flash | **10.84s** ✅ | **73.8** ✅ | €0.011 |
-| 🥈 | ~~DeepSeek Chat V3~~ | ~~12.51s~~ ✅ | ~~63.9~~ ✅ | €0.022 |
+| 🥇 | DeepSeek V4-Flash | **10.71s** ✅ | **74.7** ✅ | €0.011 |
+| 🥈 | DeepSeek V4-Pro | **17.05s** ✅ | **46.9** ✅ | €0.025 |
+| | ~~DeepSeek Chat V3~~ | ~~12.51s~~ ✅ | ~~63.9~~ ✅ | €0.022 |
 
-> **Key finding**: V4-Flash wins on both price AND throughput for batch.
-> Chat V3 had better streaming TTF but is deprecated — V4-Flash is the replacement.
+> **Key finding**: V4-Flash wins on price AND throughput. 48% cheaper than Chat V3 with 17% more throughput.
+> V4-Pro is 2x slower but handles complex agentic tasks Chat V3 can't touch.
 
 ### Full DeepSeek Lineup (July 7, 2026)
 
