@@ -5,7 +5,7 @@
 
 use std::sync::{Arc, Mutex};
 use std::fs;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::adapter::{FileAttachment, IncomingMessage, OutgoingMessage};
 use crate::i18n::I18n;
@@ -19,6 +19,7 @@ use ohagent_core::usage_tracker::UsageTracker;
 use ohagent_memory::engine::MemoryEngine;
 use ohagent_memory::models::MemoryEntry;
 use ohagent_skills::registry::SkillRegistry;
+use ohagent_plugins::PluginManager;
 
 /// Encode a file attachment to (media_type, base64_data) tuple suitable for Jcode.
 fn encode_attachment(att: &FileAttachment) -> Result<(String, String), std::io::Error> {
@@ -63,6 +64,7 @@ pub struct Dispatcher {
     session_store: Option<Arc<SessionStore>>,
     push: Option<Arc<PushService>>,
     memory: Option<Arc<MemoryEngine>>,
+    plugin_manager: Option<Arc<PluginManager>>,
 }
 
 impl Dispatcher {
@@ -80,6 +82,7 @@ impl Dispatcher {
             session_store: None,
             push: None,
             memory: None,
+            plugin_manager: None,
         }
     }
 
@@ -122,6 +125,12 @@ impl Dispatcher {
     /// Set the memory engine for /remember, /recall, /forget commands.
     pub fn with_memory(mut self, memory: Arc<MemoryEngine>) -> Self {
         self.memory = Some(memory);
+        self
+    }
+
+    /// Set the plugin manager for message filtering.
+    pub fn with_plugin_manager(mut self, pm: Arc<PluginManager>) -> Self {
+        self.plugin_manager = Some(pm);
         self
     }
 
@@ -192,10 +201,44 @@ impl Dispatcher {
             Vec::new()
         };
 
+        // ── Plugin pipeline: redact PII/secrets ──
+        let msg_text = if let Some(ref pm) = self.plugin_manager {
+            let mut plugin_msg = ohagent_plugins::PluginMessage::new(
+                msg.text.clone(),
+                msg.tenant_id.clone(),
+                msg.platform.clone(),
+            );
+            match pm.run_pipeline(plugin_msg) {
+                Ok(Some(processed)) => {
+                    if !processed.redaction_log.is_empty() {
+                        info!(
+                            redactions = processed.redaction_log.len(),
+                            "Plugin pipeline redacted sensitive data"
+                        );
+                    }
+                    processed.text
+                }
+                Ok(None) => {
+                    warn!("Plugin pipeline blocked the message");
+                    return Some(OutgoingMessage {
+                        chat_id: msg.chat_id.clone(),
+                        text: "Message blocked by security policy.".into(),
+                        markdown: false,
+                    });
+                }
+                Err(e) => {
+                    warn!(error = %e, "Plugin pipeline error — passing through");
+                    msg.text.clone()
+                }
+            }
+        } else {
+            msg.text.clone()
+        };
+
         // Send message: route through tool-augmented path when:
         // a) no attachments, and b) bridge has registered tools
         let send_result = if images.is_empty() {
-            session.send_message_with_tools(&msg.text).await
+            session.send_message_with_tools(&msg_text).await
         } else {
             session.send_message_with_images(&msg.text, images).await
                 .map(|_| String::new())

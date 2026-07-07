@@ -24,6 +24,7 @@ use ohagent_core::push::PushService;
 use ohagent_core::session_store::SessionStore;
 use ohagent_core::usage_tracker::UsageTracker;
 use ohagent_memory::engine::MemoryEngine;
+use ohagent_plugins::PluginManager;
 use ohagent_skills::registry::SkillRegistry;
 
 /// Helper: parse a string chat_id to teloxide's ChatId.
@@ -87,6 +88,7 @@ pub struct TelegramAdapter {
     session_store: Option<Arc<SessionStore>>,
     push: Option<Arc<PushService>>,
     memory: Option<Arc<MemoryEngine>>,
+    plugin_manager: Option<Arc<PluginManager>>,
 }
 
 impl TelegramAdapter {
@@ -106,6 +108,7 @@ impl TelegramAdapter {
             session_store: None,
             push: None,
             memory: None,
+            plugin_manager: None,
         })
     }
 
@@ -120,6 +123,7 @@ impl TelegramAdapter {
             session_store: None,
             push: None,
             memory: None,
+            plugin_manager: None,
         }
     }
 
@@ -164,6 +168,12 @@ impl TelegramAdapter {
         self.memory = Some(memory);
         self
     }
+
+    /// Attach the plugin manager for message filtering.
+    pub fn with_plugin_manager(mut self, pm: Arc<PluginManager>) -> Self {
+        self.plugin_manager = Some(pm);
+        self
+    }
 }
 
 #[async_trait::async_trait]
@@ -201,6 +211,9 @@ impl PlatformAdapter for TelegramAdapter {
         }
         if let Some(ref mem) = self.memory {
             dispatcher_builder = dispatcher_builder.with_memory(Arc::clone(mem));
+        }
+        if let Some(ref pm) = self.plugin_manager {
+            dispatcher_builder = dispatcher_builder.with_plugin_manager(Arc::clone(pm));
         }
         let dispatcher = Arc::new(dispatcher_builder);
 

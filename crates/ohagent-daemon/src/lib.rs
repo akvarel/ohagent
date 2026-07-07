@@ -608,6 +608,8 @@ impl Daemon {
         if let Some(ref mem) = self.memory {
             adapter = adapter.with_memory(Arc::clone(mem));
         }
+        let pm = Arc::clone(&self.plugin_manager);
+        adapter = adapter.with_plugin_manager(pm);
 
         // Also attach model router reference for the /model command
         // (the router is stored inside the bridge, we also pass it directly)
