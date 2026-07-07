@@ -453,7 +453,8 @@ pub async fn chat_completions_handler(
             "default".to_string(),
             "openai-api".to_string(),
         );
-        match pm.run_pipeline(plugin_msg) {
+        let mut pipeline = pm.lock().unwrap();
+        match pipeline.run_pipeline(plugin_msg) {
             Ok(Some(processed)) => {
                 if !processed.redaction_log.is_empty() {
                     tracing::info!(

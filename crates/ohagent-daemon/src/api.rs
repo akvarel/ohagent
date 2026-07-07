@@ -35,6 +35,7 @@ use ohagent_skills::evaluator;
 use ohagent_skills::models::SkillStatus;
 use ohagent_skills::registry::SkillRegistry;
 use ohagent_plugins::PluginManager;
+use std::sync::Mutex as StdMutex;
 
 use crate::auth::{self, AuthState};
 use crate::metrics::{self, MetricsState};
@@ -53,7 +54,7 @@ pub struct ApiState {
     pub tool_registry: Option<Arc<ohagent_core::tools::ToolRegistry>>,
     pub push: Option<Arc<PushService>>,
     pub scheduler: Option<Arc<ohagent_core::scheduler::Scheduler>>,
-    pub plugin_manager: Option<Arc<PluginManager>>,
+    pub plugin_manager: Option<Arc<StdMutex<PluginManager>>>,
     pub start_time: chrono::DateTime<chrono::Utc>,
     /// Path to keys config file
     pub keys_path: String,
@@ -104,6 +105,8 @@ pub fn router(state: ApiState) -> Router {
         .route("/api/skills/{id}/record", post(record_skill_usage))
         .route("/api/memory", get(query_memory))
         .route("/api/memory/{id}", get(get_memory))
+        .route("/api/plugins/audit", get(crate::plugin_api::plugin_audit_handler))
+        .route("/api/plugins/audit", delete(crate::plugin_api::plugin_audit_clear_handler))
         .route("/api/sessions", get(list_sessions_handler))
         .route("/api/sessions/{tenant_id}/{session_hash}", delete(delete_session_handler))
         .route("/api/push", post(push_handler))

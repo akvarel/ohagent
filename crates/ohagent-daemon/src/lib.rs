@@ -10,6 +10,7 @@ mod context_compressor;
 mod metrics;
 mod migrations;
 mod openai_api;
+mod plugin_api;
 mod rate_limiter;
 mod reasoning;
 mod system_prompt;
@@ -36,7 +37,8 @@ use ohagent_skills::SkillConfig;
 use crate::system_prompt::{PersistentInstructions, SystemPromptBuilder, SkillPrompt};
 use jcode_provider_core::Provider;
 use jcode_base::mcp::SharedMcpPool;
-use ohagent_plugins::PluginManager;
+use ohagent_plugins::{PluginConfig, PluginManager};
+use std::sync::Mutex as StdMutex;
 
 /// Register external provider runtimes (OpenRouter, OpenAI-compatible profiles).
 ///
@@ -120,7 +122,7 @@ struct Daemon {
     /// Kept alive to own MCP server child processes (passed to bridge on startup).
     #[allow(dead_code)]
     mcp_pool: Option<Arc<SharedMcpPool>>,
-    plugin_manager: Arc<PluginManager>,
+    plugin_manager: Arc<StdMutex<PluginManager>>,
 }
 
 impl Daemon {
@@ -521,7 +523,7 @@ impl Daemon {
             whatsapp,
             slack,
             mcp_pool,
-            plugin_manager: Arc::new(plugin_manager),
+            plugin_manager: Arc::new(StdMutex::new(plugin_manager)),
         })
     }
 

@@ -25,6 +25,7 @@ use ohagent_core::session_store::SessionStore;
 use ohagent_core::usage_tracker::UsageTracker;
 use ohagent_memory::engine::MemoryEngine;
 use ohagent_plugins::PluginManager;
+use std::sync::Mutex as StdMutex;
 use ohagent_skills::registry::SkillRegistry;
 
 /// Helper: parse a string chat_id to teloxide's ChatId.
@@ -88,7 +89,7 @@ pub struct TelegramAdapter {
     session_store: Option<Arc<SessionStore>>,
     push: Option<Arc<PushService>>,
     memory: Option<Arc<MemoryEngine>>,
-    plugin_manager: Option<Arc<PluginManager>>,
+    plugin_manager: Option<Arc<StdMutex<PluginManager>>>,
 }
 
 impl TelegramAdapter {
@@ -170,7 +171,7 @@ impl TelegramAdapter {
     }
 
     /// Attach the plugin manager for message filtering.
-    pub fn with_plugin_manager(mut self, pm: Arc<PluginManager>) -> Self {
+    pub fn with_plugin_manager(mut self, pm: Arc<StdMutex<PluginManager>>) -> Self {
         self.plugin_manager = Some(pm);
         self
     }

@@ -8,7 +8,7 @@ use tracing::{error, info, warn};
 
 use crate::types::{
     MessagePlugin, PluginApiVersionFn, PluginError, PluginFactory, PluginMessage,
-    CURRENT_PLUGIN_API_VERSION,
+    RedactionEntry, CURRENT_PLUGIN_API_VERSION,
 };
 
 /// A loaded plugin instance.
@@ -29,6 +29,9 @@ pub struct PluginManager {
     plugin_dir: PathBuf,
     /// Plugin config: which plugins to load and their settings.
     config: PluginConfig,
+    /// Audit log — ring buffer of last N redaction events.
+    audit_log: Vec<RedactionEntry>,
+    max_audit_entries: usize,
 }
 
 #[derive(Debug, Clone, Default, serde::Deserialize)]
@@ -58,7 +61,30 @@ impl PluginManager {
             plugins: Vec::new(),
             plugin_dir,
             config,
+            audit_log: Vec::new(),
+            max_audit_entries: 1000,
         }
+    }
+
+    /// Set max audit log entries.
+    pub fn with_audit_limit(mut self, limit: usize) -> Self {
+        self.max_audit_entries = limit;
+        self
+    }
+
+    /// Get the audit log.
+    pub fn audit_log(&self) -> Vec<RedactionEntry> {
+        self.audit_log.clone()
+    }
+
+    /// Clear the audit log.
+    pub fn clear_audit_log(&mut self) {
+        self.audit_log.clear();
+    }
+
+    /// Get plugin names in pipeline order.
+    pub fn plugin_names(&self) -> Vec<String> {
+        self.plugins.iter().map(|p| p.name.clone()).collect()
     }
 
     /// Load all plugins from the configured directory.
@@ -140,7 +166,7 @@ impl PluginManager {
     /// - `Ok(Some(msg))` — message processed, continue to LLM
     /// - `Ok(None)` — message blocked by a plugin (fatal error)
     /// - `Err(e)` — pipeline error, message passes through unchanged
-    pub fn run_pipeline(&self, msg: PluginMessage) -> Result<Option<PluginMessage>, String> {
+    pub fn run_pipeline(&mut self, msg: PluginMessage) -> Result<Option<PluginMessage>, String> {
         let mut msg = msg;
 
         for loaded in &self.plugins {
@@ -151,20 +177,13 @@ impl PluginManager {
                 loaded.plugin.transform_message(&mut msg)
             }));
 
-            let redacted = match &msg.redaction_log.last() {
-                Some(e) => format!("last={}", e.field),
-                None => String::new(),
-            };
-
             match result {
                 Ok(Ok(())) => {
-                    if msg.redaction_log.is_empty() {
-                        // nothing
-                    } else {
+                    if !msg.redaction_log.is_empty() {
                         info!(
                             plugin = %plugin_name,
                             total_redactions = msg.redaction_log.len(),
-                            "Plugin redacted: {redacted}"
+                            "Plugin redacted data"
                         );
                     }
                 }
@@ -200,6 +219,15 @@ impl PluginManager {
             }
         }
 
+        // Append plugin's redactions to manager's audit log
+        for entry in &msg.redaction_log {
+            self.audit_log.push(entry.clone());
+            // Trim if over limit
+            while self.audit_log.len() > self.max_audit_entries {
+                self.audit_log.remove(0);
+            }
+        }
+
         Ok(Some(msg))
     }
 
@@ -214,11 +242,6 @@ impl PluginManager {
         }
 
         msg
-    }
-
-    /// Get plugin names in pipeline order.
-    pub fn plugin_names(&self) -> Vec<String> {
-        self.plugins.iter().map(|p| p.name.clone()).collect()
     }
 }
 

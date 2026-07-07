@@ -20,6 +20,7 @@ use ohagent_memory::engine::MemoryEngine;
 use ohagent_memory::models::MemoryEntry;
 use ohagent_skills::registry::SkillRegistry;
 use ohagent_plugins::PluginManager;
+use std::sync::Mutex as StdMutex;
 
 /// Encode a file attachment to (media_type, base64_data) tuple suitable for Jcode.
 fn encode_attachment(att: &FileAttachment) -> Result<(String, String), std::io::Error> {
@@ -64,7 +65,7 @@ pub struct Dispatcher {
     session_store: Option<Arc<SessionStore>>,
     push: Option<Arc<PushService>>,
     memory: Option<Arc<MemoryEngine>>,
-    plugin_manager: Option<Arc<PluginManager>>,
+    plugin_manager: Option<Arc<StdMutex<PluginManager>>>,
 }
 
 impl Dispatcher {
@@ -129,7 +130,7 @@ impl Dispatcher {
     }
 
     /// Set the plugin manager for message filtering.
-    pub fn with_plugin_manager(mut self, pm: Arc<PluginManager>) -> Self {
+    pub fn with_plugin_manager(mut self, pm: Arc<StdMutex<PluginManager>>) -> Self {
         self.plugin_manager = Some(pm);
         self
     }
@@ -203,12 +204,13 @@ impl Dispatcher {
 
         // ── Plugin pipeline: redact PII/secrets ──
         let msg_text = if let Some(ref pm) = self.plugin_manager {
+            let mut pipeline = pm.lock().unwrap();
             let mut plugin_msg = ohagent_plugins::PluginMessage::new(
                 msg.text.clone(),
                 msg.tenant_id.clone(),
                 msg.platform.clone(),
             );
-            match pm.run_pipeline(plugin_msg) {
+            match pipeline.run_pipeline(plugin_msg) {
                 Ok(Some(processed)) => {
                     if !processed.redaction_log.is_empty() {
                         info!(
