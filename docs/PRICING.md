@@ -154,13 +154,17 @@ Prices in EUR unless marked with $ (USD). SiliconFlow added July 7, 2026.
 | Rank | Model | TTF ms | tok/s | Price €/M | Source |
 |---|---|---|---|---|---|
 | 🥇 | OpenAI GPT-4o-mini | **1,939** ✅ | **54.0** ✅ | 0.15 | Real |
+| 🥇 | **Scaleway Qwen3-Coder-30B** | **536** ✅ | **169.4** ✅ | 0.20 | Real — fastest! |
+| 🥇 | **Scaleway Mistral-small** | **844** ✅ | **138.7** ✅ | 0.15 | Real — EU latency |
+| 🥇 | **Scaleway Llama-3.3-70B** | **943** ✅ | **71.0** ✅ | 0.90 | Real |
 | 🥇 | DeepSeek Chat V3 | **2,041** ✅ | **48.5** ✅ | 0.27 | ⚠️ Deprecated |
-| 🥇 | DeepSeek Reasoner R1 | **2,235** ✅ | **50.0** ✅ | 0.55 | ⚠️ Deprecated |
-| 🥇 | DeepSeek V4-Flash | **2,288** ✅ | **45.4** ✅ | 0.14 | Real |
-| 🥈 | DeepSeek V4-Pro (1.6T MoE) | **4,567** ✅ | **25.9** ✅ | 1.60 | Real |
+| | **Scaleway Mistral-medium (128B)** | **2,125** ✅ | **63.7** ✅ | 1.50 | Real |
+| | DeepSeek Reasoner R1 | **2,235** ✅ | **50.0** ✅ | 0.55 | ⚠️ Deprecated |
+| | DeepSeek V4-Flash | **2,288** ✅ | **45.4** ✅ | 0.14 | Real |
+| | **Scaleway GLM-5.2** | **3,030** ✅ | **22.2** ✅ | 1.30 | Real — 1M ctx |
+| | DeepSeek V4-Pro (1.6T MoE) | **4,567** ✅ | **25.9** ✅ | 1.60 | Real |
+| | **Scaleway Gemma-4-26B** | **4,794** ✅ | **29.9** ✅ | 0.25 | Real |
 | | Groq Llama 3.3-70B | ~100 | ≈250 | — | LPU hardware |
-| | GLM-5.2 (SiliconFlow) | ~500 | ≈58 | 1.30 | Agentic #1 |
-| | Scaleway Mistral-small | — | — | 0.15 | ⚠️ Needs project setup |
 
 > **Note**: Reasoner appears fast (50 TPS) because it streams "thinking" tokens.
 > Real useful output is slower — the 50 TPS includes chain-of-thought bloat.
@@ -193,11 +197,11 @@ Prices in EUR unless marked with $ (USD). SiliconFlow added July 7, 2026.
 > - **Net**: Slightly slower, significantly cheaper or more capable. Worth the switch.
 
 > **Trade-off matrix**: Speed vs Price vs Quality
-> - **Budget king**: V4-Flash (2.2s TTF, 46 tok/s, €0.14/M) — cheapest AND fast enough
-> - **Fastest (deprecated)**: Chat V3 (1.9s, 55 tok/s) — slightly faster but 2x pricier, shutting down
-> - **Best quality**: V4-Pro (1.6T params, 49B active) — slow but top-tier reasoning
-> - **Agentic value**: GLM-5.2 on SiliconFlow — Claude-quality, 1M ctx, ~58 tok/s estimated
-> - **Rule of thumb**: V4-Flash for 90% of tasks, V4-Pro when you need top quality, GLM-5.2 for agents
+> - **Fastest measured**: Scaleway Qwen3-Coder-30B (536ms, 169 tok/s) — EU-hosted, GDPR-safe, €0.20/M
+> - **EU winner**: Scaleway Mistral-small (844ms, 139 tok/s, €0.15/M) — cheapest EU + GDPR
+> - **Budget king**: DeepSeek V4-Flash (2.3s, 45 tok/s, €0.14/M) — cheapest but 3x slower than Scaleway
+> - **Agentic sweet spot**: Scaleway GLM-5.2 (3.0s, 22 tok/s) — 1M ctx, EU-hosted
+> - **Rule of thumb**: Scaleway for EU/GDPR (fast!), DeepSeek for budget, GLM-5.2 for agents
 
 ## 11. Dynamic Routing with ohagent-provider-metrics
 

@@ -159,6 +159,12 @@ fn estimated_speed(provider: &str, model_id: &str) -> (f64, u64) {
         ("zai", m) if m.contains("glm-4.5") => (80.0, 1200),           // Smaller model = faster
         ("zai", _) => (50.0, 2500),
         ("siliconflow", _) => (60.0, 1500),
+        ("scaleway", m) if m.contains("qwen3-coder") => (169.4, 536),    // Real benchmark Jul 7
+        ("scaleway", m) if m.contains("mistral-small") => (138.7, 844),    // Real benchmark Jul 7
+        ("scaleway", m) if m.contains("llama") => (71.0, 943),             // Real benchmark Jul 7
+        ("scaleway", m) if m.contains("mistral-medium") => (63.7, 2125),   // Real benchmark Jul 7
+        ("scaleway", m) if m.contains("glm") => (22.2, 3030),              // Real benchmark Jul 7
+        ("scaleway", m) if m.contains("gemma") => (29.9, 4794),            // Real benchmark Jul 7
         ("scaleway", _) => (50.0, 2000),
         ("openai", m) if m.contains("mini") => (54.0, 1939),          // Real benchmark Jul 7
         ("openai", _) => (30.0, 3000),
