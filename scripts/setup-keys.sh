@@ -51,7 +51,7 @@ echo ""
 declare -A PROVIDERS=(
     [DEEPSEEK_API_KEY]="DeepSeek — primary LLM provider (V4-Flash/Pro)"
     [SF_API_KEY]="SiliconFlow — 200+ models, cheapest API"
-    [ZAI_API_KEY]="Z.ai (Zhipu) — GLM-5.2 #1 agentic, direct Chinese API"
+    [ZAI_API_KEY]="Z.ai (Zhipu international) — GLM models, api.z.ai"
     [SCW_SECRET_KEY]="Scaleway — EU/GDPR serverless + GPU (IAM secret key)"
     [SCW_PROJECT_ID]="Scaleway — Project ID (UUID: api.scaleway.ai/<id>/v1)"
     [ANTHROPIC_API_KEY]="Anthropic — Claude models (best coding quality)"

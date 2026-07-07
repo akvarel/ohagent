@@ -11,6 +11,7 @@ pub fn probe_patterns(provider: &str) -> Vec<String> {
             "https://api.siliconflow.cn/v1/models".into(),
         ],
         "zai" | "zhipu" => vec![
+            "https://api.z.ai/api/paas/v4/models".into(),
             "https://open.bigmodel.cn/api/paas/v4/models".into(),
         ],
         "deepseek" => vec![

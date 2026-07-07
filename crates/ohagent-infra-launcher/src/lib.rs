@@ -483,14 +483,14 @@ impl InfraLauncherPlugin {
   Also available on SiliconFlow (USD pricing, easier for non-China access)
 
   Direct API:
-    curl https://open.bigmodel.cn/api/paas/v4/chat/completions \
+    curl https://api.z.ai/api/paas/v4/chat/completions \
       -H "Authorization: Bearer $ZAI_API_KEY" \
       -d '{{"model":"glm-5.2","messages":[{{"role":"user","content":"..."}}]}}'
 
   Via SiliconFlow (recommended for Western users):
     /deploy sf:GLM-5.2
 
-  Requires: ZAI_API_KEY env var (register at open.bigmodel.cn)"#,
+  Requires: ZAI_API_KEY env var (register at z.ai)"#,
                 )
             }
 

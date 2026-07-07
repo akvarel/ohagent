@@ -154,9 +154,9 @@ fn estimated_speed(provider: &str, model_id: &str) -> (f64, u64) {
         ("siliconflow", m) if m.contains("8B") || m.contains("9B") => (120.0, 800),
         ("siliconflow", m) if m.contains("Hy3") => (90.0, 1200),
         ("siliconflow", m) if m.contains("GLM") => (58.0, 2000),
-        ("zai", m) if m.contains("glm-5.2") => (7.7, 9083),            // Real benchmark Jul 7 — slow but 1M ctx
-        ("zai", m) if m.contains("glm-4.7") => (6.7, 13895),           // Real benchmark Jul 7
-        ("zai", m) if m.contains("glm-4.5") => (25.4, 3549),           // Real benchmark Jul 7
+        ("zai", m) if m.contains("glm-5.2") => (7.7, 6799),             // Real benchmark Jul 7 via api.z.ai
+        ("zai", m) if m.contains("glm-4.7") => (5.1, 15160),            // Real benchmark Jul 7
+        ("zai", m) if m.contains("glm-4.5") => (37.3, 2802),            // Real benchmark Jul 7 via api.z.ai
         ("zai", _) => (15.0, 5000),
         ("siliconflow", _) => (60.0, 1500),
         ("scaleway", m) if m.contains("qwen3-coder") => (169.4, 536),    // Real benchmark Jul 7
