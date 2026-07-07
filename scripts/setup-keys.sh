@@ -51,6 +51,7 @@ echo ""
 declare -A PROVIDERS=(
     [DEEPSEEK_API_KEY]="DeepSeek — primary LLM provider (V4-Flash/Pro)"
     [SF_API_KEY]="SiliconFlow — 200+ models, cheapest API"
+    [ZAI_API_KEY]="Z.ai (Zhipu) — GLM-5.2 #1 agentic, direct Chinese API"
     [SCW_SECRET_KEY]="Scaleway — EU/GDPR serverless + GPU"
     [ANTHROPIC_API_KEY]="Anthropic — Claude models (best coding quality)"
     [OPENAI_API_KEY]="OpenAI — GPT-4o, fallback"
@@ -109,7 +110,8 @@ if $VAULT_MODE; then
         VAULT_PATH="secret/ohagent/providers/${VAR,,}/api-key"
         # Map provider-specific paths
         case "$VAR" in
-            SCW_SECRET_KEY)    VAULT_PATH="secret/ohagent/providers/scaleway/secret-key" ;;
+            ZAI_API_KEY)        VAULT_PATH="secret/ohagent/providers/zai/api-key" ;;
+            SCW_SECRET_KEY)     VAULT_PATH="secret/ohagent/providers/scaleway/secret-key" ;;
             TELEGRAM_BOT_TOKEN) VAULT_PATH="secret/ohagent/telegram/bot-token" ;;
             HETZNER_API_TOKEN)  VAULT_PATH="secret/ohagent/providers/hetzner/api-token" ;;
         esac
