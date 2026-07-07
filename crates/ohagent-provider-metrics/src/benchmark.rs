@@ -64,21 +64,29 @@ impl SpeedBenchmark {
                         continue;
                     }
 
-                    // Read streaming response
-                    let mut stream = response.bytes_stream();
-                    use futures::StreamExt;
-                    while let Some(chunk) = stream.next().await {
-                        match chunk {
-                            Ok(bytes) => {
-                                if first_token_time.is_none() {
-                                    first_token_time = Some(start.elapsed().as_millis() as u64);
+                    // Read streaming SSE response, count actual content bytes
+                    let body = response.bytes().await;
+                    match body {
+                        Ok(bytes) => {
+                            let text = String::from_utf8_lossy(&bytes);
+                            // Parse SSE data lines
+                            for line in text.lines() {
+                                if let Some(data) = line.strip_prefix("data: ") {
+                                    if data == "[DONE]" { continue; }
+                                    if let Ok(obj) = serde_json::from_str::<serde_json::Value>(data) {
+                                        if let Some(content) = obj["choices"][0]["delta"]["content"].as_str() {
+                                            if first_token_time.is_none() {
+                                                first_token_time = Some(start.elapsed().as_millis() as u64);
+                                            }
+                                            // Count approximate tokens (~4 chars per token)
+                                            token_count += (content.len() as u32 / 4).max(1);
+                                        }
+                                    }
                                 }
-                                token_count += 1;
                             }
-                            Err(e) => {
-                                errors.push(format!("Stream error: {e}"));
-                                break;
-                            }
+                        }
+                        Err(e) => {
+                            errors.push(format!("Body read error: {e}"));
                         }
                     }
                 }

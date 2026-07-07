@@ -953,6 +953,62 @@ chat_completions_handler()
 
 ---
 
+## Plugin System (Phase 14)
+
+ohAgent supports a chainable plugin pipeline for message processing.
+Plugins can redact PII, moderate content, inject context, and more.
+
+| Document | Content |
+|---|---|
+| **[USAGE.md](USAGE.md)** | All usage scenarios: plugins, MCP, routing, deployment |
+| **[PLUGINS.md](PLUGINS.md)** | Plugin SDK — build your own plugin |
+| **[PRICING.md](PRICING.md)** | Provider cost comparison + speed benchmarks |
+
+### Built-in Plugins
+
+| Plugin | Purpose | License |
+|---|---|---|
+| **PII Redactor** | Detect + redact 15 categories of sensitive data | Proprietary |
+| **Infrastructure Launcher** | Deploy GPU instances on Scaleway/Hetzner/SiliconFlow | Proprietary |
+
+### Desktop Control
+
+ohAgent includes an MCP server for desktop automation:
+
+```bash
+cargo build -p ohagent-desktop-mcp
+# Registered automatically via ~/.jcode/mcp.json
+```
+
+10 tools: screenshot, mouse_move/click/drag, keyboard_type/press,
+accessibility_tree, window_list/focus, get_screen_size.
+
+### Dynamic Provider Routing
+
+```bash
+# Price scraper
+cargo run -p ohagent-provider-metrics -- scrape
+
+# Get optimal provider for a task
+cargo run -p ohagent-provider-metrics -- route \
+  --capabilities chat,code --tier budget
+```
+
+### MCP Server Pool
+
+All MCP servers from `~/.jcode/mcp.json` are automatically available
+in every ohAgent session via `SharedMcpPool`.
+
+### CMC Reasoning (optional)
+
+Enable multi-branch confidence-momentum controller for 30-50% token savings:
+
+```bash
+OHAGENT_CMC_ENABLED=1 cargo run -p ohagent-daemon
+```
+
+---
+
 ## Usage Tracking & Message Logging (Phase 7)
 
 ohAgent tracks all LLM usage and can log all prompts/responses for audit.

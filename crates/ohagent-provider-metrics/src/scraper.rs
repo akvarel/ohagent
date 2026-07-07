@@ -6,7 +6,7 @@
 //! - DeepSeek/OpenAI/Anthropic: known prices updated manually via JSON
 
 use chrono::Utc;
-use crate::models::{PriceRecord, known_providers};
+use crate::models::PriceRecord;
 use crate::store::MetricsStore;
 
 pub struct PriceScraper {
