@@ -16,6 +16,8 @@ use ohagent_core::model_router::ModelRouter;
 use ohagent_core::push::PushService;
 use ohagent_core::session_store::SessionStore;
 use ohagent_core::usage_tracker::UsageTracker;
+use ohagent_memory::engine::MemoryEngine;
+use ohagent_memory::models::MemoryEntry;
 use ohagent_skills::registry::SkillRegistry;
 
 /// Encode a file attachment to (media_type, base64_data) tuple suitable for Jcode.
@@ -60,6 +62,7 @@ pub struct Dispatcher {
     message_log: Option<Arc<MessageLog>>,
     session_store: Option<Arc<SessionStore>>,
     push: Option<Arc<PushService>>,
+    memory: Option<Arc<MemoryEngine>>,
 }
 
 impl Dispatcher {
@@ -76,6 +79,7 @@ impl Dispatcher {
             message_log: None,
             session_store: None,
             push: None,
+            memory: None,
         }
     }
 
@@ -112,6 +116,12 @@ impl Dispatcher {
     /// Set the push service for pairing registration.
     pub fn with_push(mut self, push: Arc<PushService>) -> Self {
         self.push = Some(push);
+        self
+    }
+
+    /// Set the memory engine for /remember, /recall, /forget commands.
+    pub fn with_memory(mut self, memory: Arc<MemoryEngine>) -> Self {
+        self.memory = Some(memory);
         self
     }
 
@@ -688,6 +698,130 @@ impl Dispatcher {
                     None => Some(OutgoingMessage {
                         chat_id: msg.chat_id.clone(),
                         text: "Message logging is not configured.".into(),
+                        markdown: false,
+                    }),
+                }
+            }
+
+            "remember" => {
+                let content = args.trim();
+                if content.is_empty() {
+                    return Some(OutgoingMessage {
+                        chat_id: msg.chat_id.clone(),
+                        text: "Usage: /remember <text to remember>".into(),
+                        markdown: false,
+                    });
+                }
+                match &self.memory {
+                    Some(memory) => {
+                        use chrono::Utc;
+                        let now = Utc::now();
+                        let entry = MemoryEntry {
+                            id: uuid::Uuid::new_v4().to_string(),
+                            tenant_id: msg.tenant_id.clone(),
+                            session_id: format!("{}:{}", msg.platform, msg.chat_id),
+                            content: content.to_string(),
+                            source: ohagent_memory::models::MemorySource::Explicit,
+                            importance: 0.5,
+                            tags: vec!["manual".into(), "telegram".into()],
+                            embedding: None,
+                            created_at: now,
+                            last_accessed_at: now,
+                            access_count: 0,
+                        };
+                        match memory.remember(entry) {
+                            Ok(saved) => Some(OutgoingMessage {
+                                chat_id: msg.chat_id.clone(),
+                                text: format!("*Remembered:* _{content}_\nID: `{}`", saved.id),
+                                markdown: true,
+                            }),
+                            Err(e) => Some(OutgoingMessage {
+                                chat_id: msg.chat_id.clone(),
+                                text: format!("Failed to remember: {e}"),
+                                markdown: false,
+                            }),
+                        }
+                    }
+                    None => Some(OutgoingMessage {
+                        chat_id: msg.chat_id.clone(),
+                        text: "Memory engine is not configured.".into(),
+                        markdown: false,
+                    }),
+                }
+            }
+
+            "recall" | "search" => {
+                let query = args.trim();
+                if query.is_empty() {
+                    return Some(OutgoingMessage {
+                        chat_id: msg.chat_id.clone(),
+                        text: "Usage: /recall <search query>".into(),
+                        markdown: false,
+                    });
+                }
+                match &self.memory {
+                    Some(memory) => match memory.search(&msg.tenant_id, query) {
+                        Ok(results) if results.is_empty() => Some(OutgoingMessage {
+                            chat_id: msg.chat_id.clone(),
+                            text: format!("_No memories found for \"{query}\"._"),
+                            markdown: true,
+                        }),
+                        Ok(results) => {
+                            let mut text = format!("*Found {} memories:*\n", results.len());
+                            for (i, r) in results.iter().take(10).enumerate() {
+                                text.push_str(&format!(
+                                    "\n{}. {} _(score: {:.2})_\n  `{}`",
+                                    i + 1,
+                                    &r.entry.content[..r.entry.content.len().min(200)],
+                                    r.combined_score,
+                                    r.entry.id,
+                                ));
+                            }
+                            Some(OutgoingMessage {
+                                chat_id: msg.chat_id.clone(),
+                                text,
+                                markdown: true,
+                            })
+                        }
+                        Err(e) => Some(OutgoingMessage {
+                            chat_id: msg.chat_id.clone(),
+                            text: format!("Memory search failed: {e}"),
+                            markdown: false,
+                        }),
+                    },
+                    None => Some(OutgoingMessage {
+                        chat_id: msg.chat_id.clone(),
+                        text: "Memory engine is not configured.".into(),
+                        markdown: false,
+                    }),
+                }
+            }
+
+            "forget" => {
+                let id = args.trim();
+                if id.is_empty() {
+                    return Some(OutgoingMessage {
+                        chat_id: msg.chat_id.clone(),
+                        text: "Usage: /forget <memory ID>".into(),
+                        markdown: false,
+                    });
+                }
+                match &self.memory {
+                    Some(memory) => match memory.forget(id) {
+                        Ok(()) => Some(OutgoingMessage {
+                            chat_id: msg.chat_id.clone(),
+                            text: format!("*Forgotten:* `{id}`"),
+                            markdown: true,
+                        }),
+                        Err(e) => Some(OutgoingMessage {
+                            chat_id: msg.chat_id.clone(),
+                            text: format!("Failed to forget: {e}"),
+                            markdown: false,
+                        }),
+                    },
+                    None => Some(OutgoingMessage {
+                        chat_id: msg.chat_id.clone(),
+                        text: "Memory engine is not configured.".into(),
                         markdown: false,
                     }),
                 }

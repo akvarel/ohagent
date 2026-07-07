@@ -22,6 +22,7 @@ dashmap = { workspace = true }
 rand = { workspace = true }
 ohagent-core = { path = "../ohagent-core" }
 ohagent-skills = { path = "../ohagent-skills" }
+ohagent-memory = { path = "../ohagent-memory" }
 hmac = "0.12"
 sha2 = "0.10"
 hex = "0.4"

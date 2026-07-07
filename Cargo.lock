@@ -4479,6 +4479,7 @@ dependencies = [
  "hex",
  "hmac 0.12.1",
  "ohagent-core",
+ "ohagent-memory",
  "ohagent-skills",
  "once_cell",
  "rand 0.8.6",

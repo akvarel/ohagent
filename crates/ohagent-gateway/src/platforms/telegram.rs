@@ -23,6 +23,7 @@ use ohagent_core::model_router::ModelRouter;
 use ohagent_core::push::PushService;
 use ohagent_core::session_store::SessionStore;
 use ohagent_core::usage_tracker::UsageTracker;
+use ohagent_memory::engine::MemoryEngine;
 use ohagent_skills::registry::SkillRegistry;
 
 /// Helper: parse a string chat_id to teloxide's ChatId.
@@ -62,6 +63,12 @@ enum Command {
     Skilluse(String),
     #[command(description = "Show/set active model")]
     Model,
+    #[command(description = "Remember something")]
+    Remember(String),
+    #[command(description = "Search memories")]
+    Recall(String),
+    #[command(description = "Forget a memory by ID")]
+    Forget(String),
 }
 
 /// Shared state accessible from all Telegram handlers.
@@ -79,6 +86,7 @@ pub struct TelegramAdapter {
     message_log: Option<Arc<MessageLog>>,
     session_store: Option<Arc<SessionStore>>,
     push: Option<Arc<PushService>>,
+    memory: Option<Arc<MemoryEngine>>,
 }
 
 impl TelegramAdapter {
@@ -97,6 +105,7 @@ impl TelegramAdapter {
             message_log: None,
             session_store: None,
             push: None,
+            memory: None,
         })
     }
 
@@ -110,6 +119,7 @@ impl TelegramAdapter {
             message_log: None,
             session_store: None,
             push: None,
+            memory: None,
         }
     }
 
@@ -148,6 +158,12 @@ impl TelegramAdapter {
         self.push = Some(push);
         self
     }
+
+    /// Attach the memory engine for /remember, /recall, /forget.
+    pub fn with_memory(mut self, memory: Arc<MemoryEngine>) -> Self {
+        self.memory = Some(memory);
+        self
+    }
 }
 
 #[async_trait::async_trait]
@@ -182,6 +198,9 @@ impl PlatformAdapter for TelegramAdapter {
         }
         if let Some(ref push) = self.push {
             dispatcher_builder = dispatcher_builder.with_push(Arc::clone(push));
+        }
+        if let Some(ref mem) = self.memory {
+            dispatcher_builder = dispatcher_builder.with_memory(Arc::clone(mem));
         }
         let dispatcher = Arc::new(dispatcher_builder);
 
@@ -422,6 +441,9 @@ async fn handle_command(
         Command::Skill(name) => ("skill", name.as_str()),
         Command::Skilluse(name) => ("skilluse", name.as_str()),
         Command::Model => ("model", ""),
+        Command::Remember(content) => ("remember", content.as_str()),
+        Command::Recall(query) => ("recall", query.as_str()),
+        Command::Forget(id) => ("forget", id.as_str()),
     };
 
     let incoming = IncomingMessage {
