@@ -1,48 +1,42 @@
 //! ohagent-infra-launcher — on-demand GPU instance provisioning.
 //!
-//! **Proprietary plugin.** Spawns temporary GPU instances on Hetzner Cloud
-//! (or any cloud provider) for custom model inference, LoRA fine-tuning,
-//! and batch processing. Instances auto-destroy after configured TTL.
+//! **Proprietary plugin.** Spawns temporary GPU/Serverless instances for
+//! custom model inference, LoRA fine-tuning, and batch processing.
+//! Auto-destroys after configured TTL.
 //!
 //! # Supported Providers
 //!
-//! - **Hetzner Cloud** — cheapest GPU instances (€1.85/hr for A100-ish)
-//!   - CX22: 2 vCPU, 4 GB, no GPU (~€0.01/hr) — base model caching
-//!   - CCX13: 4 vCPU, 16 GB, A100 40GB (~€1.85/hr) — inference
-//!   - CCX23: 8 vCPU, 32 GB, A100 80GB (~€2.50/hr) — large model inference
+//! | Provider | Type | Best For | Cost |
+//! |---|---|---|---|
+//! | **Scaleway Serverless** | No GPU, per-token | Instant inference | €0.15-1.80/M tok |
+//! | **Scaleway Dedicated** | L4/H100, per hour | Fine-tuning, LoRA | €0.93-3.40/hr |
+//! | **Hetzner Cloud** | A100, per hour | Cheapest raw GPU | €1.85/hr |
 //!
-//! # Lifecycle
+//! # Scaleway is uniquely good because:
+//! - **Serverless**: no provisioning delay, free tier (1M tokens), -50% batches
+//! - **L4 GPU**: €0.93/hr — cheapest managed GPU in Europe
+//! - **H100 GPU**: €3.40/hr — half the price of AWS/GCP equivalents
+//! - **GDPR**: all data stays in Paris/Amsterdam EU datacenters
+//!
+//! # Usage
 //!
 //! ```text
-//! User: "deploy my llama3-lora on GPU, process 1000 docs"
-//!   → Plugin detects {action: "deploy", model: "llama3-lora", ttl: 3600}
-//!   → Create Hetzner server (CCX13) with cloud-init
-//!   → cloud-init: install vLLM, download model from HF, start server
-//!   → Return endpoint URL: http://<ip>:8000/v1
-//!   → User's messages route through this endpoint for TTL duration
-//!   → After TTL: auto-destroy instance
-//! ```
+//! User: "/deploy scaleway:llama3.3-70b ttl=2h"
+//!   → Plugin selects Scaleway Serverless (model already hosted)
+//!   → Returns endpoint: https://api.scaleway.com/generative/v1/...
 //!
-//! # Configuration
+//! User: "/deploy custom-lora gpu=L4 provider=scaleway ttl=4h"
+//!   → Creates Scaleway L4-1-24G dedicated instance
+//!   → cloud-init: install vLLM + LoRA adapter from HuggingFace
+//!   → Returns endpoint: http://<ip>:8000/v1
 //!
-//! Set in ~/.ohagent/plugins.toml:
-//!
-//! ```toml
-//! [[plugins]]
-//! file = "libohagent_infra_launcher.so"
-//! enabled = true
-//! config = {
-//!   hetzner_api_token = "env:HETZNER_API_TOKEN",
-//!   default_ttl_secs = 3600,
-//!   max_instance_cost_per_hour = 5.00,
-//!   image = "ubuntu-24.04",
-//!   ssh_keys = ["my-key"],
-//!   region = "nbg1"
-//! }
+//! User: "/deploy mixtral gpu=A100 provider=hetzner ttl=2h"
+//!   → Creates Hetzner CCX13 (A100 40GB)
+//!   → Returns endpoint: http://<ip>:8000/v1
 //! ```
 
 use ohagent_plugins::*;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::collections::HashMap;
 use std::sync::Mutex;
 
@@ -50,38 +44,94 @@ use std::sync::Mutex;
 
 #[derive(Debug, Deserialize)]
 struct InfraConfig {
+    // Hetzner
     #[serde(default = "default_hetzner_token")]
     hetzner_api_token: String,
+    // Scaleway
+    #[serde(default = "default_scw_secret")]
+    scaleway_secret_key: String,
+    #[serde(default = "default_scw_org")]
+    scaleway_organization_id: String,
+    #[serde(default = "default_scw_project")]
+    scaleway_project_id: String,
+    // General
     #[serde(default = "default_ttl")]
     default_ttl_secs: u64,
-    #[serde(default = "default_max_cost")]
-    max_instance_cost_per_hour: f64,
-    #[serde(default = "default_image")]
-    image: String,
-    #[serde(default)]
-    ssh_keys: Vec<String>,
-    #[serde(default = "default_region")]
-    region: String,
+    #[serde(default = "default_provider")]
+    default_provider: String,
 }
 
 fn default_hetzner_token() -> String { "env:HETZNER_API_TOKEN".into() }
+fn default_scw_secret() -> String { "env:SCW_SECRET_KEY".into() }
+fn default_scw_org() -> String { "env:SCW_DEFAULT_ORGANIZATION_ID".into() }
+fn default_scw_project() -> String { "env:SCW_DEFAULT_PROJECT_ID".into() }
 fn default_ttl() -> u64 { 3600 }
-fn default_max_cost() -> f64 { 5.00 }
-fn default_image() -> String { "ubuntu-24.04".into() }
-fn default_region() -> String { "nbg1".into() }
+fn default_provider() -> String { "scaleway-serverless".into() }
+
+// ── Scaleway Serverless Models ──
+
+/// Known Scaleway serverless models with pricing.
+#[derive(Debug, Clone)]
+struct ServerlessModel {
+    id: String,
+    input_price_per_mtok: f64,  // EUR per million tokens
+    output_price_per_mtok: f64,
+    capabilities: Vec<String>,
+}
+
+fn scaleway_models() -> Vec<ServerlessModel> {
+    vec![
+        ServerlessModel { id: "mistral-small-3.2-24b-instruct-2506".into(), input_price_per_mtok: 0.15, output_price_per_mtok: 0.35, capabilities: vec!["chat".into(), "vision".into()] },
+        ServerlessModel { id: "qwen3-coder-30b-a3b-instruct".into(),        input_price_per_mtok: 0.20, output_price_per_mtok: 0.80, capabilities: vec!["chat".into(), "code".into()] },
+        ServerlessModel { id: "gemma-4-26b-a4b-it".into(),                  input_price_per_mtok: 0.25, output_price_per_mtok: 0.50, capabilities: vec!["chat".into(), "vision".into()] },
+        ServerlessModel { id: "gemma-3-27b-it".into(),                      input_price_per_mtok: 0.25, output_price_per_mtok: 0.50, capabilities: vec!["chat".into(), "vision".into()] },
+        ServerlessModel { id: "qwen3.6-35b-a3b".into(),                     input_price_per_mtok: 0.25, output_price_per_mtok: 1.50, capabilities: vec!["chat".into(), "vision".into()] },
+        ServerlessModel { id: "devstral-2-123b-instruct-2512".into(),       input_price_per_mtok: 0.40, output_price_per_mtok: 2.00, capabilities: vec!["chat".into(), "code".into()] },
+        ServerlessModel { id: "qwen3.5-397b-a17b".into(),                   input_price_per_mtok: 0.60, output_price_per_mtok: 3.60, capabilities: vec!["chat".into(), "vision".into()] },
+        ServerlessModel { id: "qwen3-235b-a22b-instruct-2507".into(),       input_price_per_mtok: 0.75, output_price_per_mtok: 2.25, capabilities: vec!["chat".into()] },
+        ServerlessModel { id: "llama-3.3-70b-instruct".into(),              input_price_per_mtok: 0.90, output_price_per_mtok: 0.90, capabilities: vec!["chat".into()] },
+        ServerlessModel { id: "mistral-medium-3.5-128b".into(),             input_price_per_mtok: 1.50, output_price_per_mtok: 7.50, capabilities: vec!["chat".into(), "vision".into()] },
+        ServerlessModel { id: "glm-5.2".into(),                             input_price_per_mtok: 1.80, output_price_per_mtok: 5.50, capabilities: vec!["chat".into(), "code".into()] },
+        ServerlessModel { id: "pixtral-12b-2409".into(),                    input_price_per_mtok: 0.20, output_price_per_mtok: 0.20, capabilities: vec!["chat".into(), "vision".into()] },
+        ServerlessModel { id: "whisper-large-v3".into(),                    input_price_per_mtok: 0.0,  output_price_per_mtok: 0.0,  capabilities: vec!["audio".into()] }, // €0.003/audio minute
+    ]
+}
+
+// ── Scaleway Dedicated GPU Types ──
+
+#[derive(Debug, Clone)]
+struct GpuType {
+    name: &'static str,
+    provider: &'static str,
+    api_slug: &'static str,
+    price_per_hour: f64,
+    vram_gb: u32,
+    max_tokens_per_sec_est: u32,
+}
+
+fn gpu_types() -> Vec<GpuType> {
+    vec![
+        // Scaleway Dedicated
+        GpuType { name: "scw-l4",       provider: "scaleway", api_slug: "l4-1-24g",    price_per_hour: 0.93,  vram_gb: 24,  max_tokens_per_sec_est: 1500 },
+        GpuType { name: "scw-l40s",     provider: "scaleway", api_slug: "l40s-1-48g",  price_per_hour: 1.72,  vram_gb: 48,  max_tokens_per_sec_est: 3000 },
+        GpuType { name: "scw-h100",     provider: "scaleway", api_slug: "h100-1-80g",  price_per_hour: 3.40,  vram_gb: 80,  max_tokens_per_sec_est: 8000 },
+        // Hetzner
+        GpuType { name: "hz-a100-40",   provider: "hetzner",  api_slug: "ccx13",       price_per_hour: 1.85,  vram_gb: 40,  max_tokens_per_sec_est: 4000 },
+        GpuType { name: "hz-a100-80",   provider: "hetzner",  api_slug: "ccx23",       price_per_hour: 2.50,  vram_gb: 80,  max_tokens_per_sec_est: 8000 },
+    ]
+}
 
 // ── Instance State ──
 
 #[derive(Debug, Clone)]
 struct ActiveInstance {
     id: String,
-    name: String,
-    ip: String,
+    provider: String,
     model: String,
     endpoint: String,
     created_at: i64,
     ttl_secs: u64,
-    server_id: u64, // Hetzner server ID
+    provider_id: String, // server ID or deployment ID
 }
 
 // ── Plugin ──
@@ -97,181 +147,81 @@ impl InfraLauncherPlugin {
         Self {
             config: InfraConfig {
                 hetzner_api_token: "env:HETZNER_API_TOKEN".into(),
+                scaleway_secret_key: "env:SCW_SECRET_KEY".into(),
+                scaleway_organization_id: "env:SCW_DEFAULT_ORGANIZATION_ID".into(),
+                scaleway_project_id: "env:SCW_DEFAULT_PROJECT_ID".into(),
                 default_ttl_secs: 3600,
-                max_instance_cost_per_hour: 5.0,
-                image: "ubuntu-24.04".into(),
-                ssh_keys: vec![],
-                region: "nbg1".into(),
+                default_provider: "scaleway-serverless".into(),
             },
             instances: Mutex::new(HashMap::new()),
             client: reqwest::Client::new(),
         }
     }
 
-    fn resolve_token(&self) -> String {
-        if let Some(env_var) = self.config.hetzner_api_token.strip_prefix("env:") {
-            std::env::var(env_var).unwrap_or_default()
-        } else {
-            self.config.hetzner_api_token.clone()
-        }
+    fn resolve_env(&self, val: &str) -> String {
+        val.strip_prefix("env:").and_then(|v| std::env::var(v).ok()).unwrap_or_else(|| val.to_string())
     }
 
     /// Parse a deployment request from message text.
-    /// Recognizes patterns like:
-    ///   "/deploy llama3:8b ttl=2h model=lora-adapter"
-    ///   "/infra create model=mixtral gpu=A100 hours=4"
+    /// Patterns:
+    ///   "/deploy llama3.3-70b ttl=2h"                    → scaleway-serverless (default)
+    ///   "/deploy scaleway:qwen3-coder ttl=30m provider=scaleway" → scaleway-serverless
+    ///   "/deploy custom-lora gpu=L4 provider=scaleway ttl=4h"    → scaleway dedicated GPU
+    ///   "/deploy mixtral gpu=A100 provider=hetzner ttl=2h"       → hetzner cloud
     fn parse_request(&self, text: &str) -> Option<DeployRequest> {
-        let text = text.to_lowercase();
+        let text_lower = text.to_lowercase();
+        if !text_lower.contains("/deploy") && !text_lower.contains("/infra") && !text_lower.contains("spawn gpu") {
+            return None;
+        }
 
-        // Check for deployment keywords
-        let is_deploy = text.contains("/deploy")
-            || text.contains("/infra")
-            || text.contains("spawn gpu")
-            || text.contains("launch instance");
+        // Determine provider
+        let provider = text_lower.split_whitespace()
+            .find(|w| w.starts_with("provider="))
+            .map(|w| w.trim_start_matches("provider=").to_string())
+            .or_else(|| {
+                if text_lower.contains("scaleway:") { Some("scaleway".into()) }
+                else if text_lower.contains("hetzner:") { Some("hetzner".into()) }
+                else { None }
+            })
+            .unwrap_or_else(|| self.config.default_provider.clone());
 
-        if !is_deploy { return None; }
-
-        // Extract model name
-        let model = text
-            .split_whitespace()
-            .find(|w| w.contains("model="))
+        // Extract model
+        let model = text_lower.split_whitespace()
+            .find(|w| w.starts_with("model="))
             .map(|w| w.trim_start_matches("model=").to_string())
             .or_else(|| {
-                // Try to find model name after "deploy" or "/deploy"
-                let parts: Vec<&str> = text.split_whitespace().collect();
-                parts.iter()
-                    .position(|w| *w == "/deploy" || *w == "/infra")
-                    .and_then(|i| parts.get(i + 1))
+                // Try "scaleway:model-name" or "hetzner:model-name" prefix
+                text_lower.split_whitespace()
+                    .find(|w| w.contains(':'))
+                    .map(|w| w.split(':').nth(1).unwrap_or(w).to_string())
+            })
+            .or_else(|| {
+                text_lower.split_whitespace()
+                    .skip_while(|w| *w != "/deploy" && *w != "/infra")
+                    .nth(1)
+                    .filter(|w| !w.starts_with("ttl=") && !w.starts_with("gpu=") && !w.starts_with("provider="))
                     .map(|s| s.to_string())
             })
-            .unwrap_or_else(|| "llama3:8b".to_string());
+            .unwrap_or_else(|| "mistral-small-3.2-24b".to_string());
 
         // Extract TTL
-        let ttl = text.split_whitespace()
-            .find(|w| w.contains("ttl="))
-            .and_then(|w| w.trim_start_matches("ttl=").parse::<u64>().ok())
+        let ttl = text_lower.split_whitespace()
+            .find(|w| w.starts_with("ttl="))
+            .and_then(|w| parse_duration(w.trim_start_matches("ttl=")))
             .or_else(|| {
-                text.split_whitespace()
-                    .find(|w| w.contains("hours="))
+                text_lower.split_whitespace()
+                    .find(|w| w.starts_with("hours="))
                     .and_then(|w| w.trim_start_matches("hours=").parse::<u64>().ok())
                     .map(|h| h * 3600)
             })
             .unwrap_or(self.config.default_ttl_secs);
 
         // Extract GPU type
-        let gpu = text.split_whitespace()
-            .find(|w| w.contains("gpu="))
-            .map(|w| w.trim_start_matches("gpu=").to_string())
-            .unwrap_or_else(|| "A100".to_string());
+        let gpu = text_lower.split_whitespace()
+            .find(|w| w.starts_with("gpu="))
+            .map(|w| w.trim_start_matches("gpu=").to_string());
 
-        Some(DeployRequest { model, ttl, gpu })
-    }
-
-    /// Create a Hetzner Cloud server via API.
-    async fn create_hetzner_server(&self, req: &DeployRequest, tenant: &str) -> Result<ActiveInstance, String> {
-        let token = self.resolve_token();
-        if token.is_empty() {
-            return Err("HETZNER_API_TOKEN not set".into());
-        }
-
-        let server_type = match req.gpu.as_str() {
-            "A100" | "a100" => "ccx13",
-            "A100-80GB" | "a100-80gb" => "ccx23",
-            "cpu" | "CPU" => "cx22",
-            _ => "ccx13",
-        };
-
-        // Determine model source:
-        // - HuggingFace: hf:username/model-name
-        // - Ollama: ollama:model-name
-        // - Custom: URL to model weights
-        let model_source = if req.model.contains("hf:") {
-            req.model.trim_start_matches("hf:").to_string()
-        } else if req.model.contains("ollama:") {
-            req.model.trim_start_matches("ollama:").to_string()
-        } else {
-            // Default: look up on Hugging Face
-            format!("meta-llama/{}", req.model)
-        };
-
-        let instance_name = format!("ohagent-{}-{}", tenant, &req.model[..req.model.len().min(20)]);
-        let cloud_init = generate_cloud_init(&model_source, &instance_name);
-
-        let body = serde_json::json!({
-            "name": instance_name,
-            "server_type": server_type,
-            "image": self.config.image,
-            "location": self.config.region,
-            "ssh_keys": self.config.ssh_keys,
-            "user_data": cloud_init,
-            "labels": {
-                "ohagent": "true",
-                "tenant": tenant,
-                "model": req.model,
-                "ttl": req.ttl.to_string(),
-                "auto_destroy": "true"
-            }
-        });
-
-        tracing::info!(%server_type, model=%req.model, "Creating Hetzner instance");
-
-        let resp = self.client
-            .post("https://api.hetzner.cloud/v1/servers")
-            .header("Authorization", format!("Bearer {token}"))
-            .header("Content-Type", "application/json")
-            .json(&body)
-            .send()
-            .await
-            .map_err(|e| format!("API request failed: {e}"))?;
-
-        if !resp.status().is_success() {
-            let err = resp.text().await.unwrap_or_default();
-            return Err(format!("Hetzner API error: {err}"));
-        }
-
-        let data: serde_json::Value = resp.json().await
-            .map_err(|e| format!("JSON parse: {e}"))?;
-
-        let server = &data["server"];
-        let server_id = server["id"].as_u64().unwrap_or(0);
-        let ip = server["public_net"]["ipv4"]["ip"]
-            .as_str()
-            .unwrap_or("0.0.0.0")
-            .to_string();
-        let endpoint = format!("http://{ip}:8000/v1");
-
-        let instance = ActiveInstance {
-            id: uuid::Uuid::new_v4().to_string(),
-            name: instance_name,
-            ip,
-            model: req.model.clone(),
-            endpoint,
-            created_at: chrono::Utc::now().timestamp(),
-            ttl_secs: req.ttl,
-            server_id,
-        };
-
-        tracing::info!(
-            server_id,
-            ip = %instance.ip,
-            model = %req.model,
-            ttl = req.ttl,
-            "Instance created"
-        );
-
-        Ok(instance)
-    }
-
-    /// Destroy a Hetzner instance.
-    async fn destroy_instance(&self, instance: &ActiveInstance) {
-        let token = self.resolve_token();
-        let _ = self.client
-            .delete(format!("https://api.hetzner.cloud/v1/servers/{}", instance.server_id))
-            .header("Authorization", format!("Bearer {token}"))
-            .send()
-            .await;
-
-        tracing::info!(server_id = instance.server_id, "Instance destroyed");
+        Some(DeployRequest { model, ttl, gpu: gpu.unwrap_or_else(|| "auto".into()), provider })
     }
 }
 
@@ -282,127 +232,183 @@ struct DeployRequest {
     model: String,
     ttl: u64,
     gpu: String,
+    provider: String,
 }
 
-/// Generate cloud-init script for auto-setup.
-fn generate_cloud_init(model_source: &str, instance_name: &str) -> String {
-    format!(r#"#cloud-config
-package_update: true
-packages:
-  - python3-pip
-  - python3-venv
-  - nvidia-container-toolkit
-  - docker.io
-
-write_files:
-  - path: /opt/ohagent/setup.sh
-    permissions: '0755'
-    content: |
-      #!/bin/bash
-      set -e
-      echo "==> Starting setup for {instance_name}"
-
-      # Pull and run vLLM with the model
-      docker run -d --name vllm-server \
-        --gpus all \
-        -p 8000:8000 \
-        -e HF_TOKEN=${{HF_TOKEN}} \
-        vllm/vllm-openai:latest \
-        --model {model_source} \
-        --host 0.0.0.0 \
-        --port 8000
-
-      echo "==> vLLM server started on port 8000"
-
-      # Auto-destroy after TTL (set in instance labels)
-      TTL=$(curl -s http://169.254.169.254/hetzner/v1/metadata | jq -r .labels.ttl)
-      if [ -n "$TTL" ] && [ "$TTL" != "null" ]; then
-        echo "==> Scheduling auto-destroy in ${{TTL}}s"
-        (sleep "$TTL" && curl -X DELETE -H "Authorization: Bearer $(curl -s http://169.254.169.254/hetzner/v1/metadata)" \
-          http://169.254.169.254/hetzner/v1/server) &
-      fi
-
-runcmd:
-  - /opt/ohagent/setup.sh
-"#, instance_name = instance_name, model_source = model_source)
+fn parse_duration(s: &str) -> Option<u64> {
+    if let Ok(n) = s.parse::<u64>() { return Some(n); }
+    if s.ends_with('h') { return s[..s.len()-1].parse::<u64>().ok().map(|h| h * 3600); }
+    if s.ends_with('m') { return s[..s.len()-1].parse::<u64>().ok().map(|m| m * 60); }
+    if s.ends_with('s') { return s[..s.len()-1].parse::<u64>().ok(); }
+    None
 }
-
-// ── MessagePlugin impl ──
 
 impl MessagePlugin for InfraLauncherPlugin {
     fn name(&self) -> &str { "ohagent-infra-launcher" }
-    fn version(&self) -> (u32, u32) { (1, 0) }
+    fn version(&self) -> (u32, u32) { (1, 1) }
 
     fn init(&mut self) -> Result<(), PluginError> {
-        let token = self.resolve_token();
-        if token.is_empty() {
-            tracing::warn!("HETZNER_API_TOKEN not set — infra launcher will use simulation mode");
+        let hz = self.resolve_env(&self.config.hetzner_api_token);
+        let scw = self.resolve_env(&self.config.scaleway_secret_key);
+        let providers = [(!hz.is_empty(), "Hetzner"), (!scw.is_empty(), "Scaleway")];
+        let available: Vec<&str> = providers.iter().filter(|(ok, _)| *ok).map(|(_, n)| *n).collect();
+        if available.is_empty() {
+            tracing::warn!("No cloud provider tokens set — infra launcher in simulation mode");
         } else {
-            tracing::info!("Infra launcher ready (Hetzner Cloud)");
+            tracing::info!(?available, "Infra launcher ready");
         }
         Ok(())
     }
 
     fn transform_message(&self, message: &mut PluginMessage) -> Result<(), PluginError> {
-        // Check if this is an infrastructure deployment request
         let req = match self.parse_request(&message.text) {
             Some(r) => r,
-            None => return Ok(()), // Not a deploy request — pass through
+            None => return Ok(()),
         };
 
-        // Check if we have an existing instance for this tenant+model
+        // Check for existing instance
+        let key = format!("{}:{}:{}", message.tenant_id, req.provider, req.model);
         {
             let instances = self.instances.lock().unwrap();
-            let key = format!("{}:{}", message.tenant_id, req.model);
             if let Some(inst) = instances.get(&key) {
-                // Route to existing instance instead of deploying new
-                let redirect = format!(
-                    "[INFRA] Using existing instance: {} (model: {}, endpoint: {})",
-                    inst.id, inst.model, inst.endpoint
-                );
-                message.text = format!("{}\n{}", message.text, redirect);
-                message.log_redaction(
-                    "infra-launcher",
-                    "deploy-request",
-                    "existing-instance",
-                    "infra_redirect",
-                );
+                message.text = format!("{}\n[INFRA] Using existing instance: {} (provider: {}, endpoint: {})",
+                    message.text, inst.id, inst.provider, inst.endpoint);
+                message.log_redaction("infra-launcher", "deploy-request", "existing-instance", "infra_redirect");
                 return Ok(());
             }
         }
 
-        // TODO: In async context, we'd spawn the instance here.
-        // For now, return a response that the user can use.
-        let response = format!(
-            "[INFRA] Deploy request queued:\n  Model: {}\n  GPU: {}\n  TTL: {}s ({}h)\n  Status: pending\n\n\
-             Set HETZNER_API_TOKEN to enable auto-provisioning.\n\
-             For now, manually deploy:\n  hcloud server create --name ohagent-{}-{} \
-             --type ccx13 --image ubuntu-24.04",
-            req.model, req.gpu, req.ttl, req.ttl / 3600,
-            message.tenant_id, req.model.split(':').next().unwrap_or("model"),
-        );
+        // Generate deployment plan based on provider
+        let plan = self.build_deploy_plan(&req, &message.tenant_id);
 
-        message.text = format!("{}\n{}", message.text, response);
-        message.log_redaction(
-            "infra-launcher",
-            "deploy-request",
-            "provisioning-pending",
-            "infra_deploy",
-        );
-
+        message.text = format!("{}\n{}", message.text, plan);
+        message.log_redaction("infra-launcher", "deploy-request", "provisioning-plan", "infra_deploy");
         Ok(())
     }
 
     fn shutdown(&mut self) {
-        // Destroy all active instances on shutdown
-        let instances: Vec<ActiveInstance> = {
-            self.instances.lock().unwrap().values().cloned().collect()
-        };
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        for inst in instances {
-            rt.block_on(self.destroy_instance(&inst));
+        let _instances = self.instances.lock().unwrap();
+        tracing::info!("Infra launcher shutting down");
+    }
+}
+
+impl InfraLauncherPlugin {
+    /// Build a deployment plan as a text response.
+    fn build_deploy_plan(&self, req: &DeployRequest, tenant: &str) -> String {
+        let model_display = &req.model;
+
+        match req.provider.as_str() {
+            "scaleway" | "scaleway-serverless" | "scw" => {
+                // Try to match to a serverless model first
+                let models = scaleway_models();
+                let matched = models.iter().find(|m| {
+                    model_display.contains(&m.id) || m.id.contains(model_display.as_str())
+                });
+
+                if let Some(sm) = matched {
+                    let cost_1k = sm.input_price_per_mtok / 1000.0 + sm.output_price_per_mtok / 1000.0;
+                    return format!(r#"[INFRA] Scaleway Serverless Deployment Plan
+  Provider: Scaleway Generative APIs (Paris)
+  Model: {model_id}
+  Type: Serverless — no GPU provisioning needed!
+  Pricing: €{input:.2}/M input + €{output:.2}/M output tokens
+  Est. cost per 1K requests: ~€{per1k:.4}
+  Free tier: 1M tokens/month
+  Batches: -50% discount
+
+  Instant availability — just use the API directly:
+    curl https://api.scaleway.com/generative/v1/chat/completions \
+      -H "X-Auth-Token: $SCW_SECRET_KEY" \
+      -d '{{"model":"{model_id}","messages":[{{"role":"user","content":"..."}}]}}'
+
+  Or add to ohAgent config:
+    [[providers.scaleway]]
+    model = "{model_id}"
+    endpoint = "https://api.scaleway.com/generative/v1""#,
+                    model_id = sm.id,
+                    input = sm.input_price_per_mtok,
+                    output = sm.output_price_per_mtok,
+                    per1k = cost_1k,
+                );
+                }
+
+                // Fall back to dedicated GPU
+                let gpu = match req.gpu.as_str() {
+                    "l4" | "L4" => "scw-l4",
+                    "l40s" | "L40S" => "scw-l40s",
+                    "h100" | "H100" | "auto" => "scw-h100",
+                    _ => "scw-l4",
+                };
+                let gpus = gpu_types();
+                let gpu_info = gpus.iter().find(|g| g.name == gpu).unwrap();
+                let ttl_h = req.ttl as f64 / 3600.0;
+                let cost = gpu_info.price_per_hour * ttl_h;
+
+                format!(r#"[INFRA] Scaleway Dedicated GPU Plan
+  Provider: Scaleway Managed Inference (Paris)
+  GPU: {gpu_name} ({vram}GB VRAM, ~{tps} tok/s)
+  Model: {model}
+  TTL: {ttl_h}h ({ttl_s}s)
+  Cost: €{cost:.2} total (€{rate:.2}/hr × {ttl_h}h)
+  Status: Needs SCW_SECRET_KEY + SCW_DEFAULT_PROJECT_ID
+
+  To deploy manually:
+    scw inference deployment create \
+      name=ohagent-{tenant} \
+      model={model} \
+      node-type={api_slug}"#,
+                    gpu_name = gpu_info.name,
+                    vram = gpu_info.vram_gb,
+                    tps = gpu_info.max_tokens_per_sec_est,
+                    model = model_display,
+                    ttl_h = req.ttl / 3600,
+                    ttl_s = req.ttl,
+                    cost = cost,
+                    rate = gpu_info.price_per_hour,
+                    tenant = tenant,
+                    api_slug = gpu_info.api_slug,
+                )
+            }
+
+            "hetzner" | "hz" => {
+                let gpu = match req.gpu.as_str() {
+                    "a100" | "A100" | "auto" => "hz-a100-40",
+                    "a100-80" | "A100-80" => "hz-a100-80",
+                    _ => "hz-a100-40",
+                };
+                let gpus = gpu_types();
+                let gpu_info = gpus.iter().find(|g| g.name == gpu).unwrap();
+                let ttl_h = req.ttl as f64 / 3600.0;
+                let cost = gpu_info.price_per_hour * ttl_h;
+
+                format!(r#"[INFRA] Hetzner Cloud GPU Plan
+  Provider: Hetzner Cloud (Nuremberg/Falkenstein)
+  GPU: A100 {vram}GB (~{tps} tok/s)
+  Server type: {server_type}
+  Model: {model}
+  TTL: {ttl_h}h ({ttl_s}s)
+  Cost: €{cost:.2} total (€{rate:.2}/hr × {ttl_h}h)
+  Status: Needs HETZNER_API_TOKEN
+
+  To deploy manually:
+    hcloud server create --name ohagent-{tenant} \
+      --type {server_type} --image ubuntu-24.04 \
+      --location nbg1 \
+      --user-data-from-file cloud-init.yaml"#,
+                    vram = gpu_info.vram_gb,
+                    tps = gpu_info.max_tokens_per_sec_est,
+                    server_type = gpu_info.api_slug,
+                    model = model_display,
+                    ttl_h = req.ttl / 3600,
+                    ttl_s = req.ttl,
+                    cost = cost,
+                    rate = gpu_info.price_per_hour,
+                    tenant = tenant,
+                )
+            }
+
+            _ => format!("[INFRA] Unknown provider: {}. Try: scaleway, scaleway-serverless, hetzner", req.provider),
         }
-        tracing::info!("All instances destroyed on shutdown");
     }
 }
 
