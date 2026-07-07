@@ -229,5 +229,92 @@ where (α,β,γ) = (0.7,0.2,0.1) Budget / (0.4,0.3,0.3) Balanced / (0.2,0.6,0.2)
 
 ---
 
-Data sources: scaleway.com, deepseek.com, openai.com, anthropic.com, hetzner.com, siliconflow.com/models (as of July 2026).
-SiliconFlow prices in USD; approximate EUR conversion at ~0.92.
+## 12. Vision / Multi-Document OCR Pipeline
+
+Real benchmarks (July 7, 2026) on a 960×1280 photo with 4 Latvian receipts.
+
+### Pre-Classifier: Document Counting
+
+Ask "How many documents?" — determines routing strategy.
+16 models tested, 5 correct.
+
+| # | Model | Provider | TTF | Tokens | Cost € | Answer | Verdict |
+|---|---:|---|---:|---:|---:|---:|---:|---|
+| 1 | **Mistral-small-3.2** | Scaleway | **0.7s** | 1104+2 | **€0.00017** | 4 | ✅ KING |
+| 2 | Pixtral-12B | Scaleway | 0.7s | 3167+2 | €0.00063 | 4 | ✅ |
+| 3 | GLM-4.6V-flashx | Z.ai | 2.7s | 1038+4 | €0.00014 | 4 | ✅ \* |
+| 4 | GLM-4.6V | Z.ai | 3.5s | 1038+4 | €0.00041 | 4 | ✅ \* |
+| 5 | GPT-4o-mini | OpenAI | 2.4s | 25535+1 | €0.00352 | 4 | ✅ expensive |
+| 6 | Gemma-4-26B | SF | 3.1s | 308+2 | €0.00004 | 1 | ❌ undercount |
+
+\* GLM-4.6V requires `thinking: disabled` + `max_tokens ≥ 100`.
+With `thinking: enabled` + `max_tokens: 10`, thinking consumes the budget → empty answer.
+
+### Full OCR (All-at-Once) — FAILED
+
+5 models asked to extract all 4 receipts as JSON at once:
+**100% hallucination rate.** Every model invented fake company names, amounts, and tax IDs.
+
+| Model | Hallucination |
+|---|---|
+| Mistral-small | "SIA BISTRO ROSE" ×3 (same receipt duplicated) |
+| Pixtral-12B | "SOCIEDAD LIMITADA" (Spanish fake) |
+| GLM-4.6V-flashx | "SIA Līdzīguma apgabals 'Mūns'" (Latvian fake) |
+| GLM-4.6V | "Baltic Beer House" (bar receipts) |
+| GPT-4o-mini | "Sushi" / "Treasurer Rise" (restaurants) |
+
+Ground truth: St. L'Admirable €12.69, St. BARBARA PORSE €6.90,
+St. Jv. PIRITA €56.55, St. Jv. KASTA €44.34 (from GLM-4.6V describe prompt).
+
+### BBox Pipeline — SUCCESS
+
+Three-step pipeline: **Detect → Crop → Individual OCR**.
+
+| Step | Tool | Time | Cost |
+|---|---|---|---|
+| 1. Detect bboxes | GLM-4.6V (`thinking: disabled`) | 6.0s | €0.0011 |
+| 2. Crop + enhance | PIL (locally) | 0s | €0 |
+| 3. OCR each receipt | Scaleway Mistral-small ×4 | 41.0s | €0.0024 |
+| **Total** | | **47s** | **€0.0034** |
+
+**€0.00085 per receipt** — 4/4 correctly extracted with verifiable `raw_text_dump`.
+
+| # | Store | Total | Items | IBAN |
+|---|---|---|---|---|
+| 1 | SIA Tirdzniecibas nams "Kurs", Riga | €2.25 | 2 | — |
+| 2 | SIA BARIJA, Jūrmala | €13.80 | 2 | — |
+| 3 | FOR ROSE, Kuldīga | €24.00 | 2 | LV84UNLA0020300010000 |
+| 4 | Pigu Latvia, Riga | €70.90 | 3 | LV72RIKV0004004985100 |
+
+### GLM-4.6V Pricing (Z.ai, CNY/M tokens, ≈€0.13/CNY)
+
+| Model | Input | Output | Context | Capabilities | Best For |
+|---|---|---|---|---|---|
+| glm-4.6v | ¥3.00 | ¥15.00 | 128K | chat, vision, multi_doc, bbox | Flagship — bbox + describe |
+| glm-4.6v-flashx | ¥1.00 | ¥5.00 | 128K | chat, vision, multi_doc | Pre-classifier fallback |
+| glm-4.6v-flash | FREE | FREE | 128K | chat, vision, multi_doc | ⚠️ Rate-limited (429), unreliable |
+| GLM-5V-Turbo (SF) | $1.20 | $4.00 | 205K | chat, vision, multi_doc | Latest gen, SiliconFlow |
+
+### Architecture
+
+```text
+photo → PreClassifier (Mistral-small, 0.7s, €0.00017)
+            ↓
+       "How many docs?"
+            ↓
+    ┌───────┼────────┐
+    ↓       ↓        ↓
+  Single  Multiple  Unknown
+    ↓       ↓        ↓
+  cheapest  GLM-4.6V  normal
+  vision   (bbox)    routing
+          ↓
+     PIL crop × N
+          ↓
+     Mistral-small OCR × N
+     (€0.00017 each)
+```
+
+---
+Data sources: scaleway.com, deepseek.com, openai.com, anthropic.com, hetzner.com, siliconflow.com/models, z.ai (as of July 2026).
+SiliconFlow prices in USD; approximate EUR conversion at ~0.92. CNY at ~0.13.

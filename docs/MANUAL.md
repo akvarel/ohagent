@@ -1042,6 +1042,119 @@ OHAGENT_CMC_ENABLED=1 cargo run -p ohagent-daemon
 ```
 
 ---
+## Receipt / Multi-Document Processing Pipeline (Phase 15)
+
+ohAgent can process photos with multiple documents (receipts, invoices, pages)
+using a three-step pipeline: **Pre-classify → Detect → Individual OCR**.
+
+### Pipeline Architecture
+
+```text
+📸 Photo (multi-doc)
+       ↓
+   Step 0: PreClassifier — "How many documents?"
+       │     Scaleway Mistral-small, 0.7s, €0.00017
+       │
+   ┌───┼───────────┐
+   ↓   ↓           ↓
+  1 doc  2+ docs  Unknown
+   │     │          │
+   │     │          └→ normal vision routing
+   │     │
+   │     └→ Step 1: BBox Detection — GLM-4.6V, 6s, €0.0011
+   │              Returns [[xmin,ymin,xmax,ymax], ...] per document
+   │              + rotation_degrees for deskew
+   │
+   └→ cheap OCR directly (no crop needed)
+        │
+   Step 2: PIL Crop + Enhance
+        │     Sharpen filter, contrast boost
+        │
+   Step 3: Individual OCR × N documents
+           Scaleway Mistral-small, ~5s each, €0.00017 each
+           Each with raw_text_dump for verification
+```
+
+### Real Benchmark Results (Jul 7, 2026)
+
+| Step | Model | Time | Cost | Notes |
+|---|---|---|---|---|
+| Pre-classify | Scaleway Mistral-small | 0.7s | €0.00017 | 100% accurate on 4 receipts |
+| BBox detect | GLM-4.6V | 6.0s | €0.0011 | Returns pixel coords + hints |
+| Crop | PIL (local) | 0s | €0 | Sharpen + contrast |
+| OCR ×4 | Scaleway Mistral-small | 3-29s | €0.0002-0.0015 | raw_text_dump included |
+| **Total** | | **47s** | **€0.0034** | **€0.00085/receipt** |
+
+### Configuring the Pipeline
+
+```bash
+# Required API keys
+export ZAI_API_KEY="..."       # GLM-4.6V for bbox detection
+export SCW_SECRET_KEY="..."    # Scaleway for pre-classifier + OCR
+export SCW_PROJECT_ID="..."    # Scaleway project UUID
+
+# Run the pipeline script
+python3 scripts/receipt_bbox_pipeline.py
+```
+
+### BBox Detection with GLM-4.6V
+
+GLM-4.6V has **native bounding-box capability** — it can return pixel coordinates
+for objects in an image, including rotation angles for deskewing:
+
+```json
+{
+  "receipts": [
+    {
+      "index": 1,
+      "store_name_hint": "SIA Tirdzniecibas nams Kurs",
+      "bbox": [147, 0, 764, 215],
+      "rotation_degrees": 0
+    }
+  ],
+  "total_count": 4
+}
+```
+
+**Critical**: GLM-4.6V requires `"thinking": {"type": "disabled"}` in the API call.
+With thinking enabled, the model consumes max_tokens budget on internal reasoning
+instead of producing output.
+
+### Important: GLM-4.6V-flash (FREE) is Unusable
+
+The free tier (`glm-4.6v-flash`) is permanently rate-limited (HTTP 429).
+Use `glm-4.6v-flashx` (¥1.00/M input, ¥5.00/M output) instead.
+
+### PreClassifier Fallback Chain
+
+```
+1st: Scaleway Mistral-small (0.7s, €0.00017) — primary
+2nd: GLM-4.6V-flashx (2.7s, €0.00014) — needs thinking=disabled
+3rd: GPT-4o-mini (2.4s, €0.00352) — last resort
+```
+
+### What NOT to Do
+
+**Do not ask any model to OCR multiple small documents at once.**
+5 models tested — all hallucinated completely (100% failure rate).
+The text is too small (~200px per receipt at 960px-wide photo), and
+structured JSON schemas force models to invent data.
+
+✅ Correct: count → detect → crop → OCR individually
+❌ Wrong:   OCR all at once as JSON
+
+### Pipeline Implementation
+
+Rust crate: `ohagent-provider-metrics` provides:
+- `PreClassifier` — multi-provider document counter
+- `DocumentCount` — enum (Unknown, Single, Multiple(n))
+- `DynamicRouter` — filters models by `multi_doc` capability
+
+Python script: `scripts/receipt_bbox_pipeline.py` — reference implementation.
+
+Full results: `scripts/ocr_results.json` — 4 extracted receipts with raw_text_dump.
+
+---
 
 ## Usage Tracking & Message Logging (Phase 7)
 

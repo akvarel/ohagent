@@ -601,7 +601,96 @@ Per-user cost: ~€10.60/month
 
 ---
 
-## 10. Troubleshooting
+## 10. Multi-Document Vision / Receipt OCR Pipeline
+
+### Scenario: Bookkeeper Photographs 4 Receipts
+
+A bookkeeper takes one photo of 4 receipts on a table and wants them
+extracted into structured accounting data.
+
+### Pipeline Flow
+
+```text
+📸 Photo of 4 receipts (960×1280)
+       ↓
+Step 0: PreClassifier — "How many documents?"
+        Scaleway Mistral-small, 0.7s, €0.00017
+        → "4"
+       ↓
+Step 1: BBox Detection — GLM-4.6V, 6s, €0.0011
+        → [{bbox:[147,0,764,215], hint:"Kurs"}, ...]
+       ↓
+Step 2: PIL Crop + Enhance (local)
+        → 4 individual receipts at full resolution
+       ↓
+Step 3: OCR each receipt — Scaleway Mistral-small
+        → 4 JSONs with raw_text_dump for verification
+```
+
+### Running the Pipeline
+
+```bash
+# Set keys
+export ZAI_API_KEY="..."       # for GLM-4.6V bbox detection
+export SCW_SECRET_KEY="..."    # for pre-classifier + OCR
+export SCW_PROJECT_ID="..."
+
+# Run
+python3 scripts/receipt_bbox_pipeline.py
+```
+
+### Output Example
+
+```json
+{
+  "store_name": "SIA Tirdzniecibas nams \"Kurs\"",
+  "address": "Lubanas iela 103, Riga",
+  "reg_nr": "4000399995",
+  "vat_nr": "LV40003999995",
+  "date": "20.06.2026", "time": "20:11",
+  "items": [
+    {"name": "Preces attiecinata (K) (10%)", "quantity": 1, "total_price": 1.36},
+    {"name": "Preces attiecinata (K) (13.6%)", "quantity": 1, "total_price": 1.65}
+  ],
+  "subtotal": 2.01, "vat_amount": 0.24, "total": 2.25,
+  "payment_method": "Cash", "payment_amount": 2.00, "change": 0.25,
+  "raw_text_dump": "SIA Tirdzniecibas nams \"Kurs\" Lubanas iela 103..."
+}
+```
+
+### Cost Breakdown
+
+| Step | Cost | Time |
+|---|---|---|
+| Count documents | €0.00017 | 0.7s |
+| Detect bboxes | €0.0011 | 6s |
+| Crop | €0 | 0s |
+| OCR ×4 receipts | €0.0024 | 41s |
+| **Total — 4 receipts** | **€0.0034** | **~47s** |
+| **Per receipt** | **€0.00085** | **~12s** |
+
+### What NOT to Do
+
+**Never ask any model to OCR multiple small documents in one go.**
+All 5 tested models hallucinated completely (100% failure rate) when given
+a photo with 4 small receipts and a structured JSON schema.
+
+✅ **Correct approach**: count → bbox detect → crop → OCR individually
+❌ **Wrong approach**: one JSON extraction call for all documents
+
+### Viewing Results
+
+```bash
+# Full pipeline results with raw_text_dump for each receipt
+cat scripts/ocr_results.json | jq '.ocr_step[] | {file, store: .data.store_name, total: .data.total}'
+
+# Cropped receipt images
+ls /tmp/receipts_cropped/
+```
+
+---
+
+## 11. Troubleshooting
 
 ### Plugin not loading
 
