@@ -95,7 +95,17 @@ impl DynamicRouter {
 
             let quality_base = match record.provider.as_str() {
                 "anthropic" => 0.95, "openai" => 0.90, "deepseek" => 0.85,
-                "zai" => 0.85,       "siliconflow" => 0.75, "scaleway" => 0.80,
+                "zai" => {
+                    // GLM-4.6V is the KING for multi-document vision. GLM-5.2 for general chat.
+                    if record.model_id.contains("glm-4.6v") { 0.95 }
+                    else { 0.85 }
+                },
+                "siliconflow" => {
+                    // GLM-5V-Turbo on SF gets vision quality bump
+                    if record.model_id.contains("GLM-5V") { 0.90 }
+                    else { 0.75 }
+                },
+                "scaleway" => 0.80,
                 _ => 0.70,
             };
             let cap_match = task_capabilities.len() as f64 / record.capabilities.len().max(1) as f64;
@@ -157,6 +167,9 @@ fn estimated_speed(provider: &str, model_id: &str) -> (f64, u64) {
         ("zai", m) if m.contains("glm-5.2") => (7.7, 6799),             // Real benchmark Jul 7 via api.z.ai
         ("zai", m) if m.contains("glm-4.7") => (5.1, 15160),            // Real benchmark Jul 7
         ("zai", m) if m.contains("glm-4.5") => (37.3, 2802),            // Real benchmark Jul 7 via api.z.ai
+        ("zai", m) if m.contains("glm-4.6v-flashx") => (25.0, 20000),   // Real benchmark Jul 7 — receipt OCR
+        ("zai", m) if m.contains("glm-4.6v-flash") => (60.0, 3000),     // Free tier, fast but rate-limited
+        ("zai", m) if m.contains("glm-4.6v") => (7.0, 28000),           // Real benchmark Jul 7 — flagship, 4 receipts
         ("zai", _) => (15.0, 5000),
         ("siliconflow", _) => (60.0, 1500),
         ("scaleway", m) if m.contains("qwen3-coder") => (169.4, 536),    // Real benchmark Jul 7
@@ -189,7 +202,7 @@ mod tests {
         let config = RouterConfig { quality_tier: QualityTier::Budget, ..Default::default() };
         let decision = router.route(&["chat"], 1000, 2000, &config).unwrap();
         assert!(
-            decision.provider == "siliconflow" || decision.provider == "deepseek",
+            decision.provider == "siliconflow" || decision.provider == "deepseek" || decision.provider == "scaleway" || decision.provider == "zai",
             "Budget should pick cheapest, got {}", decision.provider
         );
     }

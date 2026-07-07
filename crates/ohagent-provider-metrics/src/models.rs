@@ -151,6 +151,8 @@ pub fn known_providers() -> Vec<ProviderInfo> {
         ProviderInfo { name: "scaleway".into(),    api_base_url: None, /* per-project: https://api.scaleway.ai/<id>/v1 */ pricing_url: Some("https://www.scaleway.com/en/pricing/model-as-a-service/".into()), currency: "EUR".into(), is_eu: true },
         ProviderInfo { name: "deepseek".into(),    api_base_url: Some("https://api.deepseek.com/v1".into()), pricing_url: Some("https://api-docs.deepseek.com/quick_start/pricing".into()), currency: "EUR".into(), is_eu: false },
         ProviderInfo { name: "zai".into(),         api_base_url: Some("https://api.z.ai/api/paas/v4".into()), pricing_url: Some("https://docs.z.ai/api-reference/introduction".into()), currency: "CNY".into(), is_eu: false },
+        // GLM-4.6V has its own provider alias — same API as Z.ai but dedicated to vision
+        ProviderInfo { name: "glm4v".into(),       api_base_url: Some("https://api.z.ai/api/paas/v4".into()), pricing_url: Some("https://docs.z.ai/guides/vlm/glm-4.6v".into()), currency: "CNY".into(), is_eu: false },
         ProviderInfo { name: "openai".into(),      api_base_url: Some("https://api.openai.com/v1".into()), pricing_url: Some("https://openai.com/api/pricing/".into()), currency: "USD".into(), is_eu: false },
         ProviderInfo { name: "anthropic".into(),   api_base_url: Some("https://api.anthropic.com/v1".into()), pricing_url: Some("https://www.anthropic.com/pricing".into()), currency: "USD".into(), is_eu: false },
         ProviderInfo { name: "groq".into(),        api_base_url: Some("https://api.groq.com/openai/v1".into()), pricing_url: Some("https://groq.com/pricing/".into()), currency: "USD".into(), is_eu: false },

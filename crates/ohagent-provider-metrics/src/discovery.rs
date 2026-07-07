@@ -14,6 +14,9 @@ pub fn probe_patterns(provider: &str) -> Vec<String> {
             "https://api.z.ai/api/paas/v4/models".into(),
             "https://open.bigmodel.cn/api/paas/v4/models".into(),
         ],
+        "glm4v" => vec![
+            "https://api.z.ai/api/paas/v4/models".into(),
+        ],
         "deepseek" => vec![
             "https://api.deepseek.com/v1/models".into(),
         ],
@@ -127,6 +130,18 @@ pub fn known_prices() -> Vec<PriceRecord> {
         pr("zai", "glm-5.2",       PricingModel::PerMillionTokens, 1.30, 4.09, Some(0.26), "CNY",1_049_000,262_000, &["chat","code"], now),
         pr("zai", "glm-4.7",       PricingModel::PerMillionTokens, 0.39, 1.67, None,        "CNY",  205_000,205_000, &["chat","code"], now),
         pr("zai", "glm-4.5-air",   PricingModel::PerMillionTokens, 0.14, 0.86, None,        "CNY",  131_000,131_000, &["chat"], now),
+
+        // ═══ Z.ai Vision — GLM-4.6V family ═══
+        // GLM-4.6V is the ONLY model that correctly reads multiple documents in one image.
+        // Full: 28s TTF, 2488 tok/photo, ~CNY 3/M input. Flagship for multi-doc OCR.
+        pr("zai", "glm-4.6v",       PricingModel::PerMillionTokens, 3.00, 15.00, None, "CNY", 128_000, 8_192, &["chat","vision","multi_doc"], now),
+        // FlashX: 20s TTF, ~CNY 1/M. Fast alternative, good JSON reliability.
+        pr("zai", "glm-4.6v-flashx",PricingModel::PerMillionTokens, 1.00, 5.00,  None, "CNY", 128_000, 8_192, &["chat","vision","multi_doc"], now),
+        // Flash: FREE tier, rate-limited (429 at peak). Best-effort fallback only.
+        pr("zai", "glm-4.6v-flash", PricingModel::PerMillionTokens, 0.0,  0.0,   None, "CNY", 128_000, 4_096, &["chat","vision","multi_doc"], now),
+
+        // GLM-5V-Turbo on SiliconFlow — latest gen, 9s TTF (beach photo), ~$1.20/M
+        pr("siliconflow", "zai-org/GLM-5V-Turbo", PricingModel::PerMillionTokens, 1.20, 4.00, None, "USD", 205_000, 131_000, &["chat","vision","multi_doc"], now),
 
         // ═══ OpenAI (USD) ═══
         pr("openai", "gpt-4o-mini",    PricingModel::PerMillionTokens, 0.15, 0.60, Some(0.075), "USD", 128_000, 16_384, &["chat","vision","code"], now),
