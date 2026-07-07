@@ -140,39 +140,53 @@ Prices in EUR unless marked with $ (USD). SiliconFlow added July 7, 2026.
 
 ## 10. Speed Comparison — Real Benchmarks + Estimates
 
-✅ = measured via `ohagent-metrics benchmark` (July 7, 2026).
-≈ = estimated from provider documentation and community data.
+✅ = measured (`ohagent-metrics benchmark`, July 7, 2026).
+≈ = estimated from provider docs / community data.
 
-| Rank | Provider | Model | TTF ms | Total ms | tok/s | Price | Source |
-|---|---|---|---|---|---|---|---|
-| 🥇 | **Groq** | Llama-3.3-70B | ~100 | ~500 | **≈250** | $$$ | LPU hardware |
-| 🥇 | **SiliconFlow** | Qwen3-8B | ~150 | ~800 | **≈120** | $ | Small model, MoE |
-| 🥇 | **OpenAI** | GPT-4o-mini | ~200 | ~900 | **≈100** | $$ | Documented |
-| 🥈 | **SiliconFlow** | Hy3-preview | ~300 | ~1200 | ≈90 | $ | 295B MoE |
-| 🥈 | **DeepSeek** | deepseek-chat (V3) | **1927** ✅ | **1927** ✅ | **50.0** ✅ | $$ | Real benchmark |
-| 🥈 | **GLM-5.2** | Z.ai (SiliconFlow) | ~500 | ~2000 | **≈58** | $$$ | 1M ctx, #1 agentic |
-| | **Scaleway** | Qwen3-coder-30B | ~350 | ~1800 | ≈55 | $ | EU-hosted |
-| | **Scaleway** | Mistral-small | ~400 | ~2000 | ≈50 | $ | EU-hosted |
-| | **DeepSeek** | deepseek-reasoner (R1) | **3432** ✅ | **3432** ✅ | **31.2** ✅ | $$$ | Real benchmark |
-| | **OpenAI** | GPT-4o | ~800 | ~3000 | ≈30 | $$$$ | Documented |
-| | **Anthropic** | Claude-Sonnet-4 | ~1000 | ~4000 | ≈25 | $$$$$ | Anthropic docs |
-| | **Anthropic** | Claude-Opus-4 | ~1500 | ~6000 | ≈15 | $$$$$$ | Anthropic docs |
+### Streaming (TTF = time-to-first-token)
 
-> **Real measurements (July 7, 2026)**: DeepSeek Chat: 1927ms TTF, 50 tok/s.
-> DeepSeek Reasoner: 3432ms TTF, 31 tok/s (CoT reasoning overhead).
-> 
-> **GLM-5.2 note**: Recent benchmarks (June 2026) show GLM-5.2 outperforming
-> most models on agentic tasks with 1M-token context. Available on SiliconFlow
-> ($1.30/M input, $4.09/M output). Excellent SWE-bench scores, near Claude-level
-> quality at OpenRouter prices. Price/quality sweet spot for agentic coding.
-> 
+| Rank | Model | TTF ms | tok/s | Price €/M | Source |
+|---|---|---|---|---|---|
+| 🥇 | DeepSeek V4-Flash | **2,221** ✅ | **46.0** ✅ | 0.14 | Real |
+| 🥈 | DeepSeek V4-Pro (1.6T MoE) | **6,506** ✅ | **18.3** ✅ | 1.60 | Real |
+| | ~~DeepSeek Chat V3~~ | ~~1,889~~ ✅ | ~~55.3~~ ✅ | 0.27 | ⚠️ Deprecated |
+| | ~~DeepSeek Reasoner R1~~ | ~~3,432~~ ✅ | ~~31.2~~ ✅ | 0.55 | ⚠️ Deprecated |
+| | Groq Llama 3.3-70B | ~100 | ≈250 | — | LPU hardware |
+| | GPT-4o-mini | ~200 | ≈100 | 0.15 | Docs |
+| | GLM-5.2 (SiliconFlow) | ~500 | ≈58 | 1.30 | Agentic #1 |
+
+### Non-Streaming Throughput (800 tokens output)
+
+| Rank | Model | Total time | tok/s | Cost/req |
+|---|---|---|---|---|
+| 🥇 | DeepSeek V4-Flash | **10.84s** ✅ | **73.8** ✅ | €0.011 |
+| 🥈 | ~~DeepSeek Chat V3~~ | ~~12.51s~~ ✅ | ~~63.9~~ ✅ | €0.022 |
+
+> **Key finding**: V4-Flash wins on both price AND throughput for batch.
+> Chat V3 had better streaming TTF but is deprecated — V4-Flash is the replacement.
+
+### Full DeepSeek Lineup (July 7, 2026)
+
+⚠️ **DeepSeek Chat (V3) and Reasoner (R1) are deprecated** — will be shut down within July 2026. Migrate to V4-Flash (replaces Chat) and V4-Pro (replaces Reasoner).
+
+| Model | Active params | TTF ms | tok/s | €/M input | Status | Best for |
+|---|---|---|---|---|---|---|
+| **V4-Flash** | 13B (MoE) | 2,221 ✅ | 46.0 ✅ | 0.14 | ✅ Current | Budget, general chat |
+| **V4-Pro** | 49B (MoE) | 6,506 ✅ | 18.3 ✅ | 1.60 | ✅ Current | Complex code, agents |
+| ~~Chat V3~~ | ~37B (MoE) | 1,889 ✅ | 55.3 ✅ | 0.27 | ⚠️ Deprecated | Migrate to V4-Flash |
+| ~~Reasoner R1~~ | ~37B (MoE) | 3,432 ✅ | 31.2 ✅ | 0.55 | ⚠️ Deprecated | Migrate to V4-Pro |
+
+> **Migration guide**:
+> - Chat V3 → V4-Flash: 17% more TTF (1.9→2.2s) but **48% cheaper** (€0.27→€0.14/M)
+> - Reasoner R1 → V4-Pro: 90% more TTF (3.4→6.5s) but **3x more capable** (49B active vs 37B)
+> - **Net**: Slightly slower, significantly cheaper or more capable. Worth the switch.
+
 > **Trade-off matrix**: Speed vs Price vs Quality
-> - **Fastest**: Groq (250 tok/s) — but limited model selection
-> - **Best value (speed)**: SiliconFlow Qwen3-8B (≈120 tok/s, $0.06/M)
-> - **Best value (quality)**: GLM-5.2 on SiliconFlow — Claude-level at 1/3 price
-> - **Best quality**: Anthropic Claude (15-70 tok/s) — slow but highest quality
-> - **Sweet spot**: DeepSeek V3 (50 tok/s, €0.27/M) — measured, verified
-> - **Agentic sweet spot**: GLM-5.2 — 1M context, top benchmarks, reasonable price
+> - **Budget king**: V4-Flash (2.2s TTF, 46 tok/s, €0.14/M) — cheapest AND fast enough
+> - **Fastest (deprecated)**: Chat V3 (1.9s, 55 tok/s) — slightly faster but 2x pricier, shutting down
+> - **Best quality**: V4-Pro (1.6T params, 49B active) — slow but top-tier reasoning
+> - **Agentic value**: GLM-5.2 on SiliconFlow — Claude-quality, 1M ctx, ~58 tok/s estimated
+> - **Rule of thumb**: V4-Flash for 90% of tasks, V4-Pro when you need top quality, GLM-5.2 for agents
 
 ## 11. Dynamic Routing with ohagent-provider-metrics
 
