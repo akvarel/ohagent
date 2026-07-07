@@ -8,11 +8,20 @@
 //!
 //! | Provider | Type | Best For | Cost |
 //! |---|---|---|---|
-//! | **Scaleway Serverless** | No GPU, per-token | Instant inference | €0.15-1.80/M tok |
+//! | **SiliconFlow** | 200+ models, per-token | Cheapest inference | $0.06-1.60/M tok |
+//! | **Scaleway Serverless** | No GPU, per-token | EU/GDPR inference | €0.15-1.80/M tok |
 //! | **Scaleway Dedicated** | L4/H100, per hour | Fine-tuning, LoRA | €0.93-3.40/hr |
 //! | **Hetzner Cloud** | A100, per hour | Cheapest raw GPU | €1.85/hr |
 //!
-//! # Scaleway is uniquely good because:
+//! # SiliconFlow is the cheapest API aggregator (200+ models):
+//! - Tencent Hy3-preview: **$0.066/M tok input** — 2x cheaper than DeepSeek
+//! - Qwen3-Coder-30B: **$0.07/M tok input** — cheapest coding model
+//! - Qwen3-8B: **$0.06/0.06** — ultra-cheap general chat
+//! - FLUX.1-schnell: **$0.0014/image** — cheapest image gen
+//! - Wan2.2 video: **$0.29/video**
+//! - Qwen3-Embedding: **$0.01/M tok**
+//!
+//! # Scaleway is uniquely good for EU/GDPR:
 //! - **Serverless**: no provisioning delay, free tier (1M tokens), -50% batches
 //! - **L4 GPU**: €0.93/hr — cheapest managed GPU in Europe
 //! - **H100 GPU**: €3.40/hr — half the price of AWS/GCP equivalents
@@ -179,8 +188,9 @@ impl InfraLauncherPlugin {
             .find(|w| w.starts_with("provider="))
             .map(|w| w.trim_start_matches("provider=").to_string())
             .or_else(|| {
-                if text_lower.contains("scaleway:") { Some("scaleway".into()) }
-                else if text_lower.contains("hetzner:") { Some("hetzner".into()) }
+                if text_lower.contains("siliconflow:") || text_lower.contains("sf:") { Some("siliconflow".into()) }
+                else if text_lower.contains("scaleway:") || text_lower.contains("scw:") { Some("scaleway".into()) }
+                else if text_lower.contains("hetzner:") || text_lower.contains("hz:") { Some("hetzner".into()) }
                 else { None }
             })
             .unwrap_or_else(|| self.config.default_provider.clone());
@@ -407,7 +417,64 @@ impl InfraLauncherPlugin {
                 )
             }
 
-            _ => format!("[INFRA] Unknown provider: {}. Try: scaleway, scaleway-serverless, hetzner", req.provider),
+            "siliconflow" | "sf" => {
+                // SiliconFlow — 200+ models, per-token pricing (USD)
+                // Known cheap models and their prices
+                let sf_models: &[(&str, f64, f64, &str)] = &[
+                    ("Tencent/Hy3-preview",        0.066, 0.26,  "Cheapest LLM — 295B MoE, 21B active"),
+                    ("Qwen/Qwen3-Coder-30B-A3B",  0.07,  0.28,  "Cheapest coding — 30B MoE, 3B active"),
+                    ("Qwen/Qwen3-8B",              0.06,  0.06,  "Ultra-cheap general chat"),
+                    ("Qwen/Qwen3.5-9B",            0.10,  0.15,  "Multimodal, 201 languages"),
+                    ("deepseek-ai/DeepSeek-V4-Flash", 0.13, 0.28, "DeepSeek Flash via aggregator"),
+                    ("stepfun-ai/Step-3.5-Flash",  0.10,  0.30,  "196B MoE, 11B active"),
+                    ("google/gemma-4-26b-it",      0.12,  0.40,  "Google open-source MoE"),
+                    ("inclusionAI/Ling-flash-2.0", 0.14,  0.57,  "100B MoE, 6.1B active"),
+                ];
+
+                // Try to match the requested model
+                let best = sf_models.iter().find(|(id, _, _, _)| {
+                    model_display.contains(&id.to_lowercase()) || id.to_lowercase().contains(model_display.as_str())
+                });
+
+                if let Some((model_id, input_price, output_price, desc)) = best {
+                    let cost_1k = (input_price + output_price * 2.0) / 1000.0;
+                    format!(r#"[INFRA] SiliconFlow Serverless Plan
+  Provider: SiliconFlow (200+ models, single API)
+  Model: {model_id}
+  Type: Serverless — instant, no provisioning
+  Description: {desc}
+  Pricing: ${input:.3}/M input + ${output:.2}/M output tokens
+  Est. cost per 1K requests: ~${per1k:.4}
+
+  Instant availability — single API for 200+ models:
+    curl https://api.siliconflow.cn/v1/chat/completions \
+      -H "Authorization: Bearer $SF_API_KEY" \
+      -d '{{"model":"{model_id}","messages":[{{"role":"user","content":"..."}}]}}'
+
+  Also available: image gen ($0.0014/img FLUX), video ($0.29 Wan2.2),
+  embeddings ($0.01/M tok Qwen3), TTS ($7.15/M bytes IndexTTS-2)"#,
+                        model_id = model_id,
+                        desc = desc,
+                        input = input_price,
+                        output = output_price,
+                        per1k = cost_1k,
+                    )
+                } else {
+                    format!(r#"[INFRA] SiliconFlow — 200+ models available
+  Provider: SiliconFlow (api.siliconflow.cn)
+  Requested: {model}
+  Status: Not matched to known model — check https://siliconflow.com/models
+
+  Try: /deploy sf:Qwen3-8B, /deploy sf:Tencent/Hy3-preview,
+       /deploy sf:Qwen3-Coder-30B-A3B, /deploy sf:DeepSeek-V4-Flash
+
+  Requires: SF_API_KEY env var or siliconflow_api_token in config"#,
+                        model = model_display,
+                    )
+                }
+            }
+
+            _ => format!("[INFRA] Unknown provider: {}. Try: siliconflow, scaleway, scaleway-serverless, hetzner", req.provider),
         }
     }
 }

@@ -1,6 +1,7 @@
 # AI Model Provider Price Comparison — July 2026
 
 Comprehensive cost analysis across all providers ohAgent supports, ranked by price.
+Prices in EUR unless marked with $ (USD). SiliconFlow added July 7, 2026.
 
 ---
 
@@ -8,113 +9,136 @@ Comprehensive cost analysis across all providers ohAgent supports, ranked by pri
 
 | Rank | Provider | Model | Input €/M tok | Output €/M tok | Best For |
 |---|---|---|---|---|---|
-| 🥇 | **Scaleway** | mistral-small-3.2 | **0.15** | **0.35** | General chat, GDPR-safe |
-| 🥇 | **Scaleway** | qwen3-coder-30b | **0.20** | **0.80** | Code generation |
-| 🥇 | **Scaleway** | gemma-4-26b | **0.25** | **0.50** | Vision + chat |
-| 🥇 | **Scaleway** | pixtral-12b | **0.20** | **0.20** | Multimodal vision |
-| 🥈 | **Scaleway** | llama-3.3-70b | 0.90 | 0.90 | Enterprise chat |
-| 🥈 | **Scaleway** | qwen3.5-397b (MoE) | 0.60 | 3.60 | Heavy reasoning |
-| | **DeepSeek** | deepseek-v4-flash | 0.14 | 0.28 | General, best price for small models |
+| 🥇 | **SiliconFlow** | Tencent Hy3-preview | **$0.066** | **$0.26** | Cheapest LLM inference, MoE |
+| 🥇 | **SiliconFlow** | Qwen3-Coder-30B-A3B | **$0.07** | **$0.28** | Cheapest coding model |
+| 🥇 | **SiliconFlow** | Qwen3-8B | **$0.06** | **$0.06** | Ultra-cheap general chat |
+| 🥇 | **SiliconFlow** | Qwen3.5-9B | **$0.10** | **$0.15** | Multimodal, 201 languages |
+| 🥇 | **SiliconFlow** | Step-3.5-Flash | **$0.10** | **$0.30** | MOE, 196B params |
+| 🥇 | **SiliconFlow** | DeepSeek-V4-Flash | **$0.13** | **$0.28** | DeepSeek Flash via aggregator |
+| 🥇 | **SiliconFlow** | gemma-4-26B (MoE) | **$0.12** | **$0.40** | Google open-source, fast |
+| 🥈 | **DeepSeek** | deepseek-v4-flash | 0.14 | 0.28 | Direct API, MIT license |
+| 🥈 | **Scaleway** | mistral-small-3.2 | 0.15 | 0.35 | General chat, GDPR-safe |
+| 🥈 | **Scaleway** | qwen3-coder-30b | 0.20 | 0.80 | Code, EU-hosted |
+| 🥈 | **SiliconFlow** | Ling-flash-2.0 | **$0.14** | **$0.57** | Lightweight MoE, 100B |
+| | **SiliconFlow** | Nex-N2-Pro | **$0.50** | **$2.50** | Agentic coding SOTA |
+| | **SiliconFlow** | Qwen3.5-397B-A17B | **$0.39** | **$2.34** | Heavy reasoning MoE |
+| | **SiliconFlow** | Kimi-K2.7-Code | **$0.94** | **$4.00** | Agentic coding, 1M ctx |
+| | **SiliconFlow** | LongCat-2.0 | **$0.75** | **$2.95** | Agentic, tool use native |
 | | **DeepSeek** | deepseek-chat (V3) | 0.27 | 1.10 | Balanced |
 | | **DeepSeek** | deepseek-reasoner (R1) | 0.55 | 2.19 | Complex reasoning |
 | | **OpenAI** | gpt-4o-mini | 0.15 | 0.60 | Fast, cheap |
+| | **SiliconFlow** | DeepSeek-V4-Pro | **$1.60** | **$3.14** | 1.6T params, 49B active |
 | | **OpenAI** | gpt-4o | 2.50 | 10.00 | Best quality |
 | | **Anthropic** | claude-haiku-3.5 | 1.00 | 5.00 | Fast Claude |
 | | **Anthropic** | claude-sonnet-4 | 3.00 | 15.00 | Coding king |
 | | **Anthropic** | claude-opus-4 | 15.00 | 75.00 | Ultra quality |
 
-> **Verdict**: Scaleway serverless beats everyone on price/quality ratio for European workloads. DeepSeek is cheaper per-token but Scaleway has more models and GDPR compliance.
+> **Verdict**: SiliconFlow crushes everyone on per-token price. Tencent Hy3 at $0.066/M input is **2x cheaper than DeepSeek direct** and 2.3x cheaper than Scaleway. Qwen3-Coder at $0.07/M is the cheapest coding model. For EU/GDPR, Scaleway remains best (data stays in Paris/AMS).
 
 ---
 
-## 2. GPU Instances (for self-hosted inference / LoRA fine-tuning)
+## 2. Embeddings / Reranking
 
-| Rank | Provider | GPU | VRAM | €/hr | €/mo | Tok/s* | Best For |
-|---|---|---|---|---|---|---|---|
-| 🥇 | **Scaleway** | L4 | 24GB | **€0.93** | €679 | 1,500 | Small LoRA, cheap inference |
-| 🥇 | **Scaleway** | L40S | 48GB | **€1.72** | €1,255 | 3,000 | Medium models |
-| 🥇 | **Scaleway** | H100 | 80GB | **€3.40** | €2,482 | 8,000 | Large models, full fine-tune |
-| 🥈 | **Hetzner** | A100-40 | 40GB | €1.85 | — | 4,000 | Mid-range GPU sweet spot |
-| 🥈 | **Hetzner** | A100-80 | 80GB | €2.50 | — | 8,000 | Best raw GPU price |
-| | **PaperSpace** | A100-80 | 80GB | €2.48 | — | 8,000 | Similar to Hetzner |
-| | **Hetzner** | CCX13 | 40GB | ~€1.85 | — | 4,000 | Value A100 |
-| | **Hetzner** | CCX23 | 80GB | ~€2.50 | — | 8,000 | Value A100-80 |
-| | **Scaleway** | H100-SXM-8 | 640GB | €30.06 | €21,944 | 64,000 | Massive training |
-| | **AWS** | p4d (A100) | 40GB | €3.91 | — | 4,000 | Enterprise lock-in |
-| | **GCP** | a2-highgpu-1g | 40GB | €3.68 | — | 4,000 | GCP ecosystem |
-
-*\*Estimated tokens/second for a 7B-parameter model at batch=1*
-
-> **Verdict**: Scaleway L4 at €0.93/hr is unbeatable for small LoRA. Hetzner A100-80 at €2.50/hr is the best raw GPU deal. AWS/GCP are 2-3x more for the same hardware.
-
----
-
-## 3. Cost Comparison: 2-hour LoRA fine-tuning session
-
-| Provider | GPU | Cost for 2h | Model quality |
+| Provider | Model | €/M tokens | Notes |
 |---|---|---|---|
-| **Scaleway** | L4 24GB | **€1.86** | Qwen2.5-7B, Llama-8B |
-| **Hetzner** | A100-40 | **€3.70** | Qwen2.5-14B, Llama-13B |
-| **Scaleway** | H100 80GB | **€6.80** | Qwen2.5-72B, Llama-70B |
-| AWS | A100 | €7.82 | Same as A100-40 |
-| GCP | A100 | €7.36 | Same as A100-40 |
+| 🥇 | **SiliconFlow** | Qwen3-Embedding-0.6B | **$0.01** | 32K ctx, 1024-dim |
+| 🥇 | **SiliconFlow** | Qwen3-Reranker-0.6B | **$0.01** | Reranking |
+| 🥈 | **SiliconFlow** | Qwen3-Embedding-4B | **$0.02** | 32K ctx, 2560-dim |
+| 🥈 | **SiliconFlow** | Qwen3-Embedding-8B | **$0.04** | MTEB #1, 4096-dim |
+| | **Scaleway** | qwen3-embedding-8b | 0.10 | EU-hosted |
 
 ---
 
-## 4. Cost Comparison: 100K chat requests/month
+## 3. Image Generation
 
-| Provider | Model | Cost/month |
+| Provider | Model | €/Image | Notes |
+|---|---|---|---|
+| 🥇 | **SiliconFlow** | FLUX.1-schnell | **$0.0014** | Fastest/cheapest |
+| 🥇 | **SiliconFlow** | FLUX.1-dev | **$0.014** | Higher quality |
+| 🥈 | **SiliconFlow** | Z-Image-Turbo | **$0.005** | Tongyi-MAI |
+| | **SiliconFlow** | Qwen-Image | **$0.02** | Alibaba |
+| | **SiliconFlow** | Qwen-Image-Edit | **$0.04** | Inpainting/editing |
+
+---
+
+## 4. Video Generation
+
+| Provider | Model | €/Video |
 |---|---|---|
-| **Scaleway** | mistral-small (serverless) | **€50** | (1K tok in + 2K tok out × 100K) |
-| **Scaleway** | qwen3-coder (serverless) | **€180** |
-| **DeepSeek** | v4-flash | **€70** |
-| **OpenAI** | gpt-4o-mini | **€135** |
-| **Anthropic** | claude-haiku | **€1,100** |
-| **Scaleway** | llama-3.3-70b | **€360** |
-| **Scaleway** | L4 GPU (24/7) | **€679** (flat) |
-| **OpenAI** | gpt-4o | **€2,250** |
+| 🥇 | **SiliconFlow** | Wan2.2-T2V-A14B | **$0.29** | Text-to-video |
+| 🥇 | **SiliconFlow** | Wan2.2-I2V-A14B | **$0.29** | Image-to-video |
 
 ---
 
-## 5. Cost Comparison: 10K coding tasks/month
+## 5. Audio / TTS
 
-| Provider | Model | Cost/month |
-|---|---|---|
-| **DeepSeek** | deepseek-chat | **€46** | (3K tok in + 8K tok out × 10K) |
-| **Scaleway** | qwen3-coder-30b | **€70** |
-| **Anthropic** | claude-sonnet-4 | **€1,290** |
-
----
-
-## 6. Recommendation Matrix
-
-| Use Case | Best Provider | Why |
-|---|---|---|
-| **General chat, budget** | Scaleway mistral-small / DeepSeek v4-flash | €0.15-0.14/M tok input |
-| **Code generation** | DeepSeek chat | Best code quality/price ratio |
-| **GDPR compliance** | Scaleway (Paris/AMS) | All data stays in EU |
-| **Complex reasoning** | DeepSeek reasoner / Scaleway qwen3.5-397b | Chain-of-thought at reasonable price |
-| **Top quality coding** | Anthropic Claude Sonnet 4 | Unbeatable code quality (€€€) |
-| **Custom LoRA (cheap)** | Scaleway L4 GPU | €0.93/hr — cheapest managed GPU |
-| **Custom LoRA (fast)** | Hetzner A100-80 | €2.50/hr — best raw GPU price |
-| **Large model fine-tune** | Scaleway H100-80 | €3.40/hr — managed, no DevOps |
-| **Batch processing** | Scaleway batches API | -50% discount on serverless |
-| **Vision/multimodal** | Scaleway pixtral-12b / gemma-4 | €0.20-0.25/M tok, EU-hosted |
+| Provider | Model | Price | Notes |
+|---|---|---|---|
+| | **SiliconFlow** | IndexTTS-2 | **$7.15/M UTF-8 bytes** | Zero-shot, emotion control |
+| | **SiliconFlow** | Fish-Speech-1.5 | **$15.00/M UTF-8 bytes** | Multilingual |
+| | **SiliconFlow** | CosyVoice2-0.5B | **$7.15/M UTF-8 bytes** | Streaming 150ms latency |
+| | **Scaleway** | whisper-large-v3 | €0.003/min | Transcription |
 
 ---
 
-## Key Takeaways
+## 6. GPU Instances (for self-hosted / LoRA fine-tuning)
 
-1. **Scaleway serverless is the best deal in Europe**: €0.15/M tok input with GDPR, free tier, and -50% batches.
-
-2. **Hetzner GPU is cheapest raw compute** but Scaleway L4 at €0.93/hr is close and managed.
-
-3. **DeepSeek is cheapest globally** (€0.14/M tok) but your data goes to China unless using EU endpoint.
-
-4. **Anthropic/OpenAI are for quality, not price** — 10-50x more expensive than Scaleway/DeepSeek.
-
-5. **For ohAgent**: default to Scaleway serverless for general chat + DeepSeek for code + Hetzner/Scaleway GPU for custom LoRA deployment.
+| Rank | Provider | GPU | VRAM | €/hr | €/mo | Best For |
+|---|---|---|---|---|---|---|
+| 🥇 | **Scaleway** | L4 | 24GB | **€0.93** | €679 | Small LoRA |
+| 🥇 | **Scaleway** | H100 | 80GB | **€3.40** | €2,482 | Large models |
+| 🥈 | **Hetzner** | A100-40 | 40GB | €1.85 | — | Mid-range |
+| 🥈 | **Hetzner** | A100-80 | 80GB | €2.50 | — | Best raw GPU |
+| | **SiliconFlow** | Reserved GPUs | Various | Custom | — | Long-running fine-tunes |
 
 ---
 
-Data sources: scaleway.com/pricing, deepseek.com/pricing, openai.com/pricing, anthropic.com/pricing, hetzner.com/cloud (as of July 2026)
+## 7. Cost Comparison: 100K chat requests/month (1K in + 2K out tokens)
+
+| Rank | Provider | Model | Cost/month |
+|---|---|---|---|
+| 🥇 | **SiliconFlow** | Qwen3-8B ($0.06/0.06) | **$18** (€16) |
+| 🥇 | **SiliconFlow** | Qwen3.5-9B ($0.10/0.15) | **$40** (€37) |
+| 🥇 | **SiliconFlow** | Tencent Hy3 ($0.066/0.26) | **$59** (€54) |
+| 🥈 | **SiliconFlow** | DeepSeek-V4-Flash ($0.13/0.28) | **$69** (€64) |
+| | **Scaleway** | mistral-small (€0.15/0.35) | **€85** |
+| | **DeepSeek** | v4-flash (€0.14/0.28) | **€70** |
+| | **OpenAI** | gpt-4o-mini (€0.15/0.60) | **€135** |
+
+---
+
+## 8. Cost Comparison: 10K coding tasks/month (3K in + 8K out)
+
+| Rank | Provider | Model | Cost/month |
+|---|---|---|---|
+| 🥇 | **SiliconFlow** | Qwen3-Coder-30B-A3B ($0.07/0.28) | **$24.50** (€22.50) |
+| 🥇 | **SiliconFlow** | DeepSeek-V4-Flash ($0.13/0.28) | **$26.30** (€24) |
+| 🥈 | **SiliconFlow** | Qwen3-Coder-480B-A35B ($0.25/1.00) | **$87.50** (€80) |
+| | **DeepSeek** | deepseek-chat (€0.27/1.10) | **€96** |
+| | **Scaleway** | qwen3-coder-30b (€0.20/0.80) | **€70** |
+| | **Anthropic** | claude-sonnet-4 (€3.00/15.00) | **€1,290** |
+
+---
+
+## 9. Key Takeaways
+
+1. **SiliconFlow is the cheapest API aggregator** — Tencent Hy3 at $0.066/M input beats everything. **2x cheaper than DeepSeek direct, 2.3x cheaper than Scaleway.**
+
+2. **Coding models are absurdly cheap on SiliconFlow** — Qwen3-Coder-30B at $0.07/M input is 53x cheaper than Anthropic Claude Sonnet 4 for coding tasks.
+
+3. **Image generation at $0.0014/image** (FLUX schnell) means you can generate 714 images for $1.
+
+4. **Video generation at $0.29/video** (Wan2.2) is usable for production.
+
+5. **Embeddings at $0.01/M tokens** (Qwen3-Embedding-0.6B) — 10x cheaper than Scaleway's embedding offer.
+
+6. **Scaleway wins for EU/GDPR compliance** — all data stays in Paris/Amsterdam datacenters. SiliconFlow likely routes to China.
+
+7. **SiliconFlow = OpenRouter for Chinese models** — 200+ models, single API, consistent pricing. Like OpenRouter but focused on Asian providers.
+
+8. **For ohAgent strategy**: SiliconFlow for cheap general/cheap coding, Scaleway for GDPR workloads, DeepSeek direct for best balance, Hetzner/Scaleway GPU for custom LoRA.
+
+---
+
+Data sources: scaleway.com, deepseek.com, openai.com, anthropic.com, hetzner.com, siliconflow.com/models (as of July 2026).
+SiliconFlow prices in USD; approximate EUR conversion at ~0.92.
