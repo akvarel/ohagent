@@ -244,7 +244,7 @@ impl Daemon {
                 &keys_config,
             ).await;
             (dk, ak, ok, sfk, zk, swk, swp, gqk, gok)
-        });
+                })
             }).join().unwrap()
         };
 
