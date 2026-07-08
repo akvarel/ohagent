@@ -284,13 +284,14 @@ impl Daemon {
 
             // Configure from environment / Vault
             if let Ok(_api_key) = std::env::var("DEEPSEEK_API_KEY") {
-                multi
-                    .set_model("deepseek:deepseek-v4-flash")
-                    .map_err(|e| anyhow::anyhow!("Failed to set DeepSeek model: {e}"))?;
-                info!(
-                    provider = %multi.display_name(),
-                    "Default provider: DeepSeek"
-                );
+                match multi.set_model("deepseek:deepseek-v4-flash") {
+                    Ok(()) => {
+                        info!(provider = %multi.display_name(), "Default provider: DeepSeek");
+                    }
+                    Err(e) => {
+                        tracing::warn!(error = %e, "Failed to set DeepSeek model — continuing without default provider");
+                    }
+                }
             } else if let Ok(_api_key) = std::env::var("ANTHROPIC_API_KEY") {
                 multi
                     .set_model("claude:claude-sonnet-4-6")
