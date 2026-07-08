@@ -176,7 +176,7 @@ impl Daemon {
 
         // Resolve provider API keys via Vault → env → keys.toml
         let rt = tokio::runtime::Handle::current();
-        let (deepseek_key, anthropic_key, openai_key, siliconflow_key, zai_key, scaleway_key, scaleway_project, groq_key) = rt.block_on(async {
+        let (deepseek_key, anthropic_key, openai_key, siliconflow_key, zai_key, scaleway_key, scaleway_project, groq_key, google_key) = rt.block_on(async {
             let dk = resolve_secret(
                 &vault,
                 "providers/deepseek/api-key",
@@ -213,7 +213,7 @@ impl Daemon {
                 "SCW_PROJECT_ID",
                 &keys_config,
             ).await;
-            let gk = resolve_secret(
+            let gqk = resolve_secret(
                 &vault,
                 "providers/groq/api-key",
                 "GROQ_API_KEY",
@@ -225,7 +225,13 @@ impl Daemon {
                 "ZAI_API_KEY",
                 &keys_config,
             ).await;
-            (dk, ak, ok, sfk, zk, swk, swp, gk)
+            let gok = resolve_secret(
+                &vault,
+                "providers/google/api-key",
+                "GOOGLE_API_KEY",
+                &keys_config,
+            ).await;
+            (dk, ak, ok, sfk, zk, swk, swp, gqk, gok)
         });
 
         // Set resolved keys into env for jcode provider resolution
@@ -252,6 +258,9 @@ impl Daemon {
         }
         if let Some(ref key) = groq_key {
             std::env::set_var("GROQ_API_KEY", key);
+        }
+        if let Some(ref key) = google_key {
+            std::env::set_var("GOOGLE_API_KEY", key);
         }
 
         // Build default provider (fallback if router unavailable)
