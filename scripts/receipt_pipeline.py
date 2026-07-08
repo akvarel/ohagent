@@ -32,8 +32,10 @@ GOOGLE_KEY = keys.get("GOOGLE_API_KEY", "")
 
 # ─── Gemini OCR ──────────────────────────────────
 
-def gemini_ocr_all(image_b64: str) -> list[dict] | None:
-    """OCR all receipts at once with Gemini Flash (free tier).
+def gemini_ocr_all(image_b64: str, model: str = "gemini-3.1-flash-lite") -> list[dict] | None:
+    """OCR all receipts at once with Gemini.
+    Default: gemini-3.1-flash-lite — 4s, 95% accuracy, 5× faster than flash-latest.
+    Fallback: gemini-flash-latest — 20s, better subtotal separation.
     Returns list of receipt dicts or None on failure."""
     if not GOOGLE_KEY:
         return None
@@ -53,7 +55,7 @@ def gemini_ocr_all(image_b64: str) -> list[dict] | None:
     }).encode()
 
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GOOGLE_KEY}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={GOOGLE_KEY}"
         req = urllib.request.Request(url, body, {"Content-Type": "application/json"})
         resp = urllib.request.urlopen(req, timeout=60)
         data = json.loads(resp.read())
@@ -61,15 +63,11 @@ def gemini_ocr_all(image_b64: str) -> list[dict] | None:
         for part in data.get("candidates", [{}])[0].get("content", {}).get("parts", []):
             text += part.get("text", "")
 
-        # Extract JSON array from response
         json_match = re.search(r'\[.*\]', text, re.DOTALL)
         if json_match:
-            receipts = json.loads(json_match.group(0))
-            # Normalize field names
-            return [_normalize_gemini_receipt(r) for r in receipts]
+            return [_normalize_gemini_receipt(r) for r in json.loads(json_match.group(0))]
         return None
     except Exception as e:
-        print(f"   ⚠️  Gemini: {str(e)[:100]}")
         return None
 
 def _normalize_gemini_receipt(d: dict) -> dict:
@@ -544,34 +542,39 @@ for r in receipts:
     cropped_files.append(fname)
     print(f"   ✅ {fname.name}: {cropped.size[0]}×{cropped.size[1]}")
 
-# STEP 3: OCR — Gemini (primary) → GLM-OCR (fallback)
-print(f"\n📝 STEP 3: OCR — Gemini Flash (primary) → GLM-OCR (fallback)")
+# STEP 3: OCR — Gemini (primary) → Gemini Flash (fallback) → GLM-OCR (last resort)
+print(f"\n📝 STEP 3: OCR — Gemini 3.1 Flash-Lite → Flash-Latest → GLM-OCR")
 
 all_ocr = []
 
-# Try Gemini all-at-once first
+# Try Gemini: flash-lite first (fastest), then flash-latest
 if GOOGLE_KEY:
-    t0 = time.time()
-    gemini_result = gemini_ocr_all(b64)
-    elapsed = time.time() - t0
+    for model in ["gemini-3.1-flash-lite", "gemini-flash-latest"]:
+        t0 = time.time()
+        gemini_result = gemini_ocr_all(b64, model)
+        elapsed = time.time() - t0
 
-    if gemini_result:
-        total_cost += 0  # free tier
-        total_time += elapsed
-        print(f"   🥇 Gemini Flash: {elapsed:.1f}s, FREE → {len(gemini_result)} receipts")
-        for i, receipt in enumerate(gemini_result):
-            all_ocr.append({
-                "file": f"gemini_receipt_{i+1}",
-                "ttf_s": round(elapsed/len(gemini_result), 1),
-                "cost_eur": 0.0,
-                "prompt_tok": 0, "comp_tok": 0,
-                "data": receipt,
-                "model": "gemini-flash-latest",
-            })
-            store = receipt.get("store_name", "?")
-            total_val = receipt.get("total", "?")
-            items_n = len(receipt.get("items", []))
-            print(f"      #{i+1}: \"{store}\" total=€{total_val}, {items_n} items")
+        if gemini_result and len(gemini_result) > 0:
+            total_cost += 0  # free tier
+            total_time += elapsed
+            icon = "⚡" if "lite" in model else "🐢"
+            print(f"   {icon} {model}: {elapsed:.1f}s, FREE → {len(gemini_result)} receipts")
+            for i, receipt in enumerate(gemini_result):
+                all_ocr.append({
+                    "file": f"gemini_receipt_{i+1}",
+                    "ttf_s": round(elapsed/len(gemini_result), 1),
+                    "cost_eur": 0.0,
+                    "prompt_tok": 0, "comp_tok": 0,
+                    "data": receipt,
+                    "model": model,
+                })
+                store = receipt.get("store_name", "?")
+                total_val = receipt.get("total", "?")
+                items_n = len(receipt.get("items", []))
+                print(f"      #{i+1}: \"{store}\" total=€{total_val}, {items_n} items")
+            break  # Success — don't try next model
+        else:
+            print(f"   ⚠️  {model}: no results, trying next...")
 
 # Fall back to GLM-OCR on individual crops
 if not all_ocr:
