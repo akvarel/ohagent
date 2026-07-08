@@ -1,143 +1,171 @@
 # ohAgent — 24/7 Personal AI Super-Agent
 
-**ohAgent** is a self-hosted, always-on AI agent that lives in your Telegram and works through Jcode — the same engine that powers one of the most capable coding agents. It remembers everything, learns from your tasks, and gets smarter every day.
+**ohAgent** is a self-hosted, always-on AI agent built on Jcode v0.37.0.
+It lives in your Telegram, remembers everything, learns from your tasks,
+processes receipts with sub-cent OCR, and scales to thousands of users.
 
 <p align="center">
   <img src="https://img.shields.io/badge/rust-1.82%2B-orange" alt="Rust 1.82+">
+  <img src="https://img.shields.io/badge/jcode-v0.37.0-blue" alt="Jcode v0.37.0">
   <img src="https://img.shields.io/badge/status-active%20development-brightgreen" alt="Status">
   <img src="https://img.shields.io/badge/platform-Telegram-blue" alt="Telegram">
-  <img src="https://img.shields.io/badge/web-dashboard-orange" alt="Web Dashboard">
+  <img src="https://img.shields.io/badge/OCR-Gemini%20Free-4285F4" alt="Gemini OCR">
 </p>
 
 ---
 
 ## Why ohAgent?
 
-Most AI tools are **reactive**: you open them, ask something, close them. They don't remember what you did yesterday. They can't ping you when something needs attention. They're not *yours*.
+Most AI tools are **reactive**: open, ask, close. No memory. No initiative.
+ohAgent is always on, remembers everything, and gets smarter.
 
-ohAgent is different:
-
-| Capability | ohAgent | ChatGPT | Claude Code | Copilot |
+| | ohAgent | ChatGPT | Claude | Copilot |
 |---|---|---|---|---|
-| **Runs 24/7** | ✅ Daemon | ❌ | ❌ | ❌ |
-| **Telegram native** | ✅ Built-in | ❌ | ❌ | ❌ |
-| **Web dashboard** | ✅ Built-in | ❌ | ❌ | ❌ |
-| **Deep memory (across sessions)** | ✅ Semantic search | ❌ (per-chat) | ❌ | ❌ |
-| **Self-learns skills** | ✅ Auto-creates | ❌ | ❌ | ❌ |
-| **Multi-tenant** | ✅ Day one | ❌ | ❌ | ❌ |
-| **Self-hosted** | ✅ Your server | ❌ | ❌ | ✅ (limited) |
-| **i18n (EN/LV/RU)** | ✅ Day one | Partial | ❌ | ❌ |
-| **HashiCorp Vault** | ✅ Secrets | ❌ | ❌ | ❌ |
+| **24/7 daemon** | ✅ | ❌ | ❌ | ❌ |
+| **Telegram native** | ✅ | ❌ | ❌ | ❌ |
+| **Multi-provider routing** | ✅ 8 providers | ❌ | ❌ | ❌ |
+| **Receipt OCR (free)** | ✅ Gemini Flash | ❌ | ❌ | ❌ |
+| **People recognition** | ✅ | ❌ | ❌ | ❌ |
+| **Web dashboard** | ✅ React | ❌ | ❌ | ❌ |
+| **Deep memory** | ✅ semantic | ❌ | ❌ | ❌ |
+| **Self-learns skills** | ✅ | ❌ | ❌ | ❌ |
+| **Multi-tenant** | ✅ day one | ❌ | ❌ | ❌ |
+| **i18n (EN/LV/RU)** | ✅ | ✅ | ❌ | ❌ |
+| **Self-hosted** | ✅ | ❌ | ❌ | ✅ |
 | **Open source** | ✅ MIT | ❌ | ❌ | ❌ |
-
-### The "Super-Agent" difference
-
-1. **Always on.** Runs as a daemon — systemd service, Docker, or bare metal. You message it like a colleague.
-
-2. **Never forgets.** Deep memory engine stores everything you discuss. Semantic search finds relevant context across months of conversations. Proactive nudges suggest "hey, last time you built this API you used Axum."
-
-3. **Learns your tasks.** Skills engine watches what you ask and automatically creates reusable skill templates from recurring patterns. "Deploy to K8s" happens three times? It becomes a learned skill.
-
-4. **Your hardware, your data.** Everything runs locally or on your infrastructure. No vendor lock-in, no data leaving your control.
-
----
-
-## Architecture
-
-```
-                  Telegram  ───  ohAgent Daemon  ───  Jcode Engine
-                      │                                 │
-                      ├─ /skills                        ├─ DeepSeek V4
-                      ├─ /status                        ├─ Claude/OpenAI
-                      ├─ "any message"                  └─ MCP tools
-                      │
-                      ▼
-              ┌──────────────┐
-              │  Web Dashboard│  ← :9090 REST API
-              │  React + TW   │     Skills, Memory, Status
-              └──────────────┘
-                      │
-              ┌───────┴────────┐
-              │  Memory Engine  │  SQLite + Vector embeddings
-              │  Skills Engine  │  Auto-create, evaluate, curate
-              └────────────────┘
-```
 
 ---
 
 ## Quick Start
 
-### Prerequisites
-- Rust 1.82+
-- DeepSeek API key (or Anthropic/OpenAI)
-- Telegram Bot Token (from [@BotFather](https://t.me/BotFather))
+### Docker (recommended)
 
-### 5-minute install
+```bash
+# Clone and start
+git clone --recurse-submodules https://github.com/orangehat/ohAgent.git
+cd ohAgent
+
+# Set your keys
+export DEEPSEEK_API_KEY="sk-..." TELEGRAM_BOT_TOKEN="123:abc"
+export GOOGLE_API_KEY="..."  # optional — for receipt OCR
+docker compose up -d
+
+# Done. Bot is live at https://t.me/your_bot
+# Dashboard: http://localhost:9090
+```
+
+### Bare metal
 
 ```bash
 git clone --recurse-submodules https://github.com/orangehat/ohAgent.git
 cd ohAgent
 
-# Set credentials
-export DEEPSEEK_API_KEY="sk-..."
-export TELEGRAM_BOT_TOKEN="123456:ABC-DEF"
+# Setup keys interactively
+./scripts/setup-keys.sh
 
 # Build and run
 cargo build --release -p ohagent-daemon
 cargo run --release -p ohagent-daemon
 ```
 
-That's it. Find your bot on Telegram, send `/start`, then `/pair` to authenticate.
-
-### Dashboard
-
-The web dashboard is available at `http://localhost:9090` (API) and `http://localhost:5173` (dev UI):
+### Kubernetes
 
 ```bash
-cd crates/ohagent-dashboard
-npm install && npm run dev
+kubectl apply -k k8s/overlays/prod
+# 2 replicas, HPA 2-5, Prometheus, Scaleway SSD 50Gi
 ```
 
 ---
 
 ## What ohAgent Can Do
 
-| Phase | Feature | Status |
-|---|---|---|
-| 1 | Daemon + Provider setup | ✅ |
-| 2 | Telegram gateway (i18n: EN/LV/RU) | ✅ |
-| 3 | Deep memory (SQLite + semantic search) | ✅ |
-| 4 | Self-learning skills engine | ✅ |
-| 5 | REST API + React dashboard | ✅ |
-| 6 | Multi-platform gateways (WhatsApp, Slack) | 🔜 |
-| 7 | Voice messages (STT → LLM → TTS) | 🔜 |
-| 8 | Multi-agent orchestration (swarm) | 🔜 |
-
-### Telegram Commands
-
-| Command | Description |
+| Command | What it does |
 |---|---|
-| `/start` | Start the bot |
-| `/pair` | Generate pairing code |
-| `/confirm <code>` | Confirm pairing |
-| `/new` | Start fresh conversation |
-| `/lang` | Cycle EN → LV → RU |
-| `/skills` | List learned skills |
-| `/skill <name>` | Skill details |
-| `/skilluse <name>` | Record skill usage |
+| `/ocr` + photo | Extract all receipts from photo → structured JSON. Free via Gemini Flash. |
+| Any message | Full Jcode agent session — coding, research, file ops |
+| `/model` | Show and set model preferences per task type |
+| `/skills` | List self-learned skills with quality scores |
+| `/remember` / `/recall` | Persistent memory across sessions |
+| `/new` | Start fresh conversation (preserves memory) |
+| `/lang` | Toggle EN → LV → RU |
 | `/help` | Show all commands |
 
 ### REST API
 
 ```
-GET  /health              — Health check
-GET  /api/status          — Daemon status (uptime, provider, counts)
-GET  /api/skills          — List skills (?tenant_id=&status=)
-GET  /api/skills/:id      — Skill detail
-POST /api/skills/:id/record — Record usage ({"success": true})
-GET  /api/memory          — Search memories (?q=deploy&limit=20)
-GET  /api/memory/:id      — Memory entry detail
+GET  /health                  — Health check
+GET  /metrics                 — Prometheus metrics
+GET  /api/status              — Uptime, provider, skills/memory counts
+GET  /api/keys                — List configured API keys (masked)
+PUT  /api/keys                — Update keys
+GET  /api/skills              — List skills (?tenant_id=&status=)
+GET  /api/skills/:id          — Skill detail
+POST /api/skills/:id/record   — Record usage
+GET  /api/memory              — Search memories
+GET  /api/memory/:id          — Memory entry
+GET  /api/usage/stats         — Token usage per tenant
+GET  /api/usage/recent        — Recent API calls
+GET  /api/vault/health        — Vault status
+GET  /api/sessions            — Active sessions
+POST /api/push                — Send push notification
+POST /api/remind              — Schedule reminder
+POST /v1/chat/completions     — OpenAI-compatible endpoint
+GET  /v1/ws/chat              — WebSocket streaming
 ```
+
+---
+
+## Architecture
+
+```
+Telegram/WhatsApp/Slack
+        │
+   ohAgent Daemon (Rust, 24/7)
+        │
+   ┌────┼────────────────────┐
+   │    │                    │
+   ▼    ▼                    ▼
+Jcode   Memory Engine    Skills Engine
+v0.37  SQLite+vector    Auto-learns
+        │
+   ┌────┼────────────┬──────────────┐
+   │    │            │              │
+DeepSeek Gemini    Scaleway    SiliconFlow
+V4-Flash  Flash    EU/GDPR     200+ models
+          (OCR free)
+        │
+   Receipt Pipeline
+   ┌─────────────────┐
+   │ Gemini → Arbiter │ 4s, FREE, 4/4
+   └─────────────────┘
+
+Background:
+  Version checker (daily, broadcast)
+  Skills cron (eval:5min, create:10min)
+  Cron scheduler (SQLite jobs)
+  Prometheus (:9090/metrics)
+```
+
+---
+
+## Production (K8s)
+
+```yaml
+# 2 replicas, auto-scales to 5
+resources:
+  requests:  {cpu: 250m, memory: 256Mi}
+  limits:    {cpu: 2000m, memory: 2Gi}
+
+# HPA: CPU >70% or RAM >80%
+# Prometheus ServiceMonitor every 30s
+# Alerts: Down, Error Rate, Memory, LLM Cost Spike
+# Zero-downtime: RollingUpdate maxUnavailable=0
+```
+
+**Cost**: €28/mo at 100 users. €250/mo at 10K users.
+No GPU. We proxy, not compute.
+
+See [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md) for full cost breakdown.
 
 ---
 
@@ -145,44 +173,33 @@ GET  /api/memory/:id      — Memory entry detail
 
 | Doc | Contents |
 |---|---|
-| [MANUAL.md](docs/MANUAL.md) | Full user manual: install, config, usage, troubleshooting |
-| [AGENTS.md](AGENTS.md) | Developer guide for AI agents working on the codebase |
-| [PHASE4_REPORT.md](docs/PHASE4_REPORT.md) | Phase 4 completion report (skills engine) |
+| [MANUAL.md](docs/MANUAL.md) | Full manual: install, config, commands, troubleshooting |
+| [MODEL-GUIDE.md](docs/MODEL-GUIDE.md) | Model capabilities: OCR tier list, pricing, anti-patterns |
+| [PRICING.md](docs/PRICING.md) | Provider costs, speed benchmarks, pipeline costs |
+| [PLUGINS.md](docs/PLUGINS.md) | Plugin SDK — build your own .so plugin |
+| [INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md) | Server sizing, sandbox costs, aggregator DB |
+| [SANDBOX.md](docs/SANDBOX.md) | Per-tenant isolated execution pods |
+| [AGGREGATOR-DB.md](docs/AGGREGATOR-DB.md) | PostgreSQL schema for multi-tenant billing |
+| [USAGE.md](docs/USAGE.md) | All usage scenarios: plugins, MCP, routing, deployment |
+
+### Skills
+
+| Skill | Description |
+|---|---|
+| [receipt-ocr](skills/receipt-ocr.md) | Extract receipts from photos via Gemini Flash (free) |
+| [people-recognition](skills/people-recognition.md) | Detect people, demographics, nudity from photos |
 
 ---
 
-## Self-Hosting
+## Providers (8 configured, 43 models tracked)
 
-ohAgent is designed for your infrastructure:
+**Primary**: DeepSeek V4-Flash (€0.14/M), Gemini Flash-Lite (free OCR)
+**EU/GDPR**: Scaleway Mistral-small (€0.15/M)  
+**Budget**: SiliconFlow Tencent Hy3 ($0.066/M)  
+**Code**: SF Qwen3-Coder ($0.07/M)  
+**Vision**: GLM-4.6V, GLM-OCR, Gemini Flash  
 
-```bash
-# systemd service
-sudo cp contrib/ohagent.service /etc/systemd/system/
-sudo systemctl enable --now ohagent
-
-# Docker
-docker run -e DEEPSEEK_API_KEY=... -e TELEGRAM_BOT_TOKEN=... orangehat/ohagent:latest
-
-# Kubernetes (with Vault sidecar)
-kubectl apply -f k8s/
-```
-
-See [MANUAL.md](docs/MANUAL.md#1-installation) for detailed setup including Vault integration.
-
----
-
-## Development
-
-```bash
-# Run all tests
-cargo test --workspace
-
-# Run only ohAgent tests (skip Jcode)
-cargo test -p ohagent-core -p ohagent-memory -p ohagent-skills -p ohagent-daemon
-
-# Build dashboard
-cd crates/ohagent-dashboard && npm install && npm run build
-```
+Full comparison: [MODEL-GUIDE.md](docs/MODEL-GUIDE.md)
 
 ---
 
