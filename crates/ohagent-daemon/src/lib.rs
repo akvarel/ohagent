@@ -885,7 +885,6 @@ pub async fn run() -> Result<()> {
     daemon.run().await
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+async fn main_inner() -> Result<()> {
     run().await
 }
