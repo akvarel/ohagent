@@ -182,8 +182,11 @@ impl Daemon {
             };
 
         // Resolve provider API keys via Vault → env → keys.toml
-        let rt = tokio::runtime::Handle::current();
-        let (deepseek_key, anthropic_key, openai_key, siliconflow_key, zai_key, scaleway_key, scaleway_project, groq_key, google_key) = rt.block_on(async {
+        // Run in a separate thread to avoid tokio runtime nesting issues
+        let (deepseek_key, anthropic_key, openai_key, siliconflow_key, zai_key, scaleway_key, scaleway_project, groq_key, google_key) = std::thread::scope(|s| {
+            s.spawn(|| {
+                let rt = tokio::runtime::Runtime::new().expect("key resolution runtime");
+                rt.block_on(async {
             let dk = resolve_secret(
                 &vault,
                 "providers/deepseek/api-key",
@@ -239,6 +242,8 @@ impl Daemon {
                 &keys_config,
             ).await;
             (dk, ak, ok, sfk, zk, swk, swp, gqk, gok)
+        });
+            }).join().unwrap()
         });
 
         // Set resolved keys into env for jcode provider resolution

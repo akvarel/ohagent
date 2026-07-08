@@ -1,18 +1,5 @@
 # ── ohAgent Daemon — Multi-stage Docker Build ──
-# Build context: repo root (where Dockerfile lives)
-#
-# Build:
-#   docker build -t rg.pl-waw.scw.cloud/orangehat/ohagent-daemon:stable .
-#
-# Run:
-#   docker run -p 9090:9090 \
-#     -e DEEPSEEK_API_KEY=sk-... \
-#     -e TELEGRAM_BOT_TOKEN=123:abc \
-#     -v ohagent-data:/home/jcode/.ohagent \
-#     rg.pl-waw.scw.cloud/orangehat/ohagent-daemon:stable
-
-# ── Stage 1: Build ──
-FROM rust:1.85-bookworm AS builder
+FROM rust:latest AS builder
 
 ARG BUILD_PROFILE=release
 
@@ -21,8 +8,9 @@ RUN apt-get update && apt-get install -y \
     cmake curl git \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy workspace manifests for dependency caching
 WORKDIR /build
+
+# Copy workspace manifests
 COPY Cargo.toml Cargo.lock ./
 COPY crates/ohagent-core/Cargo.toml crates/ohagent-core/
 COPY crates/ohagent-daemon/Cargo.toml crates/ohagent-daemon/
@@ -36,40 +24,39 @@ COPY crates/ohagent-desktop-mcp/Cargo.toml crates/ohagent-desktop-mcp/
 COPY crates/ohagent-plugins/Cargo.toml crates/ohagent-plugins/
 COPY crates/ohagent-provider-metrics/Cargo.toml crates/ohagent-provider-metrics/
 
-# Create dummy source files for dependency pre-caching
-# Also create stubs for excluded crates (not in .dockerignore but needed by workspace)
+# Stub Cargo.toml for excluded crates
+RUN for crate in ohagent-pii-redactor ohagent-infra-launcher ohagent-aggregator-core ohagent-aggregator-plugin; do \
+      mkdir -p crates/$crate/src; \
+      printf '[package]\nname = "%s"\nversion.workspace = true\nedition.workspace = true\n' "$crate" > crates/$crate/Cargo.toml; \
+      echo '' > crates/$crate/src/lib.rs; \
+    done
+
+# Copy jcode submodule (needed first for dep resolution)
+COPY jcode/ jcode/
+
+# Create dummy source for dep caching
 RUN mkdir -p crates/ohagent-core/src crates/ohagent-daemon/src \
     crates/ohagent-gateway/src crates/ohagent-memory/src \
     crates/ohagent-skills/src crates/ohagent-cron/src crates/ohagent-swarm/src \
     crates/ohagent-reasoning/src crates/ohagent-desktop-mcp/src \
     crates/ohagent-plugins/src crates/ohagent-provider-metrics/src \
-    && echo 'fn main() {}' > crates/ohagent-daemon/src/main.rs \
-    # Create stub Cargo.toml for excluded crates
-    && for crate in ohagent-pii-redactor ohagent-infra-launcher ohagent-aggregator-core ohagent-aggregator-plugin; do \
-         mkdir -p crates/$crate/src; echo '[package]' > crates/$crate/Cargo.toml; \
-         echo "name = \"$crate\"" >> crates/$crate/Cargo.toml; \
-         echo 'version.workspace = true' >> crates/$crate/Cargo.toml; \
-         echo 'edition.workspace = true' >> crates/$crate/Cargo.toml; \
-         echo '' > crates/$crate/src/lib.rs; \
-       done \
     && for d in ohagent-core ohagent-daemon ohagent-gateway ohagent-memory \
               ohagent-skills ohagent-cron ohagent-swarm ohagent-reasoning \
-              ohagent-desktop-mcp ohagent-plugins ohagent-provider-metrics \
-              ohagent-pii-redactor ohagent-infra-launcher \
-              ohagent-aggregator-core ohagent-aggregator-plugin; do \
+              ohagent-desktop-mcp ohagent-plugins ohagent-provider-metrics; do \
          echo '' > crates/$d/src/lib.rs; \
-       done
+       done \
+    && echo 'fn main() {}' > crates/ohagent-daemon/src/main.rs
 
-# Copy jcode submodule
-COPY jcode/ jcode/
-
-# Pre-build deps (will fail on missing jcode source, but caches ohAgent deps)
+# Pre-build for dependency caching
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/build/target \
     cargo build --$BUILD_PROFILE -p ohagent-daemon || true
 
-# Copy actual source code
+# Copy actual ohAgent source
 COPY crates/ crates/
+
+# Touch all source files to bust cargo's incremental cache
+RUN find crates -name "*.rs" -exec touch {} +
 
 # Final build
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
@@ -79,7 +66,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     && cp target/$BUILD_PROFILE/ohagent-daemon /out/
 
 # ── Stage 2: Runtime ──
-FROM debian:bookworm-slim AS runtime
+FROM debian:trixie-slim AS runtime
 
 RUN apt-get update && apt-get install -y \
     ca-certificates curl git openssh-client \
