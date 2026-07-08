@@ -268,6 +268,7 @@ impl Daemon {
         }
         if let Some(ref key) = google_key {
             std::env::set_var("GOOGLE_API_KEY", key);
+            std::env::set_var("GEMINI_API_KEY", key);  // Jcode's Gemini provider
         }
 
         // Build default provider (fallback if router unavailable)

@@ -250,14 +250,16 @@ impl PlatformAdapter for TelegramAdapter {
             // ── Webhook mode ──
             info!(url = %webhook_url, "Telegram bot starting (webhook mode)...");
             let wh_url = format!("{}/webhooks/telegram", webhook_url.trim_end_matches('/'));
-            bot.set_webhook(teloxide::types::SetWebhook::new(wh_url)).await?;
+
+            // Set webhook via direct API call
+            let set_url = format!("https://api.telegram.org/bot{}/setWebhook?url={}",
+                self.bot_token, wh_url);
+            reqwest::get(&set_url).await?;
             info!("Webhook set to {wh_url}");
 
-            // In webhook mode, the axum server handles POST /webhooks/telegram
-            // We don't start the teloxide dispatcher — just hold the connection
-            // The actual message processing happens in the webhook endpoint
             let _ = tokio::signal::ctrl_c().await;
-            bot.delete_webhook(teloxide::types::DeleteWebhook::new()).await?;
+            let del_url = format!("https://api.telegram.org/bot{}/deleteWebhook", self.bot_token);
+            reqwest::get(&del_url).await?;
             info!("Webhook removed");
         } else {
             // ── Long-polling mode ──
