@@ -2,6 +2,7 @@
 
 July 2026. We proxy requests to providers — **we do NOT run inference**.
 This makes the aggregator fundamentally different from GPU-heavy deployments.
+**Updated**: includes sandbox costs (per-tenant isolated execution pods).
 
 ---
 
@@ -10,10 +11,10 @@ This makes the aggregator fundamentally different from GPU-heavy deployments.
 | Users | Requests/day | Servers | Monthly infra cost |
 |---|---|---|---|
 | 10 (dev) | 100 | **1 × Scaleway PRO2** (€28/mo) | **€28** |
-| 100 (beta) | 10,000 | **1 × PRO2** (€28/mo) | **€28** |
-| 1,000 (launch) | 100,000 | **2 × PRO2** (€56/mo) | **€56** |
-| 10,000 (scale) | 1,000,000 | **3 × PRO2 + LB** (€120/mo) | **€120** |
-| 100,000 (Series A) | 10M | **5 × ENT1 + Redis + PG** (€800/mo) | **€800** |
+| 100 (beta) | 10,000 | **1 × PRO2 + Sandbox** (€43/mo) | **€43** |
+| 1,000 (launch) | 100,000 | **2 × PRO2 + PG + Sandbox** (€116/mo) | **€116** |
+| 10,000 (scale) | 1M | **3 × PRO2 + PG + Dragonfly + LB + Sandbox** (€250/mo) | **€250** |
+| 100,000 (Series A) | 10M | **5 × ENT1 + PG + Dragonfly + LB + Sandbox pool** (€1,100/mo) | **€1,100** |
 
 ---
 
@@ -160,3 +161,46 @@ A single €4/month VPS can handle 1000 paying customers.
 Our real cost is what we pay providers — which customers cover via markup.
 
 Infrastructure at 99%+ margin. The business is in the arbitrage, not the hosting.
+
+---
+
+## Sandbox Costs (Per-Tenant Isolated Execution Pods)
+
+Sandbox pods run inside the K8s cluster alongside the daemon.
+Each active agent session that needs code execution gets its own pod.
+
+| Item | Per Pod | With 10 active | Notes |
+|---|---|---|---|
+| CPU | 250m request / 2000m limit | 2.5 cores | Burst to 2 cores per pod |
+| RAM | 256Mi request / 1Gi limit | 2.5 GiB | tmpfs workspace |
+| Pod lifetime | 0-30 min (TTL idle) | — | Destroyed after session |
+| K8s overhead | ~50MB per pod | ~500MB | Namespace + cgroup |
+| **Cost** | **~€1.50/mo if always-on** | **~€15/mo** | With TTL, avg 3 pods = €4.50/mo |
+
+Sandbox costs are **marginal** because:
+- Pods live only during active sessions (TTL 30 min idle)
+- They run on the same PRO2 nodes as the daemon — no extra servers
+- CPU/RAM bursts are short-lived (builds take 10-60s)
+- Workspace is tmpfs (RAM), not persistent storage
+
+For 100 users with 10% concurrent = 10 active pods:
+- 10 pods × 250m CPU = 2.5 cores → fits on one PRO2-X8C (8 vCPU)
+- 10 pods × 256Mi RAM = 2.5 GiB → fits in 32GB
+
+**Sandbox costs stay under €20/mo until 10K users.**
+
+---
+
+## Aggregator Database Costs
+
+Separate from agent databases (SQLite). Used for multi-tenant billing + API key management.
+
+| Component | Spec | Cost/mo | Notes |
+|---|---|---|---|
+| PostgreSQL (Managed) | 2 vCPU, 4GB, 50GB | €25 | Scaleway Managed Database |
+| DragonflyDB | 1 vCPU, 2GB | €15 | Self-hosted on PRO2 spare capacity |
+| PgBouncer | Sidecar | €0 | Runs in daemon pod |
+
+**Total aggregator DB: €25-40/mo** (PostgreSQL required, Dragonfly optional until 10K users).
+
+Full schema: [AGGREGATOR-DB.md](AGGREGATOR-DB.md)
