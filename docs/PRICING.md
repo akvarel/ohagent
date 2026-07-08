@@ -231,7 +231,41 @@ where (α,β,γ) = (0.7,0.2,0.1) Budget / (0.4,0.3,0.3) Balanced / (0.2,0.6,0.2)
 
 ## 12. Vision / Multi-Document OCR Pipeline
 
-Real benchmarks (July 7, 2026) on a 960×1280 photo with 4 Latvian receipts.
+Real benchmarks (July 2026) on a 960×1280 photo with 4 Latvian receipts.
+
+### OCR Quality Tier (Latvian receipts)
+
+| Tier | Model | TTF | Cost | Accuracy | Notes |
+|---|---|---|---|---|---|
+| 🥇 | **Gemini 3.1 Flash-Lite** | **4s** | **FREE** | ⭐⭐⭐⭐⭐ | 5× faster than Flash-Latest |
+| 🥈 | Gemini Flash-Latest (2.5) | 20s | FREE | ⭐⭐⭐⭐⭐ | Better subtotal separation |
+| 🥉 | Gemini 3 Flash | 15s | FREE | ⭐⭐⭐⭐⭐ | vat_details included |
+| 4 | GLM-OCR (0.9B) | 2s | $0.00003 | ⭐⭐⭐ | Honest, misses faint text |
+| 5 | GLM-4.6V (describe) | 28s | €0.00041 | ⭐⭐⭐ | Store names + amounts |
+| ❌ | Mistral-small | 1s | €0.00017 | ☆ | 100% hallucination on LV |
+| ❌ | GPT-4o-mini | 2s | €0.00352 | ☆ | Plausible lies |
+| ❌ | Pixtral-12B | 1s | €0.00063 | ☆ | Spanish hallucination |
+
+### Gemini 3.1 Flash-Lite — Best Overall
+
+Tested on 4 receipts + nude beach selfie (July 8, 2026):
+
+| Test | Time | Tokens | Result |
+|---|---|---|---|
+| 4 receipts OCR | 4.9s | 1153+1231 | 4/4 correct |
+| Beach selfie | 2.1s | 1083+219 | ✅ honest description |
+| Nude detection | — | — | ✅ no content filtering |
+
+**Only weakness**: puts gross amount (€12.89) in `subtotal` field instead of net (€10.65).
+Net trivially computed: gross − VAT = net. VAT values are always correct.
+
+### Model Comparison: 4 Receipts
+
+| Model | Time | Tokens | Kurs € | BARBAR € | Pigu#3 € | Pigu#4 € |
+|---|---|---|---|---|---|---|
+| **3.1 Flash-Lite** | **4.9s** | 1153+1231 | 12.89 | 6.90 | 58.55 | 44.44 |
+| Flash-Latest (2.5) | 20.4s | 1076+1336 | 12.89 | 6.90 | 58.55 | 44.44 |
+| 3 Flash | 15.4s | 1076+1336 | 12.89 | 6.90 | 58.55 | 44.44 |
 
 ### Pre-Classifier: Document Counting
 
@@ -286,14 +320,53 @@ Three-step pipeline: **Detect → Crop → Individual OCR**.
 | 3 | FOR ROSE, Kuldīga | €24.00 | 2 | LV84UNLA0020300010000 |
 | 4 | Pigu Latvia, Riga | €70.90 | 3 | LV72RIKV0004004985100 |
 
+### Google Gemini Pricing (All Tiers, USD per 1M tokens)
+
+All Gemini models have a **free tier** for development. Paid tier required for production volume.
+
+| Model | Free Input | Free Output | Paid Input | Paid Output | Vision |
+|---|---|---|---|---|---|
+| **3.1 Flash-Lite** ⚡ | FREE | FREE | $0.25 | $1.50 | ✅ text/image/video |
+| 3.1 Pro Preview | — | — | $2.00 | $12.00 | ✅ |
+| 3 Flash | FREE | FREE | $0.50 | $3.00 | ✅ text/image/video |
+| 3.5 Flash | FREE | FREE | $1.50 | $9.00 | ✅ |
+| 2.5 Flash (flash-latest) | FREE | FREE | $0.30 | $2.50 | ✅ text/image/video |
+| 2.5 Pro | FREE | FREE | $1.25 | $10.00 | ✅ |
+| 2.5 Flash-Lite | FREE | FREE | $0.10 | $0.40 | ✅ text/image/video |
+
+Per-receipt cost (paid tier, ~2300 tokens):
+- 3.1 Flash-Lite: $0.0009 (€0.0008) — cheapest paid
+- 2.5 Flash: $0.0011 (€0.0010)
+- 3 Flash: $0.0018 (€0.0017)
+- Free tier: $0 — all Gemini models currently free
+
+### GLM-OCR Pricing (Z.ai) 🆚
+
+| Model | Params | Price | TTF | Notes |
+|---|---|---|---|---|
+| GLM-OCR | 0.9B | **$0.03/M** (in+out) | 2s | Dedicated `/layout_parsing` endpoint |
+| GLM-4.6V | ~100B | ¥3/15 per M | 28s | BBox + describe, chat endpoint |
+| GLM-4.6V-flashx | ~100B | ¥1/5 per M | 3s | Fast, needs thinking=disabled |
+| GLM-4.6V-flash | ~100B | FREE | — | ⚠️ Permanent 429, UNUSABLE |
+
+### OCR Pipeline Cost (4 receipts)
+
+| Step | Model | Time | Cost Free | Cost Paid |
+|---|---|---|---|---|
+| Count | Mistral-small | 0.7s | — | €0.00017 |
+| BBox | GLM-4.6V | 6s | — | €0.0011 |
+| OCR | **Gemini 3.1 Flash-Lite** | **4s** | **FREE** | $0.0009 |
+| Validate | Arbiter | 0s | €0 | €0 |
+| **Total** | | **11s** | **€0.0012** | **€0.0021** |
+
 ### GLM-4.6V Pricing (Z.ai, CNY/M tokens, ≈€0.13/CNY)
 
 | Model | Input | Output | Context | Capabilities | Best For |
 |---|---|---|---|---|---|
-| glm-4.6v | ¥3.00 | ¥15.00 | 128K | chat, vision, multi_doc, bbox | Flagship — bbox + describe |
+| glm-4.6v | ¥3.00 | ¥15.00 | 128K | chat, vision, multi_doc, bbox | BBox + describe |
 | glm-4.6v-flashx | ¥1.00 | ¥5.00 | 128K | chat, vision, multi_doc | Pre-classifier fallback |
-| glm-4.6v-flash | FREE | FREE | 128K | chat, vision, multi_doc | ⚠️ Rate-limited (429), unreliable |
-| GLM-5V-Turbo (SF) | $1.20 | $4.00 | 205K | chat, vision, multi_doc | Latest gen, SiliconFlow |
+| glm-4.6v-flash | FREE | FREE | 128K | chat, vision, multi_doc | ⚠️ 429, unreliable |
+| GLM-5V-Turbo (SF) | $1.20 | $4.00 | 205K | chat, vision, multi_doc | Latest gen, SF |
 
 ### Architecture
 

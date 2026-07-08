@@ -1047,7 +1047,7 @@ OHAGENT_CMC_ENABLED=1 cargo run -p ohagent-daemon
 ## Receipt / Multi-Document Processing Pipeline (Phase 15)
 
 ohAgent can process photos with multiple documents (receipts, invoices, pages)
-using a three-step pipeline: **Pre-classify → Detect → Individual OCR**.
+using a four-step pipeline: **Pre-classify → BBox → Crop → OCR → Validate**.
 
 ### Pipeline Architecture
 
@@ -1069,15 +1069,41 @@ using a three-step pipeline: **Pre-classify → Detect → Individual OCR**.
    │
    └→ cheap OCR directly (no crop needed)
         │
-   Step 2: PIL Crop + Enhance
-        │     Sharpen filter, contrast boost
+   Step 2: PIL Crop + Enhance (local, 0s)
         │
-   Step 3: Individual OCR × N documents
-           Scaleway Mistral-small, ~5s each, €0.00017 each
-           Each with raw_text_dump for verification
+   Step 3: OCR — Gemini 3.1 Flash-Lite (primary, 4s, FREE)
+                ↓ fallback
+              Gemini Flash-Latest (20s, FREE)
+                ↓ last resort
+              GLM-OCR per-receipt ($0.03/M)
+        │
+   Step 4: Mathematical Arbiter (0s)
+        │     Σitems≈subtotal, VAT≈subtotal×%, sub+VAT≈total
 ```
 
-### Real Benchmark Results (Jul 7, 2026)
+### OCR Providers
+
+| Priority | Model | Time | Cost | Notes |
+|---|---|---|---|---|
+| 🥇 Primary | **Gemini 3.1 Flash-Lite** | 4s | **FREE** | All 4 receipts at once. Diacritics, discounts. |
+| 🥈 Fallback | Gemini Flash-Latest (2.5) | 20s | FREE | Better subtotal separation |
+| 🥉 Last resort | GLM-OCR (0.9B) | 2s×4 | $0.00012 | Per-receipt, honest, misses faint text |
+
+**All Gemini models are FREE on the free tier.** Paid tier pricing:
+- 3.1 Flash-Lite: $0.25/M input, $1.50/M output
+- 2.5 Flash: $0.30/M input, $2.50/M output
+
+### Configuring the Pipeline
+
+```bash
+# Required API keys
+export GOOGLE_API_KEY="..."      # Gemini (primary OCR, free)
+export ZAI_API_KEY="..."         # GLM-4.6V (bbox) + GLM-OCR (fallback)
+export SCW_SECRET_KEY="..."      # Scaleway (pre-classifier)
+export SCW_PROJECT_ID="..."      # Scaleway project UUID
+
+# Run the pipeline
+python3 scripts/receipt_pipeline.py [path/to/photo.jpg]
 
 | Step | Model | Time | Cost | Notes |
 |---|---|---|---|---|

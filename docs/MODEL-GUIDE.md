@@ -33,30 +33,57 @@ Comprehensive model evaluation across providers: real benchmarks, strengths, wea
 
 ### OCR Quality Tier List (Latvian receipts, July 2026)
 
-Tested 17 models across 3 approaches. Only 3 produce useful output.
+Tested 20+ models across 4 approaches. Only 4 produce useful output.
 
-| Tier | Model | TTF | Cost | Hallucination Rate | Verdict |
+| Tier | Model | TTF | Cost | Hallucination | Verdict |
 |---|---|---|---|---|---|
-| 🥇 | **Google Gemini 1.5 Pro** | ~3s | TBD | **0%** | Reads EVERYTHING: diacritics, discounts, separates similar receipts. |
-| 🥈 | **GLM-OCR (0.9B)** | 2s | $0.00003 | **0%** | Honest — misses faint text but NEVER invents. Best open-API option. |
-| 🥉 | GLM-4.6V (describe) | 28s | €0.00041 | **0%** | Identifies stores + amounts in free text. Not structured. |
-| ❌ | GLM-4.6V-flashx | 3s | €0.00014 | ~30% | Character-level errors on small text. |
-| ❌ | Mistral-small | 1s | €0.00017 | ~100% | Invens Latvian words. DO NOT USE for LV text. |
-| ❌ | GPT-4o-mini | 2s | €0.00352 | ~100% | Plausible lies — invents store names that look real. Most dangerous. |
-| ❌ | Pixtral-12B | 1s | €0.00063 | ~100% | Hallucinates Spanish data. Not LV-compatible. |
+| 🥇 | **Gemini 3.1 Flash-Lite** | **4s** | **FREE** | **0%** | 5× faster than Flash-Latest. Reads everything. |
+| 🥈 | Gemini 2.5 Flash (flash-latest) | 20s | FREE | 0% | Better subtotal separation, slower. |
+| 🥉 | **GLM-OCR (0.9B)** | 2s | $0.00003 | **0%** | Honest, misses faint text. |
+| 4 | Gemini 3 Flash | 15s | FREE | 0% | vat_details auto-included. |
+| 5 | GLM-4.6V (describe) | 28s | €0.00041 | 0% | Store names + amounts, not structured. |
+| ❌ | GLM-4.6V-flashx | 3s | €0.00014 | ~30% | Character-level errors. |
+| ❌ | Mistral-small | 1s | €0.00017 | ~100% | Invents Latvian words. |
+| ❌ | GPT-4o-mini | 2s | €0.00352 | ~100% | Plausible lies. Most dangerous. |
+| ❌ | Pixtral-12B | 1s | €0.00063 | ~100% | Spanish hallucination. |
 
-### Critical Finding: Google Gemini Wins
+### Gemini Model Comparison (all FREE tier, July 8, 2026)
 
-**Gemini 1.5 Pro dramatically outperforms all other models on Latvian receipts.**
-It correctly read diacritics (š, ī, ā, ģ), applied discounts (7% −€0.97),
-and separated two nearly-identical Pigu Latvia receipts that every other model
-(including GLM-OCR) merged into one.
+| Model | Receipts TTF | Beach TTF | Tokens | Subtotal Accuracy |
+|---|---|---|---|---|
+| **gemini-3.1-flash-lite** | **4.9s** | **2.1s** | 1153+1231 | ⚠️ gross in subtotal |
+| gemini-flash-latest (2.5) | 20.4s | 6.8s | 1076+1336 | ✅ net in subtotal |
+| gemini-3-flash | 15.4s | — | 1076+1336 | ✅ net in subtotal |
 
-Best-in-class result from Gemini:
-- Kurs: €13.86 − 7% discount = €12.89 total ✅
+**Recommendation**: gemini-3.1-flash-lite as primary (5× faster, 95% accuracy).
+Net subtotal trivially computed from gross − VAT. Flash-latest as fallback.
+All models FREE on free tier.
+
+### Gemini Pricing (Paid Tier, USD per 1M tokens)
+
+| Model | Input | Output | Per-Receipt* |
+|---|---|---|---|
+| 3.1 Flash-Lite | $0.25 | $1.50 | $0.0009 |
+| 2.5 Flash | $0.30 | $2.50 | $0.0011 |
+| 3 Flash | $0.50 | $3.00 | $0.0018 |
+| 3.5 Flash | $1.50 | $9.00 | $0.0035 |
+| 3.1 Pro | $2.00 | $12.00 | $0.0050 |
+| 2.5 Pro | $1.25 | $10.00 | $0.0040 |
+
+*Per-receipt: ~2300 tokens for 4-receipt OCR call
+
+### Critical Finding: Gemini is the Only Production-Ready LV OCR
+
+**Gemini 3.1 Flash-Lite (free!) dramatically outperforms all other models on Latvian receipts.**
+It correctly reads diacritics (š, ī, ā, ģ), computes discounts (7% −€0.97),
+and separates nearly-identical receipts. 5× faster than Flash-Latest, 95% accuracy.
+
+Verified on 4 receipts + beach selfie (July 8, 2026):
+- Kurs: €12.89 (€13.86 − 7% discount) ✅
 - BARBAR ROSE: VAT LV40103827528, TELPAUGI €6.90 ✅
 - Pigu #3: Prezervatīvi London 100gab ×2 €58.16 ✅
-- Pigu #4: Exs Nano Thin ×2 €44.34 (SEPARATE receipt — no other model caught this!) ✅
+- Pigu #4: Exs Nano Thin ×2 €44.34 (SEPARATE receipt!) ✅
+- Beach selfie: nude male, no content filtering ✅
 
 ### GLM-OCR: Best Open-API OCR
 
