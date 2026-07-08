@@ -176,13 +176,14 @@ impl Dispatcher {
                                             text.push_str(&format!("\n   ⚠️  {}", verdict.issues.join("; ")));
                                         }
                                     }
-                                    return Some(OutgoingMessage { chat_id: msg.chat_id.clone(), text, markdown: true });
+                                    return Some(OutgoingMessage { chat_id: msg.chat_id.clone(), text, markdown: true, inline_keyboard: None });
                                 }
                                 Err(e) => {
                                     return Some(OutgoingMessage {
                                         chat_id: msg.chat_id.clone(),
                                         text: format!("OCR failed: {e}"),
                                         markdown: false,
+                inline_keyboard: None,
                                     });
                                 }
                             }
@@ -192,6 +193,7 @@ impl Dispatcher {
                                 chat_id: msg.chat_id.clone(),
                                 text: format!("Failed to read photo: {e}"),
                                 markdown: false,
+                inline_keyboard: None,
                             });
                         }
                     }
@@ -200,6 +202,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "OCR is not configured. Set GOOGLE_API_KEY.".into(),
                         markdown: false,
+                inline_keyboard: None,
                     });
                 }
             }
@@ -211,6 +214,7 @@ impl Dispatcher {
                 chat_id: msg.chat_id.clone(),
                 text: i18n.t("not_paired"),
                 markdown: false,
+                inline_keyboard: None,
             });
         }
 
@@ -234,6 +238,7 @@ impl Dispatcher {
                     chat_id: msg.chat_id.clone(),
                     text: i18n.tf("error", &[("error", &e.to_string())]),
                     markdown: false,
+                inline_keyboard: None,
                 });
             }
         };
@@ -287,6 +292,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Message blocked by security policy.".into(),
                         markdown: false,
+                inline_keyboard: None,
                     });
                 }
                 Err(e) => {
@@ -349,6 +355,7 @@ impl Dispatcher {
                     chat_id: msg.chat_id.clone(),
                     text: i18n.tf("error", &[("error", &e.to_string())]),
                     markdown: false,
+                inline_keyboard: None,
                 })
             }
         }
@@ -371,6 +378,7 @@ impl Dispatcher {
                     chat_id: msg.chat_id.clone(),
                     text: i18n.t("greeting"),
                     markdown: false,
+                inline_keyboard: None,
                 })
             }
 
@@ -385,6 +393,7 @@ impl Dispatcher {
                         ("minutes", "10"),
                     ]),
                     markdown: true,
+                inline_keyboard: None,
                 })
             }
 
@@ -395,6 +404,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Usage: /confirm <CODE>".into(),
                         markdown: false,
+                inline_keyboard: None,
                     });
                 }
                 match self.pairing_manager.confirm_code(
@@ -411,12 +421,14 @@ impl Dispatcher {
                             chat_id: msg.chat_id.clone(),
                             text: i18n.t("pairing_success"),
                             markdown: false,
+                inline_keyboard: None,
                         })
                     }
                     Err(e) => Some(OutgoingMessage {
                         chat_id: msg.chat_id.clone(),
                         text: e,
                         markdown: false,
+                inline_keyboard: None,
                     }),
                 }
             }
@@ -426,6 +438,7 @@ impl Dispatcher {
                     chat_id: msg.chat_id.clone(),
                     text: i18n.t("help"),
                     markdown: true,
+                inline_keyboard: None,
                 })
             }
 
@@ -440,6 +453,7 @@ impl Dispatcher {
                     chat_id: msg.chat_id.clone(),
                     text: i18n.t("new_session"),
                     markdown: false,
+                inline_keyboard: None,
                 })
             }
 
@@ -463,6 +477,7 @@ impl Dispatcher {
                     chat_id: msg.chat_id.clone(),
                     text: new_i18n.t("lang_changed"),
                     markdown: false,
+                inline_keyboard: None,
                 })
             }
 
@@ -479,6 +494,7 @@ impl Dispatcher {
                     chat_id: msg.chat_id.clone(),
                     text: i18n.t("task_stopped"),
                     markdown: false,
+                inline_keyboard: None,
                 })
             }
 
@@ -501,6 +517,7 @@ impl Dispatcher {
                                                Use /model to see available models."
                                             .into(),
                                         markdown: false,
+                inline_keyboard: None,
                                     });
                                 }
                                 let cap = parts[1];
@@ -514,11 +531,13 @@ impl Dispatcher {
                                             "*Preference saved:* `{cap}` → `{model_id}`",
                                         ),
                                         markdown: true,
+                inline_keyboard: None,
                                     }),
                                     Err(e) => Some(OutgoingMessage {
                                         chat_id: msg.chat_id.clone(),
                                         text: format!("Error: {e}"),
                                         markdown: false,
+                inline_keyboard: None,
                                     }),
                                 }
                             }
@@ -540,12 +559,14 @@ impl Dispatcher {
                                             chat_id: msg.chat_id.clone(),
                                             text: msg_text,
                                             markdown: true,
+                inline_keyboard: None,
                                         })
                                     }
                                     Err(e) => Some(OutgoingMessage {
                                         chat_id: msg.chat_id.clone(),
                                         text: format!("Error: {e}"),
                                         markdown: false,
+                inline_keyboard: None,
                                     }),
                                 }
                             }
@@ -589,6 +610,7 @@ impl Dispatcher {
                                     chat_id: msg.chat_id.clone(),
                                     text,
                                     markdown: true,
+                inline_keyboard: None,
                                 })
                             }
 
@@ -601,6 +623,7 @@ impl Dispatcher {
                                        /model list — list preferences"
                                     .into(),
                                 markdown: false,
+                inline_keyboard: None,
                             }),
                         }
                     }
@@ -608,6 +631,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Model router is not configured. Using default provider.".into(),
                         markdown: false,
+                inline_keyboard: None,
                     }),
                 }
             }
@@ -622,6 +646,7 @@ impl Dispatcher {
                                     chat_id: msg.chat_id.clone(),
                                     text: i18n.t("skills_none"),
                                     markdown: false,
+                inline_keyboard: None,
                                 })
                             }
                             Ok(list) => {
@@ -639,12 +664,14 @@ impl Dispatcher {
                                     chat_id: msg.chat_id.clone(),
                                     text,
                                     markdown: true,
+                inline_keyboard: None,
                                 })
                             }
                             Err(e) => Some(OutgoingMessage {
                                 chat_id: msg.chat_id.clone(),
                                 text: i18n.tf("error", &[("error", &e.to_string())]),
                                 markdown: false,
+                inline_keyboard: None,
                             }),
                         }
                     }
@@ -652,6 +679,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: i18n.t("skills_unavailable"),
                         markdown: false,
+                inline_keyboard: None,
                     }),
                 }
             }
@@ -663,6 +691,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Usage: /skill <name>".into(),
                         markdown: false,
+                inline_keyboard: None,
                     });
                 }
                 match &self.skills {
@@ -692,17 +721,20 @@ impl Dispatcher {
                                     chat_id: msg.chat_id.clone(),
                                     text,
                                     markdown: true,
+                inline_keyboard: None,
                                 })
                             }
                             Ok(None) => Some(OutgoingMessage {
                                 chat_id: msg.chat_id.clone(),
                                 text: i18n.tf("skill_not_found", &[("name", skill_name)]),
                                 markdown: false,
+                inline_keyboard: None,
                             }),
                             Err(e) => Some(OutgoingMessage {
                                 chat_id: msg.chat_id.clone(),
                                 text: i18n.tf("error", &[("error", &e.to_string())]),
                                 markdown: false,
+                inline_keyboard: None,
                             }),
                         }
                     }
@@ -710,6 +742,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: i18n.t("skills_unavailable"),
                         markdown: false,
+                inline_keyboard: None,
                     }),
                 }
             }
@@ -721,6 +754,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Usage: /skilluse <name>".into(),
                         markdown: false,
+                inline_keyboard: None,
                     });
                 }
                 match &self.skills {
@@ -738,11 +772,13 @@ impl Dispatcher {
                                         chat_id: msg.chat_id.clone(),
                                         text: i18n.tf("skill_used", &[("name", &s.name)]),
                                         markdown: false,
+                inline_keyboard: None,
                                     }),
                                     Err(e) => Some(OutgoingMessage {
                                         chat_id: msg.chat_id.clone(),
                                         text: i18n.tf("error", &[("error", &e.to_string())]),
                                         markdown: false,
+                inline_keyboard: None,
                                     }),
                                 }
                             }
@@ -750,11 +786,13 @@ impl Dispatcher {
                                 chat_id: msg.chat_id.clone(),
                                 text: i18n.tf("skill_not_found", &[("name", skill_name)]),
                                 markdown: false,
+                inline_keyboard: None,
                             }),
                             Err(e) => Some(OutgoingMessage {
                                 chat_id: msg.chat_id.clone(),
                                 text: i18n.tf("error", &[("error", &e.to_string())]),
                                 markdown: false,
+                inline_keyboard: None,
                             }),
                         }
                     }
@@ -762,6 +800,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: i18n.t("skills_unavailable"),
                         markdown: false,
+                inline_keyboard: None,
                     }),
                 }
             }
@@ -777,6 +816,7 @@ impl Dispatcher {
                                     chat_id: msg.chat_id.clone(),
                                     text: i18n.t("logging_on"),
                                     markdown: false,
+                inline_keyboard: None,
                                 })
                             }
                             "off" => {
@@ -785,6 +825,7 @@ impl Dispatcher {
                                     chat_id: msg.chat_id.clone(),
                                     text: i18n.t("logging_off"),
                                     markdown: false,
+                inline_keyboard: None,
                                 })
                             }
                             _ => {
@@ -797,6 +838,7 @@ impl Dispatcher {
                                         i18n.t("logging_status_off")
                                     },
                                     markdown: false,
+                inline_keyboard: None,
                                 })
                             }
                         }
@@ -805,6 +847,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Message logging is not configured.".into(),
                         markdown: false,
+                inline_keyboard: None,
                     }),
                 }
             }
@@ -816,6 +859,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Usage: /remember <text to remember>".into(),
                         markdown: false,
+                inline_keyboard: None,
                     });
                 }
                 match &self.memory {
@@ -840,11 +884,13 @@ impl Dispatcher {
                                 chat_id: msg.chat_id.clone(),
                                 text: format!("*Remembered:* _{content}_\nID: `{}`", saved.id),
                                 markdown: true,
+                inline_keyboard: None,
                             }),
                             Err(e) => Some(OutgoingMessage {
                                 chat_id: msg.chat_id.clone(),
                                 text: format!("Failed to remember: {e}"),
                                 markdown: false,
+                inline_keyboard: None,
                             }),
                         }
                     }
@@ -852,6 +898,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Memory engine is not configured.".into(),
                         markdown: false,
+                inline_keyboard: None,
                     }),
                 }
             }
@@ -863,6 +910,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Usage: /recall <search query>".into(),
                         markdown: false,
+                inline_keyboard: None,
                     });
                 }
                 match &self.memory {
@@ -871,6 +919,7 @@ impl Dispatcher {
                             chat_id: msg.chat_id.clone(),
                             text: format!("_No memories found for \"{query}\"._"),
                             markdown: true,
+                inline_keyboard: None,
                         }),
                         Ok(results) => {
                             let mut text = format!("*Found {} memories:*\n", results.len());
@@ -887,18 +936,21 @@ impl Dispatcher {
                                 chat_id: msg.chat_id.clone(),
                                 text,
                                 markdown: true,
+                inline_keyboard: None,
                             })
                         }
                         Err(e) => Some(OutgoingMessage {
                             chat_id: msg.chat_id.clone(),
                             text: format!("Memory search failed: {e}"),
                             markdown: false,
+                inline_keyboard: None,
                         }),
                     },
                     None => Some(OutgoingMessage {
                         chat_id: msg.chat_id.clone(),
                         text: "Memory engine is not configured.".into(),
                         markdown: false,
+                inline_keyboard: None,
                     }),
                 }
             }
@@ -910,6 +962,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Usage: /forget <memory ID>".into(),
                         markdown: false,
+                inline_keyboard: None,
                     });
                 }
                 match &self.memory {
@@ -918,17 +971,20 @@ impl Dispatcher {
                             chat_id: msg.chat_id.clone(),
                             text: format!("*Forgotten:* `{id}`"),
                             markdown: true,
+                inline_keyboard: None,
                         }),
                         Err(e) => Some(OutgoingMessage {
                             chat_id: msg.chat_id.clone(),
                             text: format!("Failed to forget: {e}"),
                             markdown: false,
+                inline_keyboard: None,
                         }),
                     },
                     None => Some(OutgoingMessage {
                         chat_id: msg.chat_id.clone(),
                         text: "Memory engine is not configured.".into(),
                         markdown: false,
+                inline_keyboard: None,
                     }),
                 }
             }
@@ -940,6 +996,7 @@ impl Dispatcher {
                     chat_id: msg.chat_id.clone(),
                     text,
                     markdown: true,
+                inline_keyboard: None,
                 })
             }
 

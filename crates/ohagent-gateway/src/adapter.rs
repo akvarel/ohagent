@@ -49,6 +49,18 @@ pub struct OutgoingMessage {
     pub text: String,
     /// Whether to parse as MarkdownV2.
     pub markdown: bool,
+    /// Optional inline keyboard buttons.
+    /// Each inner vec is a row of buttons.
+    pub inline_keyboard: Option<Vec<Vec<InlineButton>>>,
+}
+
+/// A button in an inline keyboard.
+#[derive(Debug, Clone)]
+pub struct InlineButton {
+    /// Button text.
+    pub text: String,
+    /// Callback data sent when button is pressed.
+    pub callback_data: String,
 }
 
 /// Trait that every messaging platform must implement.

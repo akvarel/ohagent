@@ -175,6 +175,7 @@ impl WhatsAppAdapter {
                                     chat_id: msg.from.clone(),
                                     text: response.text,
                                     markdown: response.markdown,
+                                    inline_keyboard: response.inline_keyboard,
                                 })
                                 .await;
 

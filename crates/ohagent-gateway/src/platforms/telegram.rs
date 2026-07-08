@@ -12,7 +12,7 @@ use teloxide::{
 };
 use tracing::{info, warn};
 
-use crate::adapter::{FileAttachment, IncomingMessage, OutgoingMessage, PlatformAdapter};
+use crate::adapter::{FileAttachment, IncomingMessage, InlineButton, OutgoingMessage, PlatformAdapter};
 use crate::dispatch::Dispatcher;
 use crate::i18n::Lang;
 use crate::pairing::PairingManager;
@@ -272,6 +272,17 @@ impl PlatformAdapter for TelegramAdapter {
         let mut req = bot.send_message(chat_id, msg.text);
         if msg.markdown {
             req = req.parse_mode(ParseMode::MarkdownV2);
+        }
+        if let Some(ref keyboard) = msg.inline_keyboard {
+            let rows: Vec<Vec<teloxide::types::InlineKeyboardButton>> = keyboard.iter().map(|row| {
+                row.iter().map(|btn| {
+                    teloxide::types::InlineKeyboardButton::callback(
+                        &btn.text,
+                        &btn.callback_data,
+                    )
+                }).collect()
+            }).collect();
+            req = req.reply_markup(teloxide::types::InlineKeyboardMarkup::new(rows));
         }
 
         req.await?;

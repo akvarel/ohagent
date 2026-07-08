@@ -150,6 +150,7 @@ impl SlackAdapter {
                         chat_id: channel,
                         text: response.text,
                         markdown: response.markdown,
+                                    inline_keyboard: response.inline_keyboard,
                     })
                     .await
                 {
