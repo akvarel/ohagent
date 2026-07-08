@@ -182,8 +182,13 @@ impl Daemon {
             };
 
         // Resolve provider API keys via Vault → env → keys.toml
-        let rt = tokio::runtime::Handle::current();
-        let (deepseek_key, anthropic_key, openai_key, siliconflow_key, zai_key, scaleway_key, scaleway_project, groq_key, google_key) = rt.block_on(async {
+        // Spawn a separate OS thread to avoid tokio runtime nesting
+        let (deepseek_key, anthropic_key, openai_key, siliconflow_key, zai_key, scaleway_key, scaleway_project, groq_key, google_key) = {
+            let vault = vault.clone();
+            let keys_config = keys_config.clone();
+            std::thread::spawn(move || {
+                let rt = tokio::runtime::Runtime::new().expect("key resolution runtime");
+                rt.block_on(async {
             let dk = resolve_secret(
                 &vault,
                 "providers/deepseek/api-key",
@@ -240,6 +245,8 @@ impl Daemon {
             ).await;
             (dk, ak, ok, sfk, zk, swk, swp, gqk, gok)
         });
+            }).join().unwrap()
+        };
 
         // Set resolved keys into env for jcode provider resolution
         if let Some(ref key) = deepseek_key {
@@ -359,11 +366,14 @@ impl Daemon {
         };
 
         // Initialize MCP server pool (shared across all sessions).
-        // Servers are defined in ~/.jcode/mcp.json (auto-imported from
-        // Claude Code / Codex CLI on first run).
+        // Spawn separate thread — block_on doesn't work inside tokio runtime
         let mcp_pool = {
             let pool = Arc::new(SharedMcpPool::from_default_config());
-            let (connected, failures) = rt.block_on(pool.connect_all());
+            let pool_clone = pool.clone();
+            let (connected, failures) = std::thread::spawn(move || {
+                let rt = tokio::runtime::Runtime::new().expect("mcp runtime");
+                rt.block_on(pool_clone.connect_all())
+            }).join().unwrap();
             if !failures.is_empty() {
                 for (name, err) in &failures {
                     tracing::warn!(
