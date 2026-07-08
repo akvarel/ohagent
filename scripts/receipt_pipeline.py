@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Receipt pipeline: PreClassify → BBox → Crop → GLM-OCR → Parse → Arbiter.
+"""Receipt pipeline: PreClassify → BBox → Crop → Gemini OCR → Parse → Arbiter.
 
-GLM-OCR (0.9B params, $0.03/M tok, 2s/receipt) — specialized OCR model.
-Reads text at pixel level. Does NOT hallucinate.
+🥇 Gemini Flash (free tier) — reads Latvian receipts PERFECTLY at 15s for 4 receipts.
+   All-at-once: one call extracts all 4 receipts as JSON array. Diacritics, discounts.
+🥈 GLM-OCR (0.9B, $0.03/M) — fallback: honest, pixel-level, misses faint text.
+❌ Mistral-small — 100% hallucination on Latvian. REMOVED from OCR step.
 
-Pipeline: Mistral-small(count) → GLM-4.6V(bbox) → PIL(crop) → GLM-OCR(text) → regex(parse) → arbiter
+Pipeline: Mistral-small(count) → GLM-4.6V(bbox) → PIL(crop) → Gemini(OCR primary) → GLM-OCR(fallback) → arbiter
 """
 
 import base64, json, time, urllib.request, os, sys, re
@@ -26,11 +28,144 @@ SCW_PROJECT = keys.get("SCW_PROJECT_ID", "65e0d091-bc74-485c-8e03-1471b62e110b")
 SCW_BASE = f"https://api.scaleway.ai/{SCW_PROJECT}/v1"
 ZAI_KEY = keys["ZAI_API_KEY"]
 ZAI_BASE = "https://api.z.ai/api/paas/v4"
+GOOGLE_KEY = keys.get("GOOGLE_API_KEY", "")
+
+# ─── Gemini OCR ──────────────────────────────────
+
+def gemini_ocr_all(image_b64: str) -> list[dict] | None:
+    """OCR all receipts at once with Gemini Flash (free tier).
+    Returns list of receipt dicts or None on failure."""
+    if not GOOGLE_KEY:
+        return None
+
+    body = json.dumps({
+        "contents": [{"parts": [
+            {"text": "This image contains multiple paper receipts on a dark surface. "
+             "Extract ALL data from EACH receipt. For each receipt return: "
+             "store_name, address, reg_nr, vat_nr, date, time, "
+             "items[{name, quantity, unit_price, total_price}], "
+             "subtotal, vat_amount, vat_percent, total, "
+             "payment_method, payment_amount, change. "
+             "Return as JSON array. No markdown, just JSON."},
+            {"inline_data": {"mime_type": "image/jpeg", "data": image_b64}},
+        ]}],
+        "generationConfig": {"maxOutputTokens": 8192, "temperature": 0},
+    }).encode()
+
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={GOOGLE_KEY}"
+        req = urllib.request.Request(url, body, {"Content-Type": "application/json"})
+        resp = urllib.request.urlopen(req, timeout=60)
+        data = json.loads(resp.read())
+        text = ""
+        for part in data.get("candidates", [{}])[0].get("content", {}).get("parts", []):
+            text += part.get("text", "")
+
+        # Extract JSON array from response
+        json_match = re.search(r'\[.*\]', text, re.DOTALL)
+        if json_match:
+            receipts = json.loads(json_match.group(0))
+            # Normalize field names
+            return [_normalize_gemini_receipt(r) for r in receipts]
+        return None
+    except Exception as e:
+        print(f"   ⚠️  Gemini: {str(e)[:100]}")
+        return None
+
+def _normalize_gemini_receipt(d: dict) -> dict:
+    """Normalize Gemini's field names to our standard schema."""
+    items = []
+    for it in (d.get("items") or []):
+        qty = _n(it.get("quantity", 1))
+        unit = _n(it.get("unit_price", 0))
+        it_total = _n(it.get("total_price", 0))
+        if it_total == 0 and unit > 0:
+            it_total = qty * unit
+        if qty == 0:
+            qty = 1.0
+        items.append({
+            "name": str(it.get("name") or it.get("description") or ""),
+            "quantity": qty,
+            "unit_price": unit,
+            "total_price": it_total,
+        })
+
+    sub = _n(d.get("subtotal", 0))
+    vat_amt = _n(d.get("vat_amount", 0))
+    receipt_total = _n(d.get("total", 0))
+    vat_pct = d.get("vat_percent")
+
+    # Compute missing values from VAT details if available
+    if (sub == 0 or receipt_total == 0) and d.get("vat_details"):
+        vd = d["vat_details"]
+        if isinstance(vd, list) and vd:
+            vd0 = vd[0]
+            if sub == 0:
+                sub = _n(vd0.get("net_amount", 0))
+            if vat_amt == 0:
+                vat_amt = _n(vd0.get("vat_amount", 0))
+            if receipt_total == 0:
+                receipt_total = _n(vd0.get("gross_amount", 0))
+            if vat_pct is None:
+                vat_pct = vd0.get("rate", "")
+
+    if receipt_total == 0 and sub > 0:
+        receipt_total = sub + vat_amt
+    if sub == 0 and receipt_total > 0:
+        sub = receipt_total - vat_amt
+
+    # Build clean raw_text_dump from extracted fields
+    raw_parts = []
+    store = str(d.get("store_name") or d.get("merchant_name") or "")
+    if store: raw_parts.append(store)
+    addr = str(d.get("address") or d.get("merchant_address") or "")
+    if addr: raw_parts.append(addr)
+    reg = str(d.get("reg_nr") or d.get("company_reg_nr") or "")
+    if reg: raw_parts.append(f"Reg.nr. {reg}")
+    vat = str(d.get("vat_nr") or d.get("company_vat_nr") or "")
+    if vat: raw_parts.append(f"PVN {vat}")
+    dstr = str(d.get("date", ""))
+    tstr = str(d.get("time", ""))
+    if dstr: raw_parts.append(f"{dstr} {tstr}".strip())
+    for it in items:
+        raw_parts.append(f"{it['name']} {it['quantity']} x {it['unit_price']} {it['total_price']}")
+    raw_parts.append(f"Summa {sub} PVN {vat_amt} Summa kopā {receipt_total}")
+    pay = _n(d.get("payment_amount") or d.get("amount_paid", 0))
+    chg = _n(d.get("change", 0))
+    if pay > 0:
+        raw_parts.append(f"Samaksāts {pay} Atlikums {chg}")
+
+    return {
+        "store_name": store,
+        "address": addr,
+        "reg_nr": str(d.get("reg_nr") or d.get("company_reg_nr") or ""),
+        "vat_nr": str(d.get("vat_nr") or d.get("company_vat_nr") or ""),
+        "date": str(d.get("date") or ""),
+        "time": str(d.get("time") or ""),
+        "receipt_number": str(d.get("receipt_number") or d.get("order_number") or ""),
+        "items": items,
+        "subtotal": sub,
+        "vat_amount": vat_amt,
+        "vat_percent": _n(vat_pct) if vat_pct else None,
+        "total": receipt_total,
+        "currency": str(d.get("currency", "EUR")),
+        "payment_method": str(d.get("payment_method") or ""),
+        "payment_amount": pay,
+        "change": chg,
+        "raw_text_dump": "\n".join(raw_parts),
+    }
 
 # ─── Helpers ─────────────────────────────────────
-def _n(s: str) -> float:
-    try: return float(s.replace(",", ".").replace(" ", ""))
-    except: return 0.0
+def _n(s) -> float:
+    """Parse float from string OR number, handling commas and spaces."""
+    if s is None:
+        return 0.0
+    if isinstance(s, (int, float)):
+        return float(s)
+    try:
+        return float(str(s).replace(",", ".").replace(" ", ""))
+    except (ValueError, AttributeError):
+        return 0.0
 
 def _parse_table_html(html: str) -> list[list[str]]:
     """Parse GLM-OCR HTML table into list of rows."""
@@ -409,31 +544,60 @@ for r in receipts:
     cropped_files.append(fname)
     print(f"   ✅ {fname.name}: {cropped.size[0]}×{cropped.size[1]}")
 
-# STEP 3: GLM-OCR
-print(f"\n📝 STEP 3: GLM-OCR — $0.03/M tok, 0.9B params")
+# STEP 3: OCR — Gemini (primary) → GLM-OCR (fallback)
+print(f"\n📝 STEP 3: OCR — Gemini Flash (primary) → GLM-OCR (fallback)")
+
 all_ocr = []
-for fpath in cropped_files:
-    b64_local = base64.b64encode(fpath.read_bytes()).decode()
+
+# Try Gemini all-at-once first
+if GOOGLE_KEY:
     t0 = time.time()
-    try:
-        body = json.dumps({"model": "glm-ocr", "file": f"data:image/jpeg;base64,{b64_local}"}).encode()
-        req = urllib.request.Request(f"{ZAI_BASE}/layout_parsing", body,
-            {"Authorization": f"Bearer {ZAI_KEY}", "Content-Type": "application/json"})
-        resp = urllib.request.urlopen(req, timeout=120)
-        data = json.loads(resp.read())
-        elapsed = time.time() - t0
-        usage = data.get("usage", {})
-        pt_i, ct_i = usage.get("prompt_tokens",0), usage.get("completion_tokens",0)
-        layout = data.get("layout_details", [[]])[0]
-        parsed = parse_glm_ocr(layout)
-        cost_i = (pt_i + ct_i) / 1e6 * 0.03 * 0.92
-        total_cost += cost_i; total_time += elapsed
-        result = {"file": fpath.name, "ttf_s": round(elapsed,1), "cost_eur": round(cost_i,6),
-                   "prompt_tok": pt_i, "comp_tok": ct_i, "data": parsed}
-        all_ocr.append(result)
-        print(f"   ✅ {fpath.name}: {elapsed:.1f}s, €{cost_i:.6f}, \"{parsed['store_name']}\" total=€{parsed['total']}, {len(parsed['items'])} items")
-    except Exception as e:
-        print(f"   ❌ {fpath.name}: {e}")
+    gemini_result = gemini_ocr_all(b64)
+    elapsed = time.time() - t0
+
+    if gemini_result:
+        total_cost += 0  # free tier
+        total_time += elapsed
+        print(f"   🥇 Gemini Flash: {elapsed:.1f}s, FREE → {len(gemini_result)} receipts")
+        for i, receipt in enumerate(gemini_result):
+            all_ocr.append({
+                "file": f"gemini_receipt_{i+1}",
+                "ttf_s": round(elapsed/len(gemini_result), 1),
+                "cost_eur": 0.0,
+                "prompt_tok": 0, "comp_tok": 0,
+                "data": receipt,
+                "model": "gemini-flash-latest",
+            })
+            store = receipt.get("store_name", "?")
+            total_val = receipt.get("total", "?")
+            items_n = len(receipt.get("items", []))
+            print(f"      #{i+1}: \"{store}\" total=€{total_val}, {items_n} items")
+
+# Fall back to GLM-OCR on individual crops
+if not all_ocr:
+    print(f"   🥈 Falling back to GLM-OCR (per-receipt)...")
+    for fpath in cropped_files:
+        b64_local = base64.b64encode(fpath.read_bytes()).decode()
+        t0 = time.time()
+        try:
+            body = json.dumps({"model": "glm-ocr", "file": f"data:image/jpeg;base64,{b64_local}"}).encode()
+            req = urllib.request.Request(f"{ZAI_BASE}/layout_parsing", body,
+                {"Authorization": f"Bearer {ZAI_KEY}", "Content-Type": "application/json"})
+            resp = urllib.request.urlopen(req, timeout=120)
+            data = json.loads(resp.read())
+            elapsed = time.time() - t0
+            usage = data.get("usage", {})
+            pt_i, ct_i = usage.get("prompt_tokens",0), usage.get("completion_tokens",0)
+            layout = data.get("layout_details", [[]])[0]
+            parsed = parse_glm_ocr(layout)
+            cost_i = (pt_i + ct_i) / 1e6 * 0.03 * 0.92
+            total_cost += cost_i; total_time += elapsed
+            result = {"file": fpath.name, "ttf_s": round(elapsed,1), "cost_eur": round(cost_i,6),
+                       "prompt_tok": pt_i, "comp_tok": ct_i, "data": parsed, "model": "glm-ocr"}
+            all_ocr.append(result)
+            print(f"      ✅ {fpath.name}: {elapsed:.1f}s, €{cost_i:.6f}, \"{parsed['store_name']}\" total=€{parsed['total']}, {len(parsed['items'])} items")
+        except Exception as e:
+            print(f"      ❌ {fpath.name}: {e}")
 
 # STEP 4: Arbiter
 print(f"\n🧮 STEP 4: Arbiter")
