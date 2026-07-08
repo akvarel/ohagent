@@ -120,6 +120,8 @@ TELEGRAM_BOT_TOKEN = "123456:ABC-DEF"
 | ANTHROPIC_API_KEY | `secret/ohagent/providers/anthropic/api-key` |
 | OPENAI_API_KEY | `secret/ohagent/providers/openai/api-key` |
 | GROQ_API_KEY | `secret/ohagent/providers/groq/api-key` |
+| ZAI_API_KEY | `secret/ohagent/providers/zai/api-key` |
+| GOOGLE_API_KEY | `secret/ohagent/providers/google/api-key` |
 | TELEGRAM_BOT_TOKEN | `secret/ohagent/telegram/bot-token` |
 
 ### Health Check
