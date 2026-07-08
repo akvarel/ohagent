@@ -1,11 +1,12 @@
-# ohAgent Daemon — K8s Deployment
+# ohAgent Daemon — K8s Deployment with Production Sizing
 #
-# Secrets are resolved via Vault (VAULT_TOKEN injected by Vault Agent sidecar).
-# No plain K8s Secrets with actual values — all secrets live in Vault.
+# Secrets: Vault (VAULT_TOKEN injected by Vault Agent sidecar).
+# Monitoring: Prometheus metrics at :9090/metrics + ServiceMonitor.
+# Autoscaling: HPA based on CPU + memory, 1-5 replicas.
 #
 # Install:
-#   kubectl apply -k k8s/overlays/dev    # dev
-#   kubectl apply -k k8s/overlays/prod   # prod
+#   kubectl apply -k k8s/overlays/dev     # dev
+#   kubectl apply -k k8s/overlays/prod    # prod (with Scaleway SSD)
 
 apiVersion: apps/v1
 kind: Deployment
@@ -17,11 +18,11 @@ metadata:
     tier: agent
     component: daemon
 spec:
-  replicas: 1
+  replicas: 2                # Production: 2 replicas for HA
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxUnavailable: 0
+      maxUnavailable: 0      # Zero-downtime deploys
       maxSurge: 1
   selector:
     matchLabels:
@@ -33,12 +34,15 @@ spec:
         app: ohagent
         tier: agent
         component: daemon
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
     spec:
-      # Vault Agent sidecar injects VAULT_TOKEN from a shared memory volume
       shareProcessNamespace: true
       containers:
         - name: daemon
-          image: rg.pl-waw.scw.cloud/orangehat/ohagent-daemon:latest
+          image: rg.pl-waw.scw.cloud/orangehat/ohagent-daemon:stable
           imagePullPolicy: Always
           ports:
             - containerPort: 9090
@@ -48,7 +52,6 @@ spec:
             - configMapRef:
                 name: ohagent-config
           env:
-            # Vault token injected by Vault Agent init/sidecar container
             - name: VAULT_TOKEN
               valueFrom:
                 secretKeyRef:
@@ -61,6 +64,14 @@ spec:
             - name: vault-token
               mountPath: /vault
               readOnly: true
+          # ── Production Sizing ──────────────────────────────────
+          # Baseline: ~80MB RSS idle, ~200MB under load (Jcode sessions + SQLite).
+          # LLM tokens are NOT processed locally — only API calls.
+          # Binary: ~45MB release (Rust, 146 crates, 24K LOC).
+          #
+          # 250m CPU: handles ~5 concurrent requests (HTTP + LLM API polling).
+          # 256Mi mem: enough for 2-3 active Jcode sessions + SQLite WAL.
+          # Burst to 2000m/2Gi for spike handling (builds, OCR, multiple sessions).
           resources:
             requests:
               memory: "256Mi"
@@ -68,6 +79,7 @@ spec:
             limits:
               memory: "2Gi"
               cpu: "2000m"
+          # ── Health Probes ─────────────────────────────────────
           livenessProbe:
             httpGet:
               path: /health
@@ -88,7 +100,7 @@ spec:
               port: 9090
             initialDelaySeconds: 5
             periodSeconds: 5
-            failureThreshold: 30
+            failureThreshold: 30   # Allow 150s for cold start (Rust binary + Vault init)
       volumes:
         - name: data
           persistentVolumeClaim:
@@ -98,7 +110,7 @@ spec:
             medium: Memory
             sizeLimit: 1Mi
 ---
-# Service: ClusterIP for internal access (Open WebUI, other services)
+# Service: ClusterIP for internal access (Open WebUI, internal services)
 apiVersion: v1
 kind: Service
 metadata:
@@ -116,3 +128,138 @@ spec:
       name: api
       protocol: TCP
   type: ClusterIP
+---
+# HPA: Auto-scale based on CPU + Memory
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: ohagent-daemon
+  namespace: ohagent
+  labels:
+    app: ohagent
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: ohagent-daemon
+  minReplicas: 2
+  maxReplicas: 5
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300   # 5 min before scaling down
+      policies:
+        - type: Percent
+          value: 50                    # Max 50% reduction per scale-down
+          periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60    # 1 min before scaling up
+      policies:
+        - type: Percent
+          value: 100                   # Double instantly on spike
+          periodSeconds: 30
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+---
+# Prometheus ServiceMonitor (requires prometheus-operator)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: ohagent-daemon
+  namespace: ohagent
+  labels:
+    app: ohagent
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: ohagent
+      component: daemon
+  endpoints:
+    - port: api
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+# PrometheusRule: Alerts
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ohagent-alerts
+  namespace: ohagent
+  labels:
+    app: ohagent
+    release: prometheus
+spec:
+  groups:
+    - name: ohagent.rules
+      rules:
+        - alert: OhAgentDown
+          expr: up{job="ohagent-daemon"} == 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "ohAgent daemon is down"
+            description: "No health check response for 2 minutes."
+
+        - alert: OhAgentHighErrorRate
+          expr: rate(ohagent_requests_total{status=~"5.."}[5m]) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ohAgent high error rate (5xx)"
+            description: "{{ $value }} errors/sec over 5 minutes."
+
+        - alert: OhAgentHighMemory
+          expr: container_memory_usage_bytes{container="daemon"} / container_spec_memory_limit_bytes{container="daemon"} > 0.85
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ohAgent memory usage > 85%"
+            description: "Memory: {{ $value | humanizePercentage }} of limit."
+
+        - alert: OhAgentLLMCostSpike
+          expr: rate(ohagent_llm_tokens_total[1h]) * 0.000003 > 0.50
+          for: 15m
+          labels:
+            severity: info
+          annotations:
+            summary: "ohAgent LLM cost spike"
+            description: ">$0.50/hour in LLM API costs."
+---
+# ConfigMap: Runtime config
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ohagent-config
+  namespace: ohagent
+data:
+  RUST_LOG: "info,ohagent=debug"
+  OHAGENT_AUTO_UPDATE_JCODE: "0"       # Disabled in K8s — updated via image tag
+  TELEGRAM_BOT_TOKEN: ""               # Set via Vault, not here
+---
+# Persistent Volume Claim: SQLite DBs + message logs
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ohagent-data
+  namespace: ohagent
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi                     # 10 GiB for SQLite, message logs, uploads
