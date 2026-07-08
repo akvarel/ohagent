@@ -646,7 +646,7 @@ impl Daemon {
 
         tokio::spawn(async move {
             use std::net::SocketAddr;
-            let addr: SocketAddr = format!("127.0.0.1:{port}").parse().unwrap();
+            let addr: SocketAddr = format!("0.0.0.0:{port}").parse().unwrap();
             info!("API server listening on http://{addr}");
 
             let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
