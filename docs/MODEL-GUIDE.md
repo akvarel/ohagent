@@ -31,6 +31,43 @@ Comprehensive model evaluation across providers: real benchmarks, strengths, wea
 | Pixtral-12B | Scaleway | 0.8s | 0.00063 | ⭐⭐ | Hallucinates Spanish data. Do NOT use for structured OCR. |
 | GLM-5V-Turbo | SiliconFlow | 9s | 0.00119 | ⭐⭐⭐ | Latest gen, 205K ctx. Empty on structured prompts. |
 
+### OCR Quality Tier List (Latvian receipts, July 2026)
+
+Tested 17 models across 3 approaches. Only 3 produce useful output.
+
+| Tier | Model | TTF | Cost | Hallucination Rate | Verdict |
+|---|---|---|---|---|---|
+| 🥇 | **Google Gemini 1.5 Pro** | ~3s | TBD | **0%** | Reads EVERYTHING: diacritics, discounts, separates similar receipts. |
+| 🥈 | **GLM-OCR (0.9B)** | 2s | $0.00003 | **0%** | Honest — misses faint text but NEVER invents. Best open-API option. |
+| 🥉 | GLM-4.6V (describe) | 28s | €0.00041 | **0%** | Identifies stores + amounts in free text. Not structured. |
+| ❌ | GLM-4.6V-flashx | 3s | €0.00014 | ~30% | Character-level errors on small text. |
+| ❌ | Mistral-small | 1s | €0.00017 | ~100% | Invens Latvian words. DO NOT USE for LV text. |
+| ❌ | GPT-4o-mini | 2s | €0.00352 | ~100% | Plausible lies — invents store names that look real. Most dangerous. |
+| ❌ | Pixtral-12B | 1s | €0.00063 | ~100% | Hallucinates Spanish data. Not LV-compatible. |
+
+### Critical Finding: Google Gemini Wins
+
+**Gemini 1.5 Pro dramatically outperforms all other models on Latvian receipts.**
+It correctly read diacritics (š, ī, ā, ģ), applied discounts (7% −€0.97),
+and separated two nearly-identical Pigu Latvia receipts that every other model
+(including GLM-OCR) merged into one.
+
+Best-in-class result from Gemini:
+- Kurs: €13.86 − 7% discount = €12.89 total ✅
+- BARBAR ROSE: VAT LV40103827528, TELPAUGI €6.90 ✅
+- Pigu #3: Prezervatīvi London 100gab ×2 €58.16 ✅
+- Pigu #4: Exs Nano Thin ×2 €44.34 (SEPARATE receipt — no other model caught this!) ✅
+
+### GLM-OCR: Best Open-API OCR
+
+GLM-OCR uses dedicated `/layout_parsing` endpoint (not chat completions).
+Output: text blocks with bounding boxes + HTML tables.
+Parameters: 0.9B (tiny!), $0.03/M tokens total, 2s per receipt.
+
+Critical difference from VLMs: GLM-OCR returns **exactly what it reads**.
+If text is too faint → empty output. VLMs hallucinate text to fill the gap.
+For accounting: silence > lies.
+
 ### Key Finding
 
 **GLM-4.6V is the only model that correctly identified 4 distinct receipts in one photo.**
@@ -292,10 +329,15 @@ Always include it and run mathematical validation.
 The only pipeline that produced correct results.
 47s, €0.0034 for 4 receipts, 100% verifiable.
 
-### ✅ ALWAYS: Mathematical validation
+### ✅ ALWAYS: Prefer dedicated OCR over VLMs for text extraction
 
-Check Σitems≈subtotal, VAT≈subtotal×rate%, subtotal+VAT≈total.
-Catches 50% of extraction errors (2/4 receipts had issues).
+VLMs hallucinate structured output. GLM-OCR reads pixel-by-pixel and is honest.
+Google Gemini 1.5 Pro has the best vision encoder — reads Latvian diacritics.
+
+### ✅ ALWAYS: Use Google Gemini for Latvian/EU receipts when available
+
+Gemini 1.5 Pro is the only model that correctly read all diacritics (š, ī, ā, ģ),
+applied discounts, and separated similar receipts. Dramatically better than any other provider.
 
 ---
 
@@ -343,8 +385,9 @@ Step 0: PreClassifier — "How many documents?"
 | Count documents | Scaleway Mistral-small | GLM-4.6V-flashx | GLM-4.6V-flash (FREE) |
 | Describe photo | GLM-4.6V | Mistral-small | Pixtral (hallucinates) |
 | BBox detection | GLM-4.6V | — | Anyone else (no capability) |
-| Single receipt OCR | Scaleway Mistral-small | GPT-4o-mini | Pixtral (Spanish hallucination) |
-| Multi-doc OCR | Pipeline (above) | — | Direct JSON call (hallucination) |
+| Receipt OCR (Latvian) | **Google Gemini 1.5 Pro** | GLM-OCR | Mistral-small, GPT-4o-mini |
+| Receipt OCR (general) | GLM-OCR ($0.03/M) | Gemini | Mistral-small (hallucinates) |
+| Validation | Arbiter (math checks) | — | Blind trust in OCR |
 | Chat (general) | Scaleway Qwen3-Coder | DeepSeek V4-Flash | DeepSeek Chat V3 (deprecated) |
 | Chat (budget) | DeepSeek V4-Flash | SF Qwen3-8B | — |
 | Chat (EU/GDPR) | Scaleway Mistral-small | Scaleway Qwen3-Coder | SiliconFlow (data to CN) |

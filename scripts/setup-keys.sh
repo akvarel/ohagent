@@ -59,6 +59,7 @@ declare -A PROVIDERS=(
     [GROQ_API_KEY]="Groq — fastest inference (LPU hardware)"
     [TELEGRAM_BOT_TOKEN]="Telegram Bot — messaging gateway"
     [HETZNER_API_TOKEN]="Hetzner Cloud — GPU instances"
+    [GOOGLE_API_KEY]="Google AI Studio — Gemini models (best LV receipt OCR)"
 )
 
 # ── Collect keys ──

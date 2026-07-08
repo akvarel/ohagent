@@ -80,6 +80,8 @@ ohAgent resolves secrets in priority order: **Vault → environment variables �
 | `ANTHROPIC_API_KEY` | Yes* | Anthropic API key (fallback) |
 | `OPENAI_API_KEY` | Yes* | OpenAI API key (fallback) |
 | `GROQ_API_KEY` | Optional | Groq API key (fastest inference) |
+| `GOOGLE_API_KEY` | Recommended | Google AI Studio — Gemini models (best Latvian OCR) |
+| `ZAI_API_KEY` | Recommended | Z.ai API key — GLM-OCR + GLM-4.6V (bbox + vision) |
 | `TELEGRAM_BOT_TOKEN` | For Telegram | Telegram Bot API token |
 | `HETZNER_API_TOKEN` | For GPU infra | Hetzner Cloud API token |
 | `WA_VERIFY_TOKEN` | For WhatsApp | Meta webhook verify token |
