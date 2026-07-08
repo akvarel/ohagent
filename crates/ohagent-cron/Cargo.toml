@@ -15,3 +15,4 @@ thiserror = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
 ohagent-core = { path = "../ohagent-core" }
+rusqlite = { workspace = true }
