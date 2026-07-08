@@ -116,6 +116,12 @@ impl DynamicRouter {
                     else { 0.75 }
                 },
                 "scaleway" => 0.80,
+                "google" => {
+                    // Gemini 3.1 Flash-Lite = king of LV receipt OCR. 2.5 Pro for code.
+                    if record.model_id.contains("pro") { 0.92 }
+                    else if record.model_id.contains("flash-lite") { 0.87 }
+                    else { 0.83 }
+                },
                 _ => 0.70,
             };
             let cap_match = task_capabilities.len() as f64 / record.capabilities.len().max(1) as f64;
@@ -193,6 +199,10 @@ fn estimated_speed(provider: &str, model_id: &str) -> (f64, u64) {
         ("openai", _) => (30.0, 3000),
         ("anthropic", m) if m.contains("haiku") => (70.0, 1100),
         ("anthropic", _) => (25.0, 4000),
+        ("google", m) if m.contains("flash-lite") => (250.0, 4000),  // Real benchmark Jul 8
+        ("google", m) if m.contains("flash") => (100.0, 10000),       // Real benchmark Jul 8 (2.5 flash = 20s TTF)
+        ("google", m) if m.contains("pro") => (50.0, 15000),
+        ("google", _) => (100.0, 8000),
         _ => (50.0, 2000),
     }
 }
@@ -212,7 +222,7 @@ mod tests {
         let config = RouterConfig { quality_tier: QualityTier::Budget, ..Default::default() };
         let decision = router.route(&["chat"], 1000, 2000, &config, DocumentCount::Unknown).unwrap();
         assert!(
-            decision.provider == "siliconflow" || decision.provider == "deepseek" || decision.provider == "scaleway" || decision.provider == "zai",
+            decision.provider == "siliconflow" || decision.provider == "deepseek" || decision.provider == "scaleway" || decision.provider == "zai" || decision.provider == "google",
             "Budget should pick cheapest, got {}", decision.provider
         );
     }

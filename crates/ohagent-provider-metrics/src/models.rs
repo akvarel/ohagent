@@ -192,5 +192,7 @@ pub fn known_providers() -> Vec<ProviderInfo> {
         ProviderInfo { name: "anthropic".into(),   api_base_url: Some("https://api.anthropic.com/v1".into()), pricing_url: Some("https://www.anthropic.com/pricing".into()), currency: "USD".into(), is_eu: false },
         ProviderInfo { name: "groq".into(),        api_base_url: Some("https://api.groq.com/openai/v1".into()), pricing_url: Some("https://groq.com/pricing/".into()), currency: "USD".into(), is_eu: false },
         ProviderInfo { name: "hetzner".into(),     api_base_url: None, /* GPU only, not a chat API */ pricing_url: Some("https://www.hetzner.com/cloud".into()), currency: "EUR".into(), is_eu: true },
+        // Google Gemini — best vision/OCR for Latvian receipts. Free tier available.
+        ProviderInfo { name: "google".into(),      api_base_url: Some("https://generativelanguage.googleapis.com/v1beta".into()), pricing_url: Some("https://ai.google.dev/pricing".into()), currency: "USD".into(), is_eu: false },
     ]
 }

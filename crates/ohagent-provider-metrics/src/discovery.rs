@@ -29,6 +29,9 @@ pub fn probe_patterns(provider: &str) -> Vec<String> {
         "groq" => vec![
             "https://api.groq.com/openai/v1/models".into(),
         ],
+        "google" => vec![
+            "https://generativelanguage.googleapis.com/v1beta/models".into(),
+        ],
         "scaleway" => vec![],
         _ => vec![],
     }
@@ -155,6 +158,19 @@ pub fn known_prices() -> Vec<PriceRecord> {
         // ═══ Groq (USD) ═══
         pr("groq", "llama-3.3-70b-versatile", PricingModel::PerMillionTokens, 0.59, 0.79, None, "USD", 128_000, 32_768, &["chat"], now),
         pr("groq", "mixtral-8x7b-32768",       PricingModel::PerMillionTokens, 0.24, 0.24, None, "USD", 32_000, 32_768, &["chat"], now),
+
+        // ═══ Google Gemini (USD) ═══
+        // All have free tier. Paid pricing from ai.google.dev, July 2026.
+        // 3.1 Flash-Lite: best LV receipt OCR, 4s TTF real benchmark.
+        pr("google", "gemini-3.1-flash-lite", PricingModel::PerMillionTokens, 0.25, 1.50, None, "USD", 1_048_576, 8_192, &["chat","vision","ocr"], now),
+        // 2.5 Flash: better subtotal accuracy, 5x slower than lite.
+        pr("google", "gemini-2.5-flash",      PricingModel::PerMillionTokens, 0.30, 2.50, None, "USD", 1_048_576, 8_192, &["chat","vision","ocr"], now),
+        // 3 Flash: mid-range speed, vat_details auto-included.
+        pr("google", "gemini-3.0-flash",      PricingModel::PerMillionTokens, 0.50, 3.00, None, "USD", 1_048_576, 8_192, &["chat","vision","ocr"], now),
+        // 2.5 Pro: complex reasoning, coding.
+        pr("google", "gemini-2.5-pro",        PricingModel::PerMillionTokens, 1.25, 10.00, None, "USD", 2_097_152, 65_536, &["chat","vision","code"], now),
+        // 3.5 Flash: fastest premium.
+        pr("google", "gemini-3.5-flash",      PricingModel::PerMillionTokens, 1.50, 9.00, None, "USD", 1_048_576, 8_192, &["chat","vision","ocr"], now),
     ]
 }
 

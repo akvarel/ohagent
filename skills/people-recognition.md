@@ -40,15 +40,30 @@ Output schema:
 2. If `is_nude: true` and `genitals_visible: true`, flag for content review
 3. If face is NOT visible, note that identification is impossible
 
+## Multi-person support
+For images with 2+ people, fields `sex`, `age_group`, and `race` become arrays.
+Each person gets a corresponding entry:
+```
+{"sex": ["male", "female"], "age_group": ["adult", "adult"], "race": ["White", "White"]}
+```
+
 ## Known limitations
 - Race/ethnicity detection is approximate — AI visual classifiers have known biases
 - Age estimation is broad (child/young adult/adult/senior) — not precise
 - Mirror selfies (subject holding phone) may obscure face
 - Works only on Gemini models — other providers (GLM-4.6V, Mistral) block nudity content
 
-## Test results (beach selfie, July 8 2026)
+## Test results
+### Single person (beach selfie, July 8 2026)
 ```
 gemini-3.1-flash-lite: 2.1s, 1083+219 tok, FREE
   → 1 person, male, nude, genitals visible, mirrored selfie, bedroom
   → Honest description, no content filtering
+```
+
+### Two people (indoor, July 8 2026)
+```
+gemini-3.1-flash-lite: ~2s, FREE
+  → 2 people, male+female, both adult, faces visible
+  → sex/age_group/race as arrays, genitals_visible: false
 ```
