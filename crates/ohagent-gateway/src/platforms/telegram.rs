@@ -85,6 +85,7 @@ struct TelegramState {
 /// The Telegram platform adapter.
 pub struct TelegramAdapter {
     bot_token: String,
+    webhook_url: Option<String>,
     skills: Option<Arc<SkillRegistry>>,
     router: Option<Arc<Mutex<ModelRouter>>>,
     usage: Option<Arc<UsageTracker>>,
@@ -106,6 +107,7 @@ impl TelegramAdapter {
             .map_err(|_| "TELEGRAM_BOT_TOKEN not set. Ensure Vault agent is running.")?;
         Ok(Self {
             bot_token: token,
+            webhook_url: None,
             skills: None,
             router: None,
             usage: None,
@@ -122,6 +124,7 @@ impl TelegramAdapter {
     pub fn new(token: impl Into<String>) -> Self {
         Self {
             bot_token: token.into(),
+            webhook_url: None,
             skills: None,
             router: None,
             usage: None,
@@ -187,6 +190,12 @@ impl TelegramAdapter {
         self.gemini_ocr = Some(client);
         self
     }
+
+    /// Set the webhook URL (enables webhook mode instead of long-polling).
+    pub fn with_webhook_url(mut self, url: impl Into<String>) -> Self {
+        self.webhook_url = Some(url.into());
+        self
+    }
 }
 
 #[async_trait::async_trait]
@@ -236,27 +245,41 @@ impl PlatformAdapter for TelegramAdapter {
         let state = TelegramState {
             dispatcher: dispatcher.clone(),
         };
-        let _ = &state; // state is used by dptree handler closures
 
-        info!("Telegram bot starting (long-polling mode)...");
+        if let Some(ref webhook_url) = self.webhook_url {
+            // ── Webhook mode ──
+            info!(url = %webhook_url, "Telegram bot starting (webhook mode)...");
+            let wh_url = format!("{}/webhooks/telegram", webhook_url.trim_end_matches('/'));
+            bot.set_webhook(teloxide::types::SetWebhook::new(wh_url)).await?;
+            info!("Webhook set to {wh_url}");
 
-        // Build the handler chain
-        let handler = Update::filter_message()
-            .branch(
-                dptree::entry()
-                    .filter_command::<Command>()
-                    .endpoint(handle_command),
-            )
-            .branch(dptree::endpoint(handle_message));
+            // In webhook mode, the axum server handles POST /webhooks/telegram
+            // We don't start the teloxide dispatcher — just hold the connection
+            // The actual message processing happens in the webhook endpoint
+            let _ = tokio::signal::ctrl_c().await;
+            bot.delete_webhook(teloxide::types::DeleteWebhook::new()).await?;
+            info!("Webhook removed");
+        } else {
+            // ── Long-polling mode ──
+            info!("Telegram bot starting (long-polling mode)...");
 
-        teloxide::dispatching::Dispatcher::builder(bot, handler)
-            .default_handler(|_| async move {
-                warn!("Unhandled Telegram update");
-            })
-            .enable_ctrlc_handler()
-            .build()
-            .dispatch()
-            .await;
+            let handler = Update::filter_message()
+                .branch(
+                    dptree::entry()
+                        .filter_command::<Command>()
+                        .endpoint(handle_command),
+                )
+                .branch(dptree::endpoint(handle_message));
+
+            teloxide::dispatching::Dispatcher::builder(bot, handler)
+                .default_handler(|_| async move {
+                    warn!("Unhandled Telegram update");
+                })
+                .enable_ctrlc_handler()
+                .build()
+                .dispatch()
+                .await;
+        }
 
         info!("Telegram bot stopped");
         Ok(())

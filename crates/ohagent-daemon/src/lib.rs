@@ -94,6 +94,10 @@ struct Cli {
     /// Enable Telegram gateway
     #[arg(long, default_value = "true")]
     telegram: bool,
+
+    /// Telegram webhook URL (HTTPS). If set, uses webhook mode instead of long-polling.
+    #[arg(long)]
+    webhook_url: Option<String>,
 }
 
 /// Main daemon state.
