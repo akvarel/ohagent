@@ -872,6 +872,16 @@ impl Dispatcher {
                 }
             }
 
+            "ocr" => {
+                // /ocr — process receipt photo via Gemini OCR pipeline
+                let text: String = "📸 *Receipt OCR*\n\nSend me a photo of your receipts and I'll extract the data.\n\nJust attach a photo with caption `/ocr` or send the photo right after this message.".into();
+                Some(OutgoingMessage {
+                    chat_id: msg.chat_id.clone(),
+                    text,
+                    markdown: true,
+                })
+            }
+
             _ => {
                 // Unknown command — treat as regular message
                 None

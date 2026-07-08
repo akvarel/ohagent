@@ -71,6 +71,8 @@ enum Command {
     Recall(String),
     #[command(description = "Forget a memory by ID")]
     Forget(String),
+    #[command(description = "OCR receipts from a photo")]
+    Ocr,
 }
 
 /// Shared state accessible from all Telegram handlers.
@@ -458,6 +460,7 @@ async fn handle_command(
         Command::Remember(content) => ("remember", content.as_str()),
         Command::Recall(query) => ("recall", query.as_str()),
         Command::Forget(id) => ("forget", id.as_str()),
+        Command::Ocr => ("ocr", ""),
     };
 
     let incoming = IncomingMessage {
