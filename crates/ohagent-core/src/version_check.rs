@@ -90,7 +90,7 @@ impl VersionChecker {
                         );
                         let _ = n.send_update_msg(&current_tag, &latest.tag_name, &msg);
                     } else if let Some(ref p) = self.push {
-                        let _ = p.send(&self.tenant_id, &format!("🔄 Jcode {current_tag} → {latest}", latest=latest.tag_name)).await;
+                        let _ = p.broadcast(&format!("🔄 Jcode {current_tag} → {latest}", latest=latest.tag_name)).await;
                     }
 
                     // Auto-update if enabled

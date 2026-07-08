@@ -839,13 +839,10 @@ impl Daemon {
     }
 
     /// Start the Jcode version checker background task.
-    /// Runs once a day (24h interval, first check after 5 minutes).
+    /// Broadcasts update notifications to ALL paired users.
     async fn start_version_checker(&self) {
         let current = ohagent_core::version_check::detect_version();
-        let checker = ohagent_core::version_check::VersionChecker::new(
-            current,
-            "system",
-        );
+        let checker = ohagent_core::version_check::VersionChecker::new(current, "system");
 
         let checker = if let Some(ref push) = self.push {
             checker.with_push(Arc::clone(push))
@@ -864,7 +861,7 @@ impl Daemon {
             }
         });
 
-        info!("Version checker started (every 24h)");
+        info!("Version checker started (every 24h, broadcasts to all paired users)");
     }
 }
 
