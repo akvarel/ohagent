@@ -723,6 +723,9 @@ impl Daemon {
         // Start skills cron (creation, evaluation, curation)
         self.start_skills_cron().await;
 
+        // Start Jcode version checker (daily check for updates)
+        self.start_version_checker().await;
+
         info!("ohAgent daemon ready");
 
         // Wait for shutdown signal
@@ -833,6 +836,35 @@ impl Daemon {
         }
 
         shutdown.notify_waiters();
+    }
+
+    /// Start the Jcode version checker background task.
+    /// Runs once a day (24h interval, first check after 5 minutes).
+    async fn start_version_checker(&self) {
+        let current = ohagent_core::version_check::detect_version();
+        let checker = ohagent_core::version_check::VersionChecker::new(
+            current,
+            "system",
+        );
+
+        let checker = if let Some(ref push) = self.push {
+            checker.with_push(Arc::clone(push))
+        } else {
+            tracing::info!("Version checker: push not configured, skipping notifications");
+            checker
+        };
+
+        let shutdown = Arc::clone(&self.shutdown);
+        tokio::spawn(async move {
+            tokio::select! {
+                _ = checker.run() => {},
+                _ = shutdown.notified() => {
+                    info!("Version checker shutting down");
+                }
+            }
+        });
+
+        info!("Version checker started (every 24h)");
     }
 }
 
