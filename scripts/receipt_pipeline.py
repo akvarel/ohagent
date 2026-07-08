@@ -41,9 +41,9 @@ def gemini_ocr(image_b64: str) -> list[dict] | None:
              "Extract ALL data from EACH receipt. For each receipt return: "
              "store_name, address, reg_nr, vat_nr, date, time, "
              "items[{name, quantity, unit_price, total_price}], "
-             "subtotal (NET amount, before VAT), "
-             "vat_amount, vat_percent, total, "
+             "subtotal, vat_amount, vat_percent, total, "
              "payment_method, payment_amount, change. "
+             "VAT is two letters+numbers. Each receipt HAS either VAT or REGISTRATION number. "
              "Return as JSON array. No markdown, just JSON."},
             {"inline_data": {"mime_type": "image/jpeg", "data": image_b64}},
         ]}],
