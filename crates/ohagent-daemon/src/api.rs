@@ -420,6 +420,8 @@ async fn get_keys(State(state): State<ApiState>) -> Json<Vec<KeyInfo>> {
     let known_keys = vec![
         "DEEPSEEK_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY",
         "OPENROUTER_API_KEY", "TELEGRAM_BOT_TOKEN",
+        "GOOGLE_API_KEY", "SF_API_KEY", "ZAI_API_KEY", "SCW_SECRET_KEY",
+        "GROQ_API_KEY", "SCW_PROJECT_ID",
     ];
 
     let result: Vec<KeyInfo> = known_keys
