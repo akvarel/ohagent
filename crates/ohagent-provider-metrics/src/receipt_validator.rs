@@ -34,7 +34,7 @@ pub struct ReceiptVerdict {
 }
 
 /// Raw receipt data extracted by OCR.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ReceiptData {
     #[serde(default)]
     pub store_name: String,
@@ -66,6 +66,8 @@ pub struct ReceiptData {
     pub payment_amount: f64,
     #[serde(default)]
     pub change: f64,
+    #[serde(default)]
+    pub receipt_number: String,
     #[serde(default)]
     pub bank_name: String,
     #[serde(default)]
@@ -286,32 +288,6 @@ mod tests {
             total,
             raw_text_dump: "Test store Riga 01.01.2026 Item1 1 x 5.00 5.00 Summa 5.00 Summa kopā 5.00".into(),
             ..Default::default()
-        }
-    }
-
-    impl Default for ReceiptData {
-        fn default() -> Self {
-            Self {
-                store_name: String::new(),
-                address: String::new(),
-                reg_nr: String::new(),
-                vat_nr: String::new(),
-                date: String::new(),
-                time: String::new(),
-                items: vec![],
-                subtotal: 0.0,
-                vat_amount: 0.0,
-                vat_percent: None,
-                total: 0.0,
-                currency: "EUR".into(),
-                payment_method: String::new(),
-                payment_amount: 0.0,
-                change: 0.0,
-                bank_name: String::new(),
-                bank_iban: String::new(),
-                bank_swift: String::new(),
-                raw_text_dump: String::new(),
-            }
         }
     }
 

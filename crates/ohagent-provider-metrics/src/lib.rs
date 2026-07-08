@@ -13,6 +13,7 @@ pub mod benchmark;
 pub mod router;
 pub mod preclassifier;
 pub mod receipt_validator;
+pub mod gemini_ocr;
 
 pub use models::*;
 pub use store::MetricsStore;
@@ -22,3 +23,4 @@ pub use benchmark::{SpeedBenchmark, BenchmarkConfig};
 pub use router::DynamicRouter;
 pub use preclassifier::{PreClassifier, PreClassifierConfig};
 pub use receipt_validator::{validate_receipt, ReceiptData, ReceiptItem, ReceiptVerdict};
+pub use gemini_ocr::{GeminiOcrClient, GeminiOcrConfig};
