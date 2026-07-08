@@ -20,6 +20,7 @@ use ohagent_memory::engine::MemoryEngine;
 use ohagent_memory::models::MemoryEntry;
 use ohagent_skills::registry::SkillRegistry;
 use ohagent_plugins::PluginManager;
+use ohagent_provider_metrics::{GeminiOcrClient, GeminiOcrConfig};
 use std::sync::Mutex as StdMutex;
 
 /// Encode a file attachment to (media_type, base64_data) tuple suitable for Jcode.
@@ -66,6 +67,7 @@ pub struct Dispatcher {
     push: Option<Arc<PushService>>,
     memory: Option<Arc<MemoryEngine>>,
     plugin_manager: Option<Arc<StdMutex<PluginManager>>>,
+    gemini_ocr: Option<GeminiOcrClient>,
 }
 
 impl Dispatcher {
@@ -84,6 +86,7 @@ impl Dispatcher {
             push: None,
             memory: None,
             plugin_manager: None,
+            gemini_ocr: None,
         }
     }
 
@@ -135,6 +138,12 @@ impl Dispatcher {
         self
     }
 
+    /// Set the Gemini OCR client for /ocr photo processing.
+    pub fn with_gemini_ocr(mut self, client: GeminiOcrClient) -> Self {
+        self.gemini_ocr = Some(client);
+        self
+    }
+
     /// Handle an incoming message from any platform.
     ///
     /// Returns the response to send back, or None if no response is expected.
@@ -143,6 +152,58 @@ impl Dispatcher {
         msg: IncomingMessage,
     ) -> Option<OutgoingMessage> {
         let i18n = I18n::new(msg.lang);
+
+        // ── Intercept: /ocr with photo → Gemini OCR pipeline ──
+        if msg.text.trim_start().starts_with("/ocr") {
+            if let Some(ref att) = msg.attachment {
+                if let Some(ref gemini) = self.gemini_ocr {
+                    let mime = att.mime_type.as_deref().unwrap_or("image/jpeg");
+                    match fs::read(&att.local_path) {
+                        Ok(bytes) => {
+                            info!(size = bytes.len(), "OCR request via Telegram");
+                            match gemini.extract_receipts(&bytes, mime).await {
+                                Ok(results) => {
+                                    let total = results.len();
+                                    let passed = results.iter().filter(|(_, v)| v.passed).count();
+                                    let mut text = format!("📊 *Extracted {total} receipts* ({passed} passed)\n");
+                                    for (i, (_receipt, verdict)) in results.iter().enumerate() {
+                                        let icon = if verdict.passed { "✅" } else { "❌" };
+                                        text.push_str(&format!(
+                                            "\n{icon} #{} *{}* — {}/100\n   Total: €{:.2}",
+                                            i + 1, verdict.store_name, verdict.score, verdict.total
+                                        ));
+                                        if !verdict.issues.is_empty() {
+                                            text.push_str(&format!("\n   ⚠️  {}", verdict.issues.join("; ")));
+                                        }
+                                    }
+                                    return Some(OutgoingMessage { chat_id: msg.chat_id.clone(), text, markdown: true });
+                                }
+                                Err(e) => {
+                                    return Some(OutgoingMessage {
+                                        chat_id: msg.chat_id.clone(),
+                                        text: format!("OCR failed: {e}"),
+                                        markdown: false,
+                                    });
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            return Some(OutgoingMessage {
+                                chat_id: msg.chat_id.clone(),
+                                text: format!("Failed to read photo: {e}"),
+                                markdown: false,
+                            });
+                        }
+                    }
+                } else {
+                    return Some(OutgoingMessage {
+                        chat_id: msg.chat_id.clone(),
+                        text: "OCR is not configured. Set GOOGLE_API_KEY.".into(),
+                        markdown: false,
+                    });
+                }
+            }
+        }
 
         // Check pairing
         if !self.pairing_manager.is_paired(&msg.user_id) {

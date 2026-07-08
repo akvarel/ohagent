@@ -38,6 +38,7 @@ use crate::system_prompt::{PersistentInstructions, SystemPromptBuilder, SkillPro
 use jcode_provider_core::Provider;
 use jcode_base::mcp::SharedMcpPool;
 use ohagent_plugins::{PluginConfig, PluginManager};
+use ohagent_provider_metrics::{GeminiOcrClient, GeminiOcrConfig};
 use std::sync::Mutex as StdMutex;
 
 /// Register external provider runtimes (OpenRouter, OpenAI-compatible profiles).
@@ -123,6 +124,8 @@ struct Daemon {
     #[allow(dead_code)]
     mcp_pool: Option<Arc<SharedMcpPool>>,
     plugin_manager: Arc<StdMutex<PluginManager>>,
+    /// Gemini OCR client for /ocr photo processing in Telegram.
+    gemini_ocr: Option<GeminiOcrClient>,
 }
 
 impl Daemon {
@@ -553,6 +556,14 @@ impl Daemon {
             info!(loaded, "Plugin pipeline initialized");
         }
 
+        // Initialize Gemini OCR client for /ocr command
+        let gemini_ocr = google_key.as_ref().map(|key| {
+            GeminiOcrClient::new(GeminiOcrConfig {
+                api_key: key.clone(),
+                ..Default::default()
+            })
+        });
+
         Ok(Self {
             health_port,
             enable_telegram,
@@ -578,6 +589,7 @@ impl Daemon {
             slack,
             mcp_pool,
             plugin_manager: Arc::new(StdMutex::new(plugin_manager)),
+            gemini_ocr,
         })
     }
 
@@ -666,6 +678,12 @@ impl Daemon {
         }
         let pm = Arc::clone(&self.plugin_manager);
         adapter = adapter.with_plugin_manager(pm);
+
+        // Attach Gemini OCR client for /ocr command
+        if let Some(ref gemini) = self.gemini_ocr {
+            adapter = adapter.with_gemini_ocr(gemini.clone());
+            info!("Gemini OCR client attached to Telegram adapter");
+        }
 
         // Also attach model router reference for the /model command
         // (the router is stored inside the bridge, we also pass it directly)

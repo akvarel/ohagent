@@ -27,6 +27,7 @@ use ohagent_memory::engine::MemoryEngine;
 use ohagent_plugins::PluginManager;
 use std::sync::Mutex as StdMutex;
 use ohagent_skills::registry::SkillRegistry;
+use ohagent_provider_metrics::{GeminiOcrClient, GeminiOcrConfig};
 
 /// Helper: parse a string chat_id to teloxide's ChatId.
 fn to_chat_id(s: &str) -> Result<ChatId, Box<dyn std::error::Error + Send + Sync>> {
@@ -92,6 +93,7 @@ pub struct TelegramAdapter {
     push: Option<Arc<PushService>>,
     memory: Option<Arc<MemoryEngine>>,
     plugin_manager: Option<Arc<StdMutex<PluginManager>>>,
+    gemini_ocr: Option<GeminiOcrClient>,
 }
 
 impl TelegramAdapter {
@@ -112,6 +114,7 @@ impl TelegramAdapter {
             push: None,
             memory: None,
             plugin_manager: None,
+            gemini_ocr: None,
         })
     }
 
@@ -127,6 +130,7 @@ impl TelegramAdapter {
             push: None,
             memory: None,
             plugin_manager: None,
+            gemini_ocr: None,
         }
     }
 
@@ -177,6 +181,12 @@ impl TelegramAdapter {
         self.plugin_manager = Some(pm);
         self
     }
+
+    /// Attach the Gemini OCR client for /ocr photo processing.
+    pub fn with_gemini_ocr(mut self, client: GeminiOcrClient) -> Self {
+        self.gemini_ocr = Some(client);
+        self
+    }
 }
 
 #[async_trait::async_trait]
@@ -217,6 +227,9 @@ impl PlatformAdapter for TelegramAdapter {
         }
         if let Some(ref pm) = self.plugin_manager {
             dispatcher_builder = dispatcher_builder.with_plugin_manager(Arc::clone(pm));
+        }
+        if let Some(ref gemini) = self.gemini_ocr {
+            dispatcher_builder = dispatcher_builder.with_gemini_ocr(gemini.clone());
         }
         let dispatcher = Arc::new(dispatcher_builder);
 

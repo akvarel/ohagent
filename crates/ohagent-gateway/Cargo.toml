@@ -24,6 +24,7 @@ ohagent-core = { path = "../ohagent-core" }
 ohagent-skills = { path = "../ohagent-skills" }
 ohagent-memory = { path = "../ohagent-memory" }
 ohagent-plugins = { path = "../ohagent-plugins" }
+ohagent-provider-metrics = { path = "../ohagent-provider-metrics" }
 hmac = "0.12"
 sha2 = "0.10"
 hex = "0.4"

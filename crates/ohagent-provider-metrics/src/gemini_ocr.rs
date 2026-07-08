@@ -24,6 +24,7 @@ use serde_json::Value;
 use crate::receipt_validator::{ReceiptData, ReceiptItem, ReceiptVerdict, validate_receipt};
 
 /// Configuration for the Gemini OCR client.
+#[derive(Clone)]
 pub struct GeminiOcrConfig {
     /// Google API key (from ai.google.dev)
     pub api_key: String,
@@ -50,6 +51,7 @@ impl Default for GeminiOcrConfig {
 }
 
 /// The Gemini OCR client.
+#[derive(Clone)]
 pub struct GeminiOcrClient {
     client: Client,
     config: GeminiOcrConfig,
