@@ -274,6 +274,7 @@ impl PlatformAdapter for TelegramAdapter {
                 .branch(dptree::endpoint(handle_message));
 
             teloxide::dispatching::Dispatcher::builder(bot, handler)
+                .dependencies(dptree::deps![state])
                 .default_handler(|_| async move {
                     warn!("Unhandled Telegram update");
                 })
