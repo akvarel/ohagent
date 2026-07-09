@@ -210,7 +210,9 @@ impl PlatformAdapter for TelegramAdapter {
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let bot = Bot::new(&self.bot_token);
 
-        let pairing_manager = Arc::new(PairingManager::new());
+        let admin_user_id = std::env::var("OHAGENT_ADMIN_USER_ID")
+            .unwrap_or_else(|_| String::new());
+        let pairing_manager = Arc::new(PairingManager::new(admin_user_id));
         let session_manager = Arc::new(SessionManager::new(bridge));
         let mut dispatcher_builder = Dispatcher::new(session_manager, pairing_manager);
         if let Some(ref skills) = self.skills {
@@ -297,7 +299,7 @@ impl PlatformAdapter for TelegramAdapter {
 
         let mut req = bot.send_message(chat_id, msg.text);
         if msg.markdown {
-            req = req.parse_mode(ParseMode::Html);
+            req = req.parse_mode(ParseMode::Markdown);
         }
         if let Some(ref keyboard) = msg.inline_keyboard {
             let rows: Vec<Vec<teloxide::types::InlineKeyboardButton>> = keyboard.iter().map(|row| {
@@ -433,7 +435,7 @@ async fn handle_message(
         let mut req = bot
             .send_message(to_chat_id(&chat_id)?, response.text);
         if response.markdown {
-            req = req.parse_mode(ParseMode::Html);
+            req = req.parse_mode(ParseMode::Markdown);
         }
         req.await?;
     }
@@ -531,7 +533,7 @@ async fn handle_command(
         let mut req = bot
             .send_message(to_chat_id(&chat_id)?, response.text);
         if response.markdown {
-            req = req.parse_mode(ParseMode::Html);
+            req = req.parse_mode(ParseMode::Markdown);
         }
         req.await?;
     }

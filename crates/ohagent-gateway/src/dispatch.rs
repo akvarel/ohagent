@@ -383,18 +383,23 @@ impl Dispatcher {
             }
 
             "pair" => {
-                let code = self
-                    .pairing_manager
-                    .generate_code(&msg.user_id, &msg.platform);
-                Some(OutgoingMessage {
-                    chat_id: msg.chat_id.clone(),
-                    text: i18n.tf("pairing_code_sent", &[
-                        ("code", &code),
-                        ("minutes", "10"),
-                    ]),
-                    markdown: true,
-                inline_keyboard: None,
-                })
+                match self.pairing_manager.generate_code(&msg.user_id) {
+                    Ok(code) => Some(OutgoingMessage {
+                        chat_id: msg.chat_id.clone(),
+                        text: i18n.tf("pairing_code_sent", &[
+                            ("code", &code),
+                            ("minutes", "10"),
+                        ]),
+                        markdown: true,
+                        inline_keyboard: None,
+                    }),
+                    Err(e) => Some(OutgoingMessage {
+                        chat_id: msg.chat_id.clone(),
+                        text: e,
+                        markdown: false,
+                        inline_keyboard: None,
+                    }),
+                }
             }
 
             "confirm" => {
@@ -409,6 +414,7 @@ impl Dispatcher {
                 }
                 match self.pairing_manager.confirm_code(
                     &msg.user_id,
+                    &msg.platform,
                     code,
                     msg.lang.as_str(),
                 ) {
@@ -464,14 +470,8 @@ impl Dispatcher {
                     "ru" => "en",
                     _ => "lv",
                 };
-                // Update the pairing record
-                if let Some(mut user) = self.pairing_manager.get(&msg.user_id) {
-                    user.lang = new_lang.to_string();
-                    // Re-insert updated user
-                    self.pairing_manager
-                        .confirm_code(&msg.user_id, "__skip__", new_lang)
-                        .ok();
-                }
+                // Update the language preference
+                self.pairing_manager.update_lang(&msg.user_id, new_lang);
                 let new_i18n = I18n::new(crate::i18n::Lang::from_code(Some(new_lang)));
                 Some(OutgoingMessage {
                     chat_id: msg.chat_id.clone(),
