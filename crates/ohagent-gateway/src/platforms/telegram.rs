@@ -297,7 +297,7 @@ impl PlatformAdapter for TelegramAdapter {
 
         let mut req = bot.send_message(chat_id, msg.text);
         if msg.markdown {
-            req = req.parse_mode(ParseMode::MarkdownV2);
+            req = req.parse_mode(ParseMode::Html);
         }
         if let Some(ref keyboard) = msg.inline_keyboard {
             let rows: Vec<Vec<teloxide::types::InlineKeyboardButton>> = keyboard.iter().map(|row| {
@@ -433,7 +433,7 @@ async fn handle_message(
         let mut req = bot
             .send_message(to_chat_id(&chat_id)?, response.text);
         if response.markdown {
-            req = req.parse_mode(ParseMode::MarkdownV2);
+            req = req.parse_mode(ParseMode::Html);
         }
         req.await?;
     }
@@ -531,7 +531,7 @@ async fn handle_command(
         let mut req = bot
             .send_message(to_chat_id(&chat_id)?, response.text);
         if response.markdown {
-            req = req.parse_mode(ParseMode::MarkdownV2);
+            req = req.parse_mode(ParseMode::Html);
         }
         req.await?;
     }
