@@ -4,6 +4,7 @@
 //! Manages lifecycle, health checks, graceful shutdown,
 //! hosts the messaging gateway, and serves the REST API.
 
+mod security_guard;
 mod api;
 mod auth;
 mod context_compressor;

@@ -8,13 +8,15 @@
 
 ## How to use (right now)
 
-### 1. Pair with Telegram
+### 1. Pair with Telegram (secure admin flow)
 
-Open Telegram and send `/start` to your bot:
-```
-https://t.me/your_bot_username
-```
-The bot generates a 6-character pairing code. Pick it up and confirm with `/pair <code>`.
+Only the **admin** (owner) can generate pairing codes. Random users cannot self-pair.
+
+**Admin:** send `/pair` → get a 6-character code valid for 10 minutes.
+
+**User:** send `/pair <code>` → paired, ready to chat.
+
+> Admin user ID is set via `OHAGENT_ADMIN_USER_ID` in ConfigMap. You can find your Telegram user ID in bot logs: `kubectl -n ohagent logs deploy/ohagent-daemon | grep "user_id"`.
 
 ### 2. Chat
 
@@ -25,6 +27,8 @@ Any message to the bot starts a Jcode AI session. Full coding, research, file op
 | Command | What it does |
 |---|---|
 | Any message | Jcode agent session (coding, research, files) |
+| `/pair` | (Admin only) Generate pairing code for new user |
+| `/pair <code>` | Confirm pairing code and activate |
 | `/ocr` + photo | Extract receipts via Gemini — FREE, 4s |
 | `/skills` | List learned skills with quality scores |
 | `/skill <name>` | Skill detail + usage stats |
@@ -78,8 +82,40 @@ Telegram → ohAgent Daemon (K8s pod)
 | Version checker | ✅ | Daily, push notifications |
 | Health check | ✅ | `:9090/health` |
 | Prometheus | ✅ | `:9090/metrics` |
+| Security guard | ✅ | 5-layer defense |
 
 ---
+
+## Security model
+
+The agent **cannot** modify its own configuration — regardless of whether
+the request comes from Telegram, REST API, or any other channel.
+
+### 5-layer defense
+
+| Layer | What it blocks |
+|---|---|
+| **1. NetworkPolicy** | Pod cannot reach K8s API server at all |
+| **2. No automount token** | `automountServiceAccountToken: false` — zero API access |
+| **3. Zero capabilities** | `CapEff: 0000000000000000` — no root, no ptrace |
+| **4. Code guard** | `security_guard.rs` blocks: `kubectl apply/delete/patch`, `systemctl`, `docker run`, `export KEY=...`, writes to `/home/jcode/.ohagent`, `helm`, `strace/gdb` |
+| **5. readOnlyRootFilesystem** | Container FS is read-only — no binary injection |
+
+### How to make changes
+
+All configuration changes must be made **from outside the pod**:
+
+```bash
+# Change ConfigMap
+kubectl -n ohagent edit configmap ohagent-config
+
+# Or use a CI/CD pipeline / external agent
+kubectl -n ohagent set env deploy/ohagent-daemon \
+  OHAGENT_ADMIN_USER_ID=123456
+
+# Restart to apply
+kubectl -n ohagent rollout restart deploy/ohagent-daemon
+```
 
 ## How to deploy from scratch
 
@@ -116,7 +152,8 @@ kubectl -n ohagent create configmap ohagent-config \
   --from-literal=SCW_SECRET_KEY="..." \
   --from-literal=SCW_PROJECT_ID="..." \
   --from-literal=VAULT_ADDR="http://vault:8200" \
-  --from-literal=VAULT_KV_PATH="secret"
+  --from-literal=VAULT_KV_PATH="secret" \
+  --from-literal=OHAGENT_ADMIN_USER_ID="YOUR_TELEGRAM_ID"
 
 # 5. Create registry secret
 kubectl -n ohagent create secret docker-registry registry-scaleway \

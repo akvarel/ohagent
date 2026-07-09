@@ -1,0 +1,96 @@
+# K8s Security Policy — prevents agent from modifying cluster
+#
+# Multi-layer defense:
+# 1. NetworkPolicy — blocks egress to K8s API server
+#    Even if the SA token gets leaked, pod can't reach the API.
+# 2. No kubectl binary in the container image
+# 3. Restricted service account (no write RBAC)
+# 4. Zero capabilities (CapEff: 0000000000000000)
+# 5. Security guard in daemon code (security_guard.rs)
+#    Blocks kubectl, systemctl, docker, env var mutations,
+#    protected path writes, ptrace/strace/gdb.
+#
+# Changes require manual kubectl from OUTSIDE the pod
+# or an external agent (CI/CD, operator).
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ohagent-deny-api-server
+  namespace: ohagent
+spec:
+  podSelector:
+    matchLabels:
+      app: ohagent
+  policyTypes:
+    - Egress
+  egress:
+    # Allow DNS (needed for Telegram API, LLM providers, Vault)
+    - to:
+        - namespaceSelector: {}
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # Allow Vault in orangehat namespace
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: orangehat
+          podSelector:
+            matchLabels:
+              app: vault
+      ports:
+        - port: 8200
+    # Allow internet (Telegram API, LLM providers)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              # Block K8s API server IP
+              - 10.43.0.0/16
+      ports:
+        - port: 443
+        - port: 80
+        - port: 8443
+    # Allow K8s API for health/readiness probes ONLY (kubelet)
+    # Probes come from the node, not pod egress — no rule needed
+
+---
+# ServiceAccount — minimal, no automount
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ohagent-sa
+  namespace: ohagent
+automountServiceAccountToken: false  # No token = no API access
+
+---
+# Deployment patch — inject SA and security context
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ohagent-daemon
+  namespace: ohagent
+spec:
+  template:
+    spec:
+      serviceAccountName: ohagent-sa  # No token
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: daemon
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
