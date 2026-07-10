@@ -149,6 +149,6 @@ impl MessagePlugin for AggregatorPlugin {
 pub extern "C" fn plugin_api_version() -> u32 { CURRENT_PLUGIN_API_VERSION }
 
 #[no_mangle]
-pub extern "C" fn create_plugin() -> *mut dyn MessagePlugin {
-    Box::into_raw(Box::new(AggregatorPlugin::new()))
+pub extern "C" fn create_plugin() -> PluginBox {
+    PluginBox::from_box(Box::new(AggregatorPlugin::new()))
 }

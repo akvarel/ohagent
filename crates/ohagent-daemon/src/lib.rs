@@ -7,6 +7,7 @@
 mod security_guard;
 mod api;
 mod auth;
+mod health;
 mod context_compressor;
 mod metrics;
 mod migrations;
@@ -25,6 +26,7 @@ use tokio::signal;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
+use ohagent_core::config::OhAgentConfig;
 use ohagent_core::jcode_bridge::JcodeBridge;
 use ohagent_core::vault::{resolve_secret, VaultClient};
 use ohagent_gateway::platforms::telegram::TelegramAdapter;
@@ -35,6 +37,7 @@ use ohagent_memory::engine::MemoryEngine;
 use ohagent_memory::models::MemoryConfig;
 use ohagent_skills::registry::SkillRegistry;
 use ohagent_skills::SkillConfig;
+use crate::health::{HealthRegistry, HealthStatus};
 use crate::system_prompt::{PersistentInstructions, SystemPromptBuilder, SkillPrompt};
 use jcode_provider_core::Provider;
 use jcode_base::mcp::SharedMcpPool;
@@ -103,6 +106,8 @@ struct Cli {
 
 /// Main daemon state.
 struct Daemon {
+    config: OhAgentConfig,
+    health: HealthRegistry,
     health_port: u16,
     enable_telegram: bool,
     shutdown: Arc<tokio::sync::Notify>,
@@ -134,19 +139,48 @@ struct Daemon {
 }
 
 impl Daemon {
-    fn new(health_port: u16, enable_telegram: bool) -> Result<Self> {
+    fn new(health_port: u16, enable_telegram: bool, config_path: &str) -> Result<Self> {
+        // ── Phase 0: Config + Logging ──
+        let config = OhAgentConfig::load(config_path)
+            .unwrap_or_else(|e| {
+                tracing::warn!(error = %e, "Config load failed — using defaults");
+                OhAgentConfig::default()
+            });
+        let health = HealthRegistry::new();
+
+        // Register all components so /health shows them immediately
+        let components = [
+            ("provider", "LLM provider & model router"),
+            ("vault", "Secret storage"),
+            ("message_log", "Prompt/response logging"),
+            ("mcp_pool", "MCP server pool"),
+            ("memory", "Deep memory engine"),
+            ("skills", "Self-learning skill engine"),
+            ("usage", "Token usage tracking"),
+            ("session_store", "Session persistence"),
+            ("plugins", "Plugin pipeline"),
+            ("api", "REST API & health endpoint"),
+            ("telegram", "Telegram gateway"),
+            ("whatsapp", "WhatsApp gateway"),
+            ("slack", "Slack gateway"),
+            ("gemini_ocr", "Gemini OCR for receipts"),
+            ("scheduler", "Cron scheduler"),
+            ("push", "Push notification service"),
+        ];
+        for (name, desc) in &components {
+            health.register(name, desc);
+        }
         // Register provider runtimes before creating any provider
         setup_provider_runtimes();
 
+        // ── Phase 1: Provider + Model Router (critical) ──
         // Load model router (intelligent model selection based on task)
         let router = match ohagent_core::model_router::ModelRouter::load() {
             Ok(r) => {
                 info!(models = r.list_models().len(), "Model router loaded");
-                let prefs_path =
-                    std::path::PathBuf::from(shellexpand::tilde("~/.ohagent/model_prefs.toml").to_string());
+                let prefs_path = config.resolve_path(&config.paths.model_prefs);
                 let r = r.with_prefs_path(prefs_path);
-                let disabled_path =
-                    std::path::PathBuf::from(shellexpand::tilde("~/.ohagent/disabled_models.json").to_string());
+                let disabled_path = config.resolve_path(&config.paths.disabled_models);
                 let r = r.with_disabled_path(disabled_path);
                 Some(Arc::new(std::sync::Mutex::new(r)))
             }
@@ -160,13 +194,16 @@ impl Daemon {
         let vault = VaultClient::from_env();
         if vault.available() {
             info!("Vault client initialized");
+            health.set_healthy("vault", "Vault connected");
         } else {
             info!("Vault not configured — falling back to env vars and keys.toml");
+            health.set_degraded("vault", "Not configured — using env/keys.toml fallback");
         }
         let vault = Arc::new(vault);
 
         // Load keys from keys.toml for fallback
-        let keys_path = shellexpand::tilde("~/.ohagent/keys.toml").to_string();
+        let keys_path = config.resolve_path(&config.paths.keys_file);
+        let keys_path_str = keys_path.to_string_lossy().to_string();
         let keys_config: std::collections::HashMap<String, String> =
             match std::fs::read_to_string(&keys_path) {
                 Ok(content) => {
@@ -279,38 +316,61 @@ impl Daemon {
             std::env::set_var("GEMINI_API_KEY", key);  // Jcode's Gemini provider
         }
 
+        // Resolve TELEGRAM_BOT_TOKEN from keys.toml if not in env
+        if std::env::var("TELEGRAM_BOT_TOKEN").is_err() {
+            let telegram_key = keys_config.get("TELEGRAM_BOT_TOKEN")
+                .or_else(|| keys_config.get("telegram_bot_token"))
+                .cloned();
+            if let Some(key) = telegram_key {
+                std::env::set_var("TELEGRAM_BOT_TOKEN", &key);
+                tracing::debug!("TELEGRAM_BOT_TOKEN set from keys.toml");
+            }
+        }
+
         // Build default provider (fallback if router unavailable)
         let provider: Arc<dyn Provider> = {
             let multi = jcode_base::provider::MultiProvider::default();
 
             // Configure from environment / Vault
-            if let Ok(_api_key) = std::env::var("DEEPSEEK_API_KEY") {
-                match multi.set_model("deepseek:deepseek-v4-flash") {
+            let provider_model = &config.providers.primary_model;
+            if deepseek_key.is_some() || std::env::var("DEEPSEEK_API_KEY").is_ok() {
+                match multi.set_model(provider_model) {
                     Ok(()) => {
-                        info!(provider = %multi.display_name(), "Default provider: DeepSeek");
+                        info!(provider = %multi.display_name(), "Primary provider: configured from config");
+                        health.set_healthy("provider", &format!("Provider: {}", multi.display_name()));
                     }
                     Err(e) => {
-                        tracing::warn!(error = %e, "Failed to set DeepSeek model — continuing without default provider");
+                        // Try fallback
+                        tracing::warn!(error = %e, "Failed to set primary model — trying fallback");
+                        if let Ok(_) = multi.set_model(&config.providers.fallback_model) {
+                            info!(provider = %multi.display_name(), "Fallback provider active");
+                            health.set_healthy("provider", &format!("Fallback provider: {}", multi.display_name()));
+                        } else {
+                            tracing::warn!("No provider configured — may need /login");
+                            health.set_degraded("provider", "No provider API key configured");
+                        }
                     }
                 }
             } else if let Ok(_api_key) = std::env::var("ANTHROPIC_API_KEY") {
                 multi
-                    .set_model("claude:claude-sonnet-4-6")
-                    .map_err(|e| anyhow::anyhow!("Failed to set Claude model: {e}"))?;
-                info!(
-                    provider = %multi.display_name(),
-                    "Default provider: Claude"
-                );
+                    .set_model(&config.providers.fallback_model)
+                    .map_err(|e| anyhow::anyhow!("Failed to set fallback model: {e}"))?;
+                info!(provider = %multi.display_name(), "Fallback provider: Claude");
+                health.set_healthy("provider", &format!("Provider: {}", multi.display_name()));
             } else {
                 info!("No provider API key found. Using default provider (may need /login).");
+                health.set_degraded("provider", "No API key — use /login");
             }
 
             Arc::new(multi)
         };
 
+        // ── Phase 2: Storage (message_log, MCP, memory, skills, usage) ──
+
         // Initialize message log (prompt/response logging)
+        let message_log_path = config.resolve_path(&config.paths.message_log_db);
         let message_log = match ohagent_core::message_log::MessageLog::open(
-            &shellexpand::tilde("~/.ohagent/message_log.db").to_string(),
+            &message_log_path.to_string_lossy(),
         ) {
             Ok(log) => {
                 info!("Message log initialized");
@@ -320,10 +380,12 @@ impl Daemon {
                 }) {
                     tracing::warn!(error = %e, "Message log migrations failed");
                 }
+                health.set_healthy("message_log", "Message logging active");
                 Some(Arc::new(log))
             }
             Err(e) => {
                 tracing::warn!(error = %e, "Message log not available");
+                health.set_degraded("message_log", &format!("Not available: {e}"));
                 None
             }
         };
@@ -346,10 +408,11 @@ impl Daemon {
         }
 
         // Register built-in tools: bash, write, edit, read, ls
+        let workspace_path = config.resolve_path(&config.paths.workspace);
         let mut tool_registry = ohagent_core::tools::ToolRegistry::new();
         ohagent_core::builtin_tools::register_builtin_tools(
             &mut tool_registry,
-            &shellexpand::tilde("~/.ohagent/workspace").to_string(),
+            &workspace_path.to_string_lossy(),
         );
         let tool_registry = Arc::new(tool_registry);
         bridge = bridge.with_tools((*tool_registry).clone());
@@ -359,16 +422,17 @@ impl Daemon {
         let push = match std::env::var("TELEGRAM_BOT_TOKEN") {
             Ok(token) => {
                 info!("Push notification service initialized (Telegram)");
+                health.set_healthy("push", "Push notifications via Telegram");
                 Some(Arc::new(ohagent_core::push::PushService::new(token)))
             }
             Err(_) => {
                 tracing::debug!("TELEGRAM_BOT_TOKEN not set — push notifications disabled");
+                health.set_degraded("push", "No TELEGRAM_BOT_TOKEN");
                 None
             }
         };
 
         // Initialize MCP server pool (shared across all sessions).
-        // Spawn separate thread — block_on doesn't work inside tokio runtime
         let mcp_pool = {
             let pool = Arc::new(SharedMcpPool::from_default_config());
             let pool_clone = pool.clone();
@@ -391,16 +455,18 @@ impl Daemon {
                     failed = failures.len(),
                     "MCP pool initialized"
                 );
+                health.set_healthy("mcp_pool", &format!("{connected} servers connected"));
                 Some(pool)
             } else if failures.is_empty() {
-                // No servers configured — not an error
                 tracing::debug!("MCP pool: no servers configured in ~/.jcode/mcp.json");
+                health.set_degraded("mcp_pool", "No servers configured");
                 None
             } else {
                 tracing::warn!(
                     failed = failures.len(),
                     "MCP pool: all server connections failed"
                 );
+                health.set_degraded("mcp_pool", &format!("All {} servers failed", failures.len()));
                 None
             }
         };
@@ -415,10 +481,12 @@ impl Daemon {
         let memory = match MemoryEngine::open(MemoryConfig::default()) {
             Ok(engine) => {
                 info!("Memory engine initialized");
+                health.set_healthy("memory", "SQLite + vector memory active");
                 Some(Arc::new(engine))
             }
             Err(e) => {
                 tracing::warn!(error = %e, "Memory engine not available — running without memory");
+                health.set_degraded("memory", &format!("Not available: {e}"));
                 None
             }
         };
@@ -427,36 +495,45 @@ impl Daemon {
         let skills = match SkillRegistry::open(SkillConfig::default()) {
             Ok(reg) => {
                 info!("Skill registry initialized");
+                health.set_healthy("skills", "Self-learning skills active");
                 Some(Arc::new(reg))
             }
             Err(e) => {
                 tracing::warn!(error = %e, "Skill registry not available");
+                health.set_degraded("skills", &format!("Not available: {e}"));
                 None
             }
         };
 
         // Initialize usage tracker
+        let usage_db_path = config.resolve_path(&config.paths.usage_db);
         let usage = match ohagent_core::usage_tracker::UsageTracker::open(
-            "~/.ohagent/usage.db", None,
+            &usage_db_path.to_string_lossy(), None,
         ) {
             Ok(t) => {
                 info!("Usage tracker initialized");
+                health.set_healthy("usage", "Token usage tracking active");
                 Some(Arc::new(t))
             }
             Err(e) => {
                 tracing::warn!(error = %e, "Usage tracker not available");
+                health.set_degraded("usage", &format!("Not available: {e}"));
                 None
             }
         };
+
+        // ── Phase 3: Gateways (WhatsApp, Slack, Gemini OCR) ──
 
         // Initialize WhatsApp adapter (if configured)
         let whatsapp = match WhatsAppAdapter::from_env() {
             Ok(wa) => {
                 info!("WhatsApp adapter initialized");
+                health.set_healthy("whatsapp", "WhatsApp gateway ready");
                 Some(Arc::new(wa))
             }
             Err(e) => {
                 tracing::debug!(error = %e, "WhatsApp not configured, skipping");
+                health.set_degraded("whatsapp", "Not configured");
                 None
             }
         };
@@ -465,10 +542,12 @@ impl Daemon {
         let slack = match SlackAdapter::from_env() {
             Ok(sl) => {
                 info!("Slack adapter initialized");
+                health.set_healthy("slack", "Slack gateway ready");
                 Some(Arc::new(sl))
             }
             Err(e) => {
                 tracing::debug!(error = %e, "Slack not configured, skipping");
+                health.set_degraded("slack", "Not configured");
                 None
             }
         };
@@ -488,7 +567,6 @@ impl Daemon {
         );
 
         // Build system prompt with skills loaded once at startup.
-        // AGENTS.md rules are re-read per-request in assemble() for project switching.
         let system_prompt_builder = {
             let skills_list: Vec<SkillPrompt> = skills
                 .as_ref()
@@ -524,8 +602,9 @@ impl Daemon {
         };
 
         // Initialize session store for daemon restart persistence
+        let sessions_db_path = config.resolve_path(&config.paths.sessions_db);
         let session_store = match ohagent_core::session_store::SessionStore::open(
-            &shellexpand::tilde("~/.ohagent/sessions.db").to_string(),
+            &sessions_db_path.to_string_lossy(),
         ) {
             Ok(ss) => {
                 let cleaned = ss.cleanup_stale(30).unwrap_or(0);
@@ -535,6 +614,8 @@ impl Daemon {
                     stale_cleaned = cleaned,
                     "Session store initialized"
                 );
+                let count = active.len();
+                health.set_healthy("session_store", &format!("{count} sessions, {cleaned} cleaned"));
                 if !active.is_empty() {
                     for s in &active {
                         tracing::debug!(
@@ -549,12 +630,13 @@ impl Daemon {
             }
             Err(e) => {
                 tracing::warn!(error = %e, "Session store not available");
+                health.set_degraded("session_store", &format!("Not available: {e}"));
                 None
             }
         };
 
         // Initialize plugin pipeline
-        let plugin_config_path = shellexpand::tilde("~/.ohagent/plugins.toml").to_string();
+        let plugin_config_path = config.resolve_path(&config.paths.plugins_config);
         let plugin_config: ohagent_plugins::PluginConfig =
             match std::fs::read_to_string(&plugin_config_path) {
                 Ok(content) => toml::from_str(&content).unwrap_or_default(),
@@ -563,25 +645,36 @@ impl Daemon {
                     ohagent_plugins::PluginConfig::default()
                 }
             };
-        let plugin_dir = shellexpand::tilde("~/.ohagent/plugins").to_string();
-        let mut plugin_manager = PluginManager::new(
-            std::path::PathBuf::from(&plugin_dir),
-            plugin_config,
-        );
+        let plugin_dir = config.resolve_path(&config.paths.plugins_dir);
+        let mut plugin_manager = PluginManager::new(plugin_dir, plugin_config);
         let loaded = plugin_manager.load_all();
         if loaded > 0 {
             info!(loaded, "Plugin pipeline initialized");
+            health.set_healthy("plugins", &format!("{loaded} plugins loaded"));
+        } else {
+            health.set_degraded("plugins", "No plugins loaded");
         }
 
         // Initialize Gemini OCR client for /ocr command
         let gemini_ocr = google_key.as_ref().map(|key| {
+            health.set_healthy("gemini_ocr", "Gemini OCR ready");
             GeminiOcrClient::new(GeminiOcrConfig {
                 api_key: key.clone(),
                 ..Default::default()
             })
         });
 
+        // Initialize Scheduler
+        let scheduler = push.as_ref().map(|p| Arc::new(ohagent_core::scheduler::Scheduler::new(Some(Arc::clone(p)))));
+        if scheduler.is_none() {
+            health.set_degraded("scheduler", "Push not configured — scheduler disabled");
+        }
+
+        health.set_healthy("api", "REST API initialized");
+
         Ok(Self {
+            config,
+            health,
             health_port,
             enable_telegram,
             shutdown: Arc::new(tokio::sync::Notify::new()),
@@ -592,7 +685,7 @@ impl Daemon {
             message_log,
             router,
             start_time: chrono::Utc::now(),
-            keys_path,
+            keys_path: keys_path_str,
             vault,
             auth_config,
             rate_limiter,
@@ -601,7 +694,7 @@ impl Daemon {
             session_store,
             tool_registry: Some(tool_registry),
             push: push.clone(),
-            scheduler: Some(Arc::new(ohagent_core::scheduler::Scheduler::new(push))),
+            scheduler,
             whatsapp,
             slack,
             mcp_pool,
@@ -617,6 +710,7 @@ impl Daemon {
 
         let api_state = api::ApiState {
             bridge: Arc::clone(&self.bridge),
+            health: self.health.clone(),
             memory: self.memory.clone(),
             skills: self.skills.clone(),
             usage: self.usage.clone(),
@@ -893,7 +987,7 @@ pub async fn run() -> Result<()> {
         )
         .init();
 
-    let daemon = Daemon::new(cli.health_port, cli.telegram)?;
+    let daemon = Daemon::new(cli.health_port, cli.telegram, &cli.config)?;
     daemon.run().await
 }
 

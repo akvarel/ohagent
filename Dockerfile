@@ -1,4 +1,19 @@
 # ── ohAgent Daemon — Multi-stage Docker Build ──
+# Architecture:
+#   Stage 1 (builder):   full Rust toolchain, compiles ohagent-daemon
+#   Stage 2 (runtime):   minimal Debian image, runs the binary
+#
+# Excluded proprietary crates (stubbed as no-ops):
+#   ohagent-pii-redactor, ohagent-infra-launcher,
+#   ohagent-aggregator-core, ohagent-aggregator-plugin
+#
+# These crates have `Proprietary` licenses and are replaced with
+# auto-generated empty Cargo.toml + lib.rs during the dependency cache
+# phase to allow Cargo workspace resolution. The real source is copied
+# later but only crates listed below are actually compiled.
+#
+# To include a proprietary crate: add its Cargo.toml to the COPY list
+# and remove it from the stub loop below.
 FROM rust:latest AS builder
 
 ARG BUILD_PROFILE=release
@@ -24,17 +39,18 @@ COPY crates/ohagent-desktop-mcp/Cargo.toml crates/ohagent-desktop-mcp/
 COPY crates/ohagent-plugins/Cargo.toml crates/ohagent-plugins/
 COPY crates/ohagent-provider-metrics/Cargo.toml crates/ohagent-provider-metrics/
 
-# Stub Cargo.toml for excluded crates
-RUN for crate in ohagent-pii-redactor ohagent-infra-launcher ohagent-aggregator-core ohagent-aggregator-plugin; do \
+# Stub proprietary crates (no-ops for Cargo workspace resolution)
+RUN for crate in ohagent-pii-redactor ohagent-infra-launcher \
+                 ohagent-aggregator-core ohagent-aggregator-plugin; do \
       mkdir -p crates/$crate/src; \
       printf '[package]\nname = "%s"\nversion.workspace = true\nedition.workspace = true\n' "$crate" > crates/$crate/Cargo.toml; \
-      echo '' > crates/$crate/src/lib.rs; \
+      echo '// stub — replaced by proprietary version in prod builds' > crates/$crate/src/lib.rs; \
     done
 
-# Copy jcode submodule (needed first for dep resolution)
+# Copy jcode submodule (required for path deps)
 COPY jcode/ jcode/
 
-# Create dummy source for dep caching
+# Create dummy source for dependency caching
 RUN mkdir -p crates/ohagent-core/src crates/ohagent-daemon/src \
     crates/ohagent-gateway/src crates/ohagent-memory/src \
     crates/ohagent-skills/src crates/ohagent-cron/src crates/ohagent-swarm/src \
@@ -43,16 +59,16 @@ RUN mkdir -p crates/ohagent-core/src crates/ohagent-daemon/src \
     && for d in ohagent-core ohagent-daemon ohagent-gateway ohagent-memory \
               ohagent-skills ohagent-cron ohagent-swarm ohagent-reasoning \
               ohagent-desktop-mcp ohagent-plugins ohagent-provider-metrics; do \
-         echo '' > crates/$d/src/lib.rs; \
+         echo '// dummy — replaced by real source below' > crates/$d/src/lib.rs; \
        done \
     && echo 'fn main() {}' > crates/ohagent-daemon/src/main.rs
 
-# Pre-build for dependency caching
+# Pre-build for dependency caching (intentionally may fail)
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/build/target \
-    cargo build --$BUILD_PROFILE -p ohagent-daemon || true
+    cargo build --$BUILD_PROFILE -p ohagent-daemon || echo "[cache] Dep caching done (expected: stub failures ignored)"
 
-# Copy actual ohAgent source
+# Copy actual ohAgent source (overwrites stubs)
 COPY crates/ crates/
 
 # Touch all source files to bust cargo's incremental cache

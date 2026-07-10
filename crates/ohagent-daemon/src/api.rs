@@ -38,12 +38,14 @@ use ohagent_plugins::PluginManager;
 use std::sync::Mutex as StdMutex;
 
 use crate::auth::{self, AuthState};
+use crate::health::{HealthRegistry, HealthStatus};
 use crate::metrics::{self, MetricsState};
 
 /// Shared state for API handlers.
 #[derive(Clone)]
 pub struct ApiState {
     pub bridge: Arc<JcodeBridge>,
+    pub health: HealthRegistry,
     pub memory: Option<Arc<MemoryEngine>>,
     pub skills: Option<Arc<SkillRegistry>>,
     pub usage: Option<Arc<UsageTracker>>,
@@ -122,11 +124,21 @@ pub fn router(state: ApiState) -> Router {
 
 // ── Handlers ──
 
-async fn health_handler() -> Json<serde_json::Value> {
+async fn health_handler(State(state): State<ApiState>) -> Json<serde_json::Value> {
+    let snapshot = state.health.snapshot();
+    let daemon_status = state.health.daemon_status();
+    let status_str = match daemon_status {
+        HealthStatus::Healthy => "ok",
+        HealthStatus::Starting => "starting",
+        HealthStatus::Degraded => "degraded",
+        HealthStatus::Disabled => "disabled",
+        HealthStatus::Unhealthy => "unhealthy",
+    };
     Json(serde_json::json!({
-        "status": "ok",
+        "status": status_str,
         "service": "ohagent",
         "version": env!("CARGO_PKG_VERSION"),
+        "components": snapshot,
     }))
 }
 

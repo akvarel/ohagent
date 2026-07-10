@@ -1,13 +1,11 @@
 //! Plugin manager — loads, validates, and runs the plugin pipeline.
 
-use std::collections::HashMap;
 use std::panic::{self, AssertUnwindSafe};
 use std::path::PathBuf;
-use std::sync::Arc;
 use tracing::{error, info, warn};
 
 use crate::types::{
-    MessagePlugin, PluginApiVersionFn, PluginError, PluginFactory, PluginMessage,
+    MessagePlugin, PluginApiVersionFn, PluginBox, PluginError, PluginFactory, PluginMessage,
     RedactionEntry, CURRENT_PLUGIN_API_VERSION,
 };
 
@@ -143,7 +141,8 @@ impl PluginManager {
                 .map_err(|e| format!("Symbol 'create_plugin' not found: {e}"))?
         };
 
-        let mut plugin: Box<dyn MessagePlugin> = unsafe { Box::from_raw(create()) };
+        let plugin_box: PluginBox = unsafe { create() };
+        let mut plugin: Box<dyn MessagePlugin> = unsafe { plugin_box.into_box() };
         let name = plugin.name().to_string();
 
         // Initialize the plugin

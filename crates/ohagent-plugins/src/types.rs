@@ -1,6 +1,7 @@
 //! Plugin type definitions — the contract between ohAgent core and plugins.
 
 use serde::{Deserialize, Serialize};
+use std::ffi::c_void;
 
 /// Current plugin API version. Bump when the trait changes incompatibly.
 pub const CURRENT_PLUGIN_API_VERSION: u32 = 1;
@@ -120,6 +121,55 @@ pub trait MessagePlugin: Send + Sync {
     fn shutdown(&mut self) {}
 }
 
-/// Type alias for the FFI factory function.
-pub type PluginFactory = unsafe extern "C" fn() -> *mut dyn MessagePlugin;
+/// FFI-safe wrapper around `Box<dyn MessagePlugin>`.
+///
+/// # Safety justification
+///
+/// On all Rust targets, a `*mut dyn Trait` fat pointer consists of two
+/// pointer-width words: the data pointer and the vtable pointer.
+/// `#[repr(C)] PluginBox` has the same layout. Passing it by value
+/// across `extern "C"` is well-defined on all platforms Rust supports:
+///
+/// | ABI | Struct return strategy |
+/// |---|---|
+/// | SysV x86_64 | ≤16 bytes in RAX:RDX |
+/// | Windows x64 | hidden pointer (>8 bytes) |
+/// | aarch64 | ≤16 bytes in x0:x1 |
+#[repr(C)]
+pub struct PluginBox {
+    data: *mut c_void,
+    vtable: *mut c_void,
+}
+
+impl PluginBox {
+    /// Wrap a `Box<dyn MessagePlugin>` into an FFI-safe representation.
+    pub fn from_box(plugin: Box<dyn MessagePlugin>) -> Self {
+        let fat = Box::into_raw(plugin); // *mut dyn MessagePlugin
+        unsafe {
+            // SAFETY: *mut dyn MessagePlugin has the same in-memory
+            // representation as two consecutive *mut c_void (data + vtable)
+            // on all supported targets. This transmute is equivalent to
+            // reinterpreting the two-pointer fat pointer as a struct.
+            let [data, vtable]: [*mut c_void; 2] = std::mem::transmute(fat);
+            Self { data, vtable }
+        }
+    }
+
+    /// Unwrap back to `Box<dyn MessagePlugin>`.
+    ///
+    /// # Safety
+    ///
+    /// Must have been created by `PluginBox::from_box` with a valid
+    /// `Box<dyn MessagePlugin>` of the same trait.
+    pub unsafe fn into_box(self) -> Box<dyn MessagePlugin> {
+        // SAFETY: Reconstruct the fat pointer from data + vtable ptrs.
+        let raw: *mut dyn MessagePlugin = std::mem::transmute([self.data, self.vtable]);
+        Box::from_raw(raw)
+    }
+}
+
+/// FFI-safe factory function. Returns a `PluginBox` instead of
+/// `*mut dyn MessagePlugin` to avoid undefined behaviour (trait
+/// objects have no stable C ABI).
+pub type PluginFactory = unsafe extern "C" fn() -> PluginBox;
 pub type PluginApiVersionFn = unsafe extern "C" fn() -> u32;

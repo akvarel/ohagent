@@ -101,10 +101,10 @@ impl TelegramAdapter {
     /// Create a new Telegram adapter.
     ///
     /// The bot token is read from TELEGRAM_BOT_TOKEN environment variable,
-    /// which should be injected by the Vault agent.
+    /// set by the daemon from Vault/env/keys.toml at startup.
     pub fn from_env() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
         let token = std::env::var("TELEGRAM_BOT_TOKEN")
-            .map_err(|_| "TELEGRAM_BOT_TOKEN not set. Ensure Vault agent is running.")?;
+            .map_err(|_| "TELEGRAM_BOT_TOKEN not set. Use: ohagent-daemon --telegram")?;
         Ok(Self {
             bot_token: token,
             webhook_url: None,
