@@ -7,23 +7,28 @@
 //!
 //! ## Protocol
 //!
-//! Client → Server (JSON):
+//! **Client → Server** (JSON):
 //! ```json
 //! {"type": "chat", "model": "deepseek-chat", "messages": [...], "temperature": 0.7}
 //! {"type": "cancel"}
 //! ```
 //!
-//! Server → Client (JSON):
-//! ```json
-//! {"type": "token", "content": "Hello"}
-//! {"type": "tool_call_start", "id": "call_1", "name": "bash"}
-//! {"type": "tool_result",  "id": "call_1", "name": "bash", "output": "total 42\n...", "success": true}
-//! {"type": "done", "usage": {"prompt_tokens": 100, "completion_tokens": 50}}
-//! {"type": "error", "message": "Provider error"}
-//! ```
+//! **Server → Client** (JSON):
 //!
-//! Cancel is non-destructive: it aborts the current turn but keeps the
-//! WebSocket alive for follow-up messages.
+//! | Event | Fields | When |
+//! |---|---|---|
+//! | `started` | `took_ms` | First token of response begins streaming |
+//! | `token` | `content` | Text delta (may arrive in fragments) |
+//! | `tool_call_start` | `id`, `name` | Agent invokes a tool |
+//! | `tool_result` | `id`, `name`, `output`, `success` | Tool execution completed |
+//! | `done` | `content`, `usage`, `took_ms`, `tokens_per_sec` | Full response finished |
+//! | `cancelled` | `partial_content` | User cancelled mid-response |
+//! | `error` | `message` | Fatal error (turn ends) |
+//!
+//! **Cancel is non-destructive**: it aborts the current turn but keeps the
+//! WebSocket alive for follow-up messages. The client can send another
+//! `chat` message on the same connection immediately after receiving
+//! `cancelled`.
 
 use std::sync::Arc;
 use std::time::Instant;

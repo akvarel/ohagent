@@ -879,9 +879,48 @@ scheduler.add_daily("telegram_12345", 9, 0, "Пришли статистику �
 
 ---
 
-## WebSocket Streaming (Phase 13)
+## ohAgent CLI (TUI Client)
 
-Real-time bidirectional streaming for chat completions.
+A terminal UI client that connects to the daemon via WebSocket and streams
+agent responses — including tool calls — in real-time, similar to Jcode TUI.
+
+### Installation
+
+```bash
+cargo build --release -p ohagent-cli
+```
+
+The binary is at `./target/release/ohagent`.
+
+### Usage
+
+```bash
+# Connect to default daemon (ws://localhost:9090/v1/ws/chat)
+./target/release/ohagent
+
+# Custom URL
+./target/release/ohagent --url ws://192.168.1.100:9090/v1/ws/chat
+```
+
+### Controls
+
+| Key | Action |
+|---|---|
+| `Esc` | Cancel the current agent response |
+| `Ctrl+C` | Quit |
+
+### Features
+
+- Real-time streaming of text tokens as they arrive
+- Inline display of tool calls (`[bash] ls -la`) and results
+- Cancellation via `Esc` — connection stays alive for follow-up messages
+- Type your message and press Enter to send
+
+---
+
+## WebSocket Streaming Protocol
+
+Real-time bidirectional streaming for chat completions with tool call visibility.
 
 ### Endpoint
 
@@ -892,28 +931,278 @@ GET /v1/ws/chat  → WebSocket upgrade (JSON protocol)
 ### Protocol
 
 **Client → Server** (JSON):
-```json
-{"type": "chat", "model": "deepseek-chat", "messages": [...], "temperature": 0.7}
-{"type": "cancel"}
-```
+
+| Type | Fields | Description |
+|---|---|---|
+| `chat` | `model`, `messages[]`, `temperature?`, `max_tokens?` | Start a new chat turn |
+| `cancel` | *(none)* | Cancel the current turn mid-response |
 
 **Server → Client** (JSON):
-```json
-{"type": "token", "content": "Hello"}
-{"type": "token", "content": " world"}
-{"type": "done", "usage": {"prompt": 100, "completion": 50}}
-{"type": "error", "message": "Provider error"}
+
+| Event | Fields | When |
+|---|---|---|
+| `started` | `took_ms` | First token begins streaming (cancellable after this) |
+| `token` | `content` | Text delta fragment |
+| `tool_call_start` | `id`, `name` | Agent started executing a tool |
+| `tool_result` | `id`, `name`, `output`, `success` | Tool finished with result |
+| `done` | `content`, `usage`, `took_ms`, `tokens_per_sec` | Turn completed normally |
+| `cancelled` | `partial_content` | Turn aborted by client — connection stays open |
+| `error` | `message` | Fatal error — turn ends |
+
+### Cancel Flow
+
+```mermaid
+sequenceDiagram
+    participant C as Client (CLI/WS)
+    participant D as Daemon
+    participant A as Agent Runner
+    participant P as Provider (LLM)
+
+    C->>D: {"type":"chat","messages":[...]}
+    D->>A: spawn run_agent_turn(...)
+    A->>P: provider.complete()
+    P-->>A: stream tokens
+    A-->>D: AgentEvent::TextDelta("Hello")
+    D-->>C: {"type":"token","content":"Hello"}
+    C->>D: {"type":"cancel"}
+    D->>A: handle.abort()
+    D-->>C: {"type":"cancelled","partial_content":"Hel"}
+    C->>D: {"type":"chat","messages":[{"role":"user","content":"New question"}]}
+    D->>A: spawn new run_agent_turn(...)
+    A-->>D: AgentEvent::Done{...}
+    D-->>C: {"type":"done","content":"...","usage":{...}}
 ```
 
-### Example (wscat)
+Key properties:
+- Cancel is **non-destructive** — the WebSocket stays open
+- After receiving `cancelled`, the client can send `chat` again immediately
+- The cancelled agent task is aborted via `tokio::task::JoinHandle::abort()`
+- A new `chat` message starts a fresh agent turn on the same connection
+- The daemon uses `tokio::select!` to listen on both event and cancel channels simultaneously
+
+### Tool Call Events (Example)
+
+```json
+{"type":"started","took_ms":1200}
+{"type":"token","content":"Let me check the current directory."}
+{"type":"tool_call_start","id":"call_001","name":"bash"}
+{"type":"tool_result","id":"call_001","name":"bash","output":"total 42\nREADME.md  src/\n","success":true}
+{"type":"token","content":"I see you have a Rust project."}
+{"type":"tool_call_start","id":"call_002","name":"read"}
+{"type":"tool_result","id":"call_002","name":"read","output":"fn main() { println!(\"hello\"); }","success":true}
+{"type":"token","content":"The main function is straightforward."}
+{"type":"done","content":"The main function is straightforward.","usage":{"prompt_tokens":120,"completion_tokens":85},"took_ms":5400,"tokens_per_sec":15}
+```
+
+### Example (websocat)
 
 ```bash
+# Install: cargo install websocat
 wscat -c ws://localhost:9090/v1/ws/chat
 > {"type":"chat","model":"deepseek-chat","messages":[{"role":"user","content":"Hi"}]}
+< {"type":"started","took_ms":800}
 < {"type":"token","content":"Hello"}
 < {"type":"token","content":"!"}
-< {"type":"done","usage":{"prompt":8,"completion":2}}
+< {"type":"done","content":"Hello!","usage":{"prompt_tokens":8,"completion_tokens":2},"took_ms":1500,"tokens_per_sec":1}
 ```
+
+---
+
+## Development Scripts
+
+### `scripts/dev-start.sh`
+
+One-command launcher for local development. Builds both daemon and CLI, starts
+the daemon in background, launches the CLI in foreground, and cleans up on exit.
+
+```bash
+# Default: build + start both
+./scripts/dev-start.sh
+
+# Build only
+./scripts/dev-start.sh --build
+
+# Daemon only (CLI connects to it separately)
+./scripts/dev-start.sh --daemon
+
+# CLI only (connects to an already-running daemon)
+./scripts/dev-start.sh --cli
+```
+
+Requires `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` in environment.
+Creates `~/.config/ohagent/config.toml` on first run with sensible defaults.
+
+### `scripts/test-integration.sh`
+
+End-to-end integration test that verifies the full daemon lifecycle:
+
+```bash
+# Full test (build + start + 3 tests)
+./scripts/test-integration.sh
+
+# Quick test (skip release build, use cached binary)
+./scripts/test-integration.sh --quick
+```
+
+Tests performed:
+
+1. **Health endpoint** — `GET /health` responds with status
+2. **WebSocket chat** — sends a message, receives `done` event
+3. **Cancel + re-chat** — cancels mid-stream, sends new message on same connection, verifies completion
+
+Prerequisites: `websocat` (`cargo install websocat`), `websockets` Python package
+(`pip install websockets`), and an API key (`OPENAI_API_KEY` or `ANTHROPIC_API_KEY`).
+
+### `scripts/setup-keys.sh`
+
+Interactive key setup — prompts for each provider's API key and writes them
+to `~/.ohagent/keys.toml` (or optionally to HashiCorp Vault).
+
+```bash
+# Write keys to file
+./scripts/setup-keys.sh
+
+# Write keys to Vault
+VAULT_ADDR=http://localhost:8200 ./scripts/setup-keys.sh --vault
+```
+
+---
+
+## User Stories
+
+### Story 1: Personal AI Assistant (Daily Driver)
+
+**As a** software developer
+**I want** a 24/7 personal AI assistant that I can chat with via Telegram and terminal
+**So that** I can get coding help, file management, and task automation without
+switching between browser and IDE.
+
+**Acceptance criteria:**
+- Start daemon once, it stays running 24/7
+- Send messages via Telegram bot or TUI client
+- Agent reads/writes files, runs bash commands, searches memory
+- All state survives daemon restarts
+- Agent remembers context across conversations (rolling summary + semantic search)
+
+### Story 2: WebSocket Chat with Cancel
+
+**As a** oh-agent CLI user
+**I want** to start a long-running agent task and be able to cancel it mid-stream
+**So that** I can interrupt a wrong assumption and ask a follow-up question
+without reconnecting.
+
+**Acceptance criteria:**
+- Send a chat message → see streaming tokens in TUI
+- Press `Esc` → agent stops, connection stays alive
+- Type new message → agent responds to the new question on the same connection
+- Tool calls (bash, read, write) are displayed with their results
+
+### Story 3: Multi-Provider Model Routing
+
+**As an** ohAgent user with multiple API keys
+**I want** the daemon to automatically route my requests to the best provider
+for each task type
+**So that** I get fast responses for simple questions (cheap models) and
+thorough answers for complex tasks (powerful models), without manual selection.
+
+**Acceptance criteria:**
+- Simple chat → routed to SiliconFlow or DeepSeek V4 Flash
+- Code review / complex reasoning → routed to Claude or DeepSeek Reasoner
+- Vision / OCR tasks → routed to Gemini or GLM (best Latvian OCR)
+- Fallback chain works when primary provider is down
+
+### Story 4: Memory Across Sessions
+
+**As a** long-term ohAgent user
+**I want** the assistant to remember my projects, preferences, and past decisions
+**So that** I don't have to repeat context every time I ask for help.
+
+**Acceptance criteria:**
+- Past conversations are summarized and stored in SQLite
+- Agent searches memory for relevant context before answering
+- `/remember "deployment server: 192.168.1.100"` explicitly saves facts
+- `/recall "what was my server IP?"` retrieves stored facts
+- Memory survives daemon restart
+
+### Story 5: Self-Learning Skills
+
+**As a** ohAgent user who asks for similar tasks repeatedly
+**I want** the agent to automatically recognise patterns and create reusable skills
+**So that** repeated tasks (e.g. "deploy to staging", "run tests") get faster
+and more accurate over time.
+
+**Acceptance criteria:**
+- Agent detects when a task is repeated 2+ times
+- A Proposed skill is created automatically
+- Successful usage promotes the skill to Active
+- `/skills` lists all skills with quality scores
+- Skills are suggested proactively when applicable
+
+### Story 6: Open WebUI / SDK Integration
+
+**As a** user with external tools (Open WebUI, custom scripts)
+**I want** ohAgent to expose an OpenAI-compatible API
+**So that** I can use my existing tools and scripts without modification.
+
+**Acceptance criteria:**
+- `POST /v1/chat/completions` works with OpenAI SDK
+- `GET /v1/models` returns available models
+- Streaming (SSE) and non-streaming modes both work
+- Tool-augmented completions work (agent can run bash/write/etc.)
+- WebSocket endpoint provides real-time tool call visibility
+
+### Story 7: Multi-Platform Gateways
+
+**As a** user who switches between Telegram, WhatsApp, and Slack
+**I want** to interact with the same ohAgent instance from any platform
+**So that** I can ask questions from whichever app I'm currently using.
+
+**Acceptance criteria:**
+- Telegram: bot responds, supports photos, pairing flow
+- WhatsApp: webhook receives messages, sends replies
+- Slack: responds when mentioned (`@ohagent ...`)
+- Conversation context is shared across platforms for the same user
+- All gateways can run simultaneously
+
+### Story 8: Heroku-Style Dashboard
+
+**As a** non-technical user
+**I want** a web dashboard where I can see my agent's status, skills, and memory
+**So that** I understand what the agent knows and can manage it visually.
+
+**Acceptance criteria:**
+- Dashboard shows uptime, active provider, skill count, memory count
+- Skill list with status filter (proposed/active/disabled/retired)
+- Memory search with source type and importance filtering
+- REST API powers the dashboard and is available for custom integrations
+
+### Story 9: Secure Secret Management
+
+**As a** production operator
+**I want** ohAgent to read API keys and secrets from HashiCorp Vault
+**So that** no secrets are stored in config files, env files, or Kubernetes
+Secrets.
+
+**Acceptance criteria:**
+- Vault integration follows resolution order: Vault → env → keys.toml
+- All provider API keys, Telegram tokens, and database passwords live in Vault
+- Graceful degradation: if Vault is unavailable, falls back to env/keys.toml
+- Kubernetes sidecar (Vault Agent) injects secrets automatically
+- Vault health endpoint (`/api/vault/health`) for monitoring
+
+### Story 10: Crash Recovery
+
+**As a** ohAgent operator
+**I want** the daemon to start up cleanly even after an unexpected crash
+**So that** I can rely on it as a 24/7 assistant without manual recovery steps.
+
+**Acceptance criteria:**
+- All SQLite databases use WAL mode for crash safety
+- Migrations are auto-applied on startup (idempotent)
+- Active sessions are restored from message log
+- Heartbeat recovers stale sessions
+- Daemon starts even if some components fail (graceful degradation)
+- Health endpoint returns detailed component status (`/health`)
 
 ---
 
