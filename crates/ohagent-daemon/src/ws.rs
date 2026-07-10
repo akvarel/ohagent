@@ -16,11 +16,14 @@
 //! Server → Client (JSON):
 //! ```json
 //! {"type": "token", "content": "Hello"}
-//! {"type": "tool_call_start", "id": "call_1", "name": "bash", "input": "ls -la"}
+//! {"type": "tool_call_start", "id": "call_1", "name": "bash"}
 //! {"type": "tool_result",  "id": "call_1", "name": "bash", "output": "total 42\n...", "success": true}
 //! {"type": "done", "usage": {"prompt_tokens": 100, "completion_tokens": 50}}
 //! {"type": "error", "message": "Provider error"}
 //! ```
+//!
+//! Cancel is non-destructive: it aborts the current turn but keeps the
+//! WebSocket alive for follow-up messages.
 
 use std::sync::Arc;
 use std::time::Instant;
@@ -65,6 +68,7 @@ struct OpenAiWsMessage {
 async fn handle_ws(ws: WebSocket, state: ApiState) {
     let (mut ws_tx, mut ws_rx) = ws.split();
     let (cmd_tx, mut cmd_rx) = mpsc::unbounded_channel::<WsCommand>();
+    let cmd_tx_writer = cmd_tx.clone();
 
     // Reader task: parse incoming JSON and send commands
     let mut read_handle = tokio::spawn(async move {
@@ -107,7 +111,9 @@ async fn handle_ws(ws: WebSocket, state: ApiState) {
         }
     });
 
-    // Writer task: process commands and stream agent_runner events
+    // Writer task: process commands and stream agent_runner events.
+    // The loop continues after each Chat turn (including cancelled ones),
+    // so the client can send follow-up messages without reconnecting.
     let mut write_task = tokio::spawn(async move {
         while let Some(cmd) = cmd_rx.recv().await {
             match cmd {
@@ -115,202 +121,14 @@ async fn handle_ws(ws: WebSocket, state: ApiState) {
                     send_json(&mut ws_tx, &serde_json::json!({"type": "cancelled"})).await;
                 }
                 WsCommand::Chat { model: _model, messages, temperature, max_tokens } => {
-                    let (jcode_msgs, mut system) = convert_messages(&messages);
-
-                    // Build system prompt (AGENTS.md, memory context, skills)
-                    let system = if let Some(ref builder) = state.system_prompt_builder {
-                        let budget = crate::system_prompt::PromptBudget::from_window(128_000);
-                        let project_dir = std::env::current_dir()
-                            .unwrap_or_else(|_| std::path::PathBuf::from("."));
-
-                        let user_msg = messages.last()
-                            .map(|m| m.content.as_str())
-                            .unwrap_or("");
-
-                        let compressed = state.memory.as_ref().and_then(|mem| {
-                            ohagent_memory::rolling_summary::load_or_create(
-                                mem.store(), "default", "default",
-                            ).ok()
-                            .and_then(|rs| if rs.compressed_history.is_empty() { None } else { Some(rs.compressed_history) })
-                        });
-
-                        let rag_strings: Vec<String> = if let Some(ref mem) = state.memory {
-                            mem.search("default", user_msg).ok()
-                                .map(|r| r.into_iter().take(5)
-                                    .map(|r| format!("[{}] {}", r.entry.id, r.entry.content))
-                                    .collect())
-                                .unwrap_or_default()
-                        } else {
-                            Vec::new()
-                        };
-
-                        let assembled = builder.assemble(
-                            &project_dir, user_msg, &system,
-                            compressed.as_deref(), &rag_strings, &budget,
-                        );
-                        assembled.system
-                    } else {
-                        system
-                    };
-
-                    let started = Instant::now();
-                    let input_tokens = ohagent_core::context_estimator::estimate_conversation_tokens(
-                        &jcode_msgs, &system,
-                    );
-
-                    // Session heartbeat
-                    if let Some(ref ss) = state.session_store {
-                        let tenant = "default";
-                        let shash = &messages.first()
-                            .map(|m| {
-                                use std::hash::{Hash, Hasher};
-                                let mut h = std::collections::hash_map::DefaultHasher::new();
-                                m.content.hash(&mut h);
-                                format!("{:x}", h.finish())
-                            })
-                            .unwrap_or_else(|| "default".into());
-                        let _ = ss.heartbeat(tenant, shash, messages.len() as u32, input_tokens as u64, ".");
-                    }
-
-                    // Resolve provider
-                    let provider: Arc<dyn jcode_provider_core::Provider> = if let Some(ref router) = state.model_router {
-                        match router.lock() {
-                            Ok(r) => {
-                                let msg = messages.last()
-                                    .map(|m| m.content.as_str())
-                                    .unwrap_or("");
-                                match r.route_with_messages("default", msg, Some(&jcode_msgs), Some(&system)) {
-                                    Ok(rm) => rm.provider,
-                                    Err(_) => Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>,
-                                }
-                            }
-                            Err(_) => Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>,
-                        }
-                    } else {
-                        Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>
-                    };
-
-                    let _ = (temperature, max_tokens);
-
-                    // Build tool definitions from the tool registry
-                    let tool_defs: Vec<ToolDefinition> = if let Some(ref tr) = state.tool_registry {
-                        tr.list().into_iter().map(|(name, desc)| {
-                            let schema = tr.get(&name)
-                                .map(|t| t.parameters_schema.clone())
-                                .unwrap_or(serde_json::Value::Null);
-                            ToolDefinition {
-                                name,
-                                description: desc,
-                                input_schema: schema,
-                            }
-                        }).collect()
-                    } else {
-                        Vec::new()
-                    };
-
-                    // Track total response text for done event
-                    let mut total_content = String::new();
-
-                    // Run agent_runner (supports tool calls)
-                    let (event_tx, mut event_rx) = mpsc::unbounded_channel::<AgentEvent>();
-
-                    let runner_provider = Arc::clone(&provider);
-                    let runner_msgs = jcode_msgs.clone();
-                    let runner_system = system.clone();
-                    let runner_defs = tool_defs.clone();
-                    let runner_tr = state.tool_registry.clone()
-                        .unwrap_or_else(|| Arc::new(ohagent_core::tools::ToolRegistry::new()));
-
-                    let mut first_event = true;
-                    let handle = tokio::spawn(async move {
-                        agent_runner::run_agent_turn(
-                            runner_provider,
-                            runner_msgs,
-                            runner_system,
-                            runner_defs,
-                            runner_tr,
-                            event_tx,
-                        ).await
-                    });
-
-                    // Drain agent events and send to client
-                    while let Some(event) = event_rx.recv().await {
-                        // Check for cancel
-                        if let Ok(cancel_cmd) = cmd_rx.try_recv() {
-                            if matches!(cancel_cmd, WsCommand::Cancel) {
-                                send_json(&mut ws_tx, &serde_json::json!({
-                                    "type": "cancelled",
-                                    "partial_content": total_content,
-                                })).await;
-                                return;
-                            }
-                        }
-
-                        match event {
-                            AgentEvent::TextDelta(text) => {
-                                if first_event {
-                                    first_event = false;
-                                    send_json(&mut ws_tx, &serde_json::json!({
-                                        "type": "started",
-                                        "took_ms": started.elapsed().as_millis(),
-                                    })).await;
-                                }
-                                total_content.push_str(&text);
-                                send_json(&mut ws_tx, &serde_json::json!({
-                                    "type": "token",
-                                    "content": text,
-                                })).await;
-                            }
-                            AgentEvent::ToolCallStart { id, name, .. } => {
-                                send_json(&mut ws_tx, &serde_json::json!({
-                                    "type": "tool_call_start",
-                                    "id": id,
-                                    "name": name,
-                                })).await;
-                            }
-                            AgentEvent::ToolResult { id, name, output, success } => {
-                                send_json(&mut ws_tx, &serde_json::json!({
-                                    "type": "tool_result",
-                                    "id": id,
-                                    "name": name,
-                                    "output": output,
-                                    "success": success,
-                                })).await;
-                            }
-                            AgentEvent::Done { total_tokens } => {
-                                let elapsed_ms = started.elapsed().as_millis();
-                                let tokens_per_sec = if elapsed_ms > 0 {
-                                    (total_tokens as f64 / (elapsed_ms as f64 / 1000.0)) as u32
-                                } else {
-                                    0
-                                };
-                                send_json(&mut ws_tx, &serde_json::json!({
-                                    "type": "done",
-                                    "content": total_content,
-                                    "usage": {
-                                        "prompt_tokens": input_tokens,
-                                        "completion_tokens": total_tokens.saturating_sub(input_tokens),
-                                        "total_tokens": total_tokens,
-                                    },
-                                    "took_ms": elapsed_ms,
-                                    "tokens_per_sec": tokens_per_sec,
-                                })).await;
-                            }
-                            AgentEvent::Error(message) => {
-                                send_json(&mut ws_tx, &serde_json::json!({
-                                    "type": "error",
-                                    "message": message,
-                                })).await;
-                                return;
-                            }
-                        }
-                    }
-
-                    // Await runner completion
-                    if let Err(e) = handle.await {
+                    let result = handle_chat(
+                        &state, &messages, temperature, max_tokens,
+                        &mut ws_tx, &cmd_tx_writer, &mut cmd_rx,
+                    ).await;
+                    if let Err(e) = result {
                         send_json(&mut ws_tx, &serde_json::json!({
                             "type": "error",
-                            "message": format!("Agent runner error: {e}"),
+                            "message": e,
                         })).await;
                     }
                 }
@@ -322,6 +140,228 @@ async fn handle_ws(ws: WebSocket, state: ApiState) {
         _ = &mut read_handle => { write_task.abort(); }
         _ = &mut write_task => { read_handle.abort(); }
     }
+}
+
+/// Handle a single chat turn: build system prompt, run agent_runner, stream events.
+///
+/// Returns `Ok(())` on completion or cancel (connection stays alive).
+/// Returns `Err(String)` on fatal error.
+async fn handle_chat(
+    state: &ApiState,
+    messages: &[OpenAiWsMessage],
+    _temperature: Option<f32>,
+    _max_tokens: Option<u32>,
+    ws_tx: &mut futures::stream::SplitSink<WebSocket, Message>,
+    _cmd_tx: &mpsc::UnboundedSender<WsCommand>,
+    cmd_rx: &mut mpsc::UnboundedReceiver<WsCommand>,
+) -> Result<(), String> {
+    let (jcode_msgs, mut system) = convert_messages(messages);
+
+    // Build system prompt (AGENTS.md, memory context, skills)
+    let system = if let Some(ref builder) = state.system_prompt_builder {
+        let budget = crate::system_prompt::PromptBudget::from_window(128_000);
+        let project_dir = std::env::current_dir()
+            .unwrap_or_else(|_| std::path::PathBuf::from("."));
+
+        let user_msg = messages.last()
+            .map(|m| m.content.as_str())
+            .unwrap_or("");
+
+        let compressed = state.memory.as_ref().and_then(|mem| {
+            ohagent_memory::rolling_summary::load_or_create(
+                mem.store(), "default", "default",
+            ).ok()
+            .and_then(|rs| if rs.compressed_history.is_empty() { None } else { Some(rs.compressed_history) })
+        });
+
+        let rag_strings: Vec<String> = if let Some(ref mem) = state.memory {
+            mem.search("default", user_msg).ok()
+                .map(|r| r.into_iter().take(5)
+                    .map(|r| format!("[{}] {}", r.entry.id, r.entry.content))
+                    .collect())
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+
+        let assembled = builder.assemble(
+            &project_dir, user_msg, &system,
+            compressed.as_deref(), &rag_strings, &budget,
+        );
+        assembled.system
+    } else {
+        system
+    };
+
+    let started = Instant::now();
+    let input_tokens = ohagent_core::context_estimator::estimate_conversation_tokens(
+        &jcode_msgs, &system,
+    );
+
+    // Session heartbeat
+    if let Some(ref ss) = state.session_store {
+        let tenant = "default";
+        let shash = &messages.first()
+            .map(|m| {
+                use std::hash::{Hash, Hasher};
+                let mut h = std::collections::hash_map::DefaultHasher::new();
+                m.content.hash(&mut h);
+                format!("{:x}", h.finish())
+            })
+            .unwrap_or_else(|| "default".into());
+        let _ = ss.heartbeat(tenant, shash, messages.len() as u32, input_tokens as u64, ".");
+    }
+
+    // Resolve provider
+    let provider: Arc<dyn jcode_provider_core::Provider> = if let Some(ref router) = state.model_router {
+        match router.lock() {
+            Ok(r) => {
+                let msg = messages.last()
+                    .map(|m| m.content.as_str())
+                    .unwrap_or("");
+                match r.route_with_messages("default", msg, Some(&jcode_msgs), Some(&system)) {
+                    Ok(rm) => rm.provider,
+                    Err(_) => Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>,
+                }
+            }
+            Err(_) => Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>,
+        }
+    } else {
+        Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>
+    };
+
+    let _ = (_temperature, _max_tokens);
+
+    // Build tool definitions from the tool registry
+    let tool_defs: Vec<ToolDefinition> = if let Some(ref tr) = state.tool_registry {
+        tr.list().into_iter().map(|(name, desc)| {
+            let schema = tr.get(&name)
+                .map(|t| t.parameters_schema.clone())
+                .unwrap_or(serde_json::Value::Null);
+            ToolDefinition {
+                name,
+                description: desc,
+                input_schema: schema,
+            }
+        }).collect()
+    } else {
+        Vec::new()
+    };
+
+    // Track total response text for done event
+    let mut total_content = String::new();
+
+    // Run agent_runner (supports tool calls)
+    let (event_tx, mut event_rx) = mpsc::unbounded_channel::<AgentEvent>();
+
+    let runner_provider = Arc::clone(&provider);
+    let runner_msgs = jcode_msgs.clone();
+    let runner_system = system.clone();
+    let runner_defs = tool_defs.clone();
+    let runner_tr = state.tool_registry.clone()
+        .unwrap_or_else(|| Arc::new(ohagent_core::tools::ToolRegistry::new()));
+
+    let handle = tokio::spawn(async move {
+        agent_runner::run_agent_turn(
+            runner_provider,
+            runner_msgs,
+            runner_system,
+            runner_defs,
+            runner_tr,
+            event_tx,
+        ).await
+    });
+
+    // Drain agent events and stream to client
+    let mut first_event = true;
+    let mut was_cancelled = false;
+    while let Some(event) = event_rx.recv().await {
+        // Check for cancel (non-destructive — connection stays alive)
+        if let Ok(cancel_cmd) = cmd_rx.try_recv() {
+            if matches!(cancel_cmd, WsCommand::Cancel) {
+                handle.abort();
+                send_json(ws_tx, &serde_json::json!({
+                    "type": "cancelled",
+                    "partial_content": total_content,
+                })).await;
+                was_cancelled = true;
+                break;
+            }
+        }
+
+        match event {
+            AgentEvent::TextDelta(text) => {
+                if first_event {
+                    first_event = false;
+                    send_json(ws_tx, &serde_json::json!({
+                        "type": "started",
+                        "took_ms": started.elapsed().as_millis(),
+                    })).await;
+                }
+                total_content.push_str(&text);
+                send_json(ws_tx, &serde_json::json!({
+                    "type": "token",
+                    "content": text,
+                })).await;
+            }
+            AgentEvent::ToolCallStart { id, name, .. } => {
+                send_json(ws_tx, &serde_json::json!({
+                    "type": "tool_call_start",
+                    "id": id,
+                    "name": name,
+                })).await;
+            }
+            AgentEvent::ToolResult { id, name, output, success } => {
+                send_json(ws_tx, &serde_json::json!({
+                    "type": "tool_result",
+                    "id": id,
+                    "name": name,
+                    "output": output,
+                    "success": success,
+                })).await;
+            }
+            AgentEvent::Done { total_tokens } => {
+                let elapsed_ms = started.elapsed().as_millis();
+                let tokens_per_sec = if elapsed_ms > 0 {
+                    (total_tokens as f64 / (elapsed_ms as f64 / 1000.0)) as u32
+                } else {
+                    0
+                };
+                send_json(ws_tx, &serde_json::json!({
+                    "type": "done",
+                    "content": total_content,
+                    "usage": {
+                        "prompt_tokens": input_tokens,
+                        "completion_tokens": total_tokens.saturating_sub(input_tokens),
+                        "total_tokens": total_tokens,
+                    },
+                    "took_ms": elapsed_ms,
+                    "tokens_per_sec": tokens_per_sec,
+                })).await;
+            }
+            AgentEvent::Error(message) => {
+                send_json(ws_tx, &serde_json::json!({
+                    "type": "error",
+                    "message": message,
+                })).await;
+                return Err(message);
+            }
+        }
+    }
+
+    // If cancelled, drain the runner handle silently
+    if was_cancelled {
+        handle.abort();
+        let _ = handle.await;
+    } else {
+        // Await runner completion for normal exit
+        if let Err(e) = handle.await {
+            // Runner panicked — that's an error
+            return Err(format!("Agent runner panicked: {e}"));
+        }
+    }
+
+    Ok(())
 }
 
 async fn send_json(
