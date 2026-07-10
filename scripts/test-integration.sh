@@ -9,12 +9,11 @@
 #   - cargo + websocat (install: cargo install websocat)
 #   - OPENAI_API_KEY or ANTHROPIC_API_KEY
 
-set -euo pipefail
+set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 DAEMON_PORT=18447
-HEALTH_PORT=18448
 TMPDIR=$(mktemp -d /tmp/ohagent-test-XXXXXX)
 CONFIG_FILE="$TMPDIR/config.toml"
 DAEMON_LOG="$TMPDIR/daemon.log"
@@ -59,19 +58,9 @@ fi
 echo ""
 echo "=== Create test config ==="
 cat > "$CONFIG_FILE" <<EOF
-[daemon]
-host = "127.0.0.1"
-port = $DAEMON_PORT
-telegram_enabled = false
-api_keys = []
-
-[logging]
-level = "debug"
-json = false
-
-[provider]
-name = "openai"
-model = "gpt-4o-mini"
+# Test config — only telegram matters since daemon uses CLI for port
+[telegram]
+enabled = false
 EOF
 echo "  Config: $CONFIG_FILE (port $DAEMON_PORT)"
 
@@ -86,13 +75,13 @@ echo ""
 echo "=== Start daemon ==="
 cd "$PROJECT_DIR"
 RUST_LOG="${RUST_LOG:-warn,ohagent_daemon=debug}" \
-cargo run --release -p ohagent-daemon -- --config "$CONFIG_FILE" --health-port "$HEALTH_PORT" --telegram false &
+cargo run --release -p ohagent-daemon -- --config "$CONFIG_FILE" --health-port "$DAEMON_PORT" >"$DAEMON_LOG" 2>&1 &
 DAEMON_PID=$!
 echo "  Daemon PID: $DAEMON_PID (log: $DAEMON_LOG)"
 
 echo "  Waiting for daemon..."
 for i in $(seq 1 30); do
-    if curl -sf "http://127.0.0.1:$HEALTH_PORT/health" >/dev/null 2>&1; then
+    if curl -sf "http://127.0.0.1:$DAEMON_PORT/health" >/dev/null 2>&1; then
         echo "  Daemon ready after ${i}s"
         break
     fi
@@ -112,7 +101,7 @@ echo "========================================="
 # ---- Test 1: health ----
 echo ""
 echo "--- Test 1: Health ---"
-HEALTH=$(curl -sf "http://127.0.0.1:$HEALTH_PORT/health" 2>/dev/null || echo "FAILED")
+HEALTH=$(curl -sf "http://127.0.0.1:$DAEMON_PORT/health" 2>/dev/null || echo "FAILED")
 if [[ "$HEALTH" != "FAILED" ]]; then
     pass "Health endpoint responds"
 else
@@ -122,18 +111,57 @@ fi
 # ---- Test 2: WS echo / single chat ----
 echo ""
 echo "--- Test 2: Single WebSocket chat ---"
-WS_OUT=$(echo '{"type":"chat","model":"deepseek-chat","messages":[{"role":"user","content":"Say hello in 3 words"}]}' | \
-    timeout 60 websocat -n1 "ws://127.0.0.1:$DAEMON_PORT/v1/ws/chat" 2>/dev/null || echo "WS_FAILED")
+python3 -c "
+import asyncio, json
+try:
+    import websockets
+except ImportError:
+    print('SKIP: websockets Python lib not installed')
+    exit(42)
 
-if [[ "$WS_OUT" != "WS_FAILED" ]] && echo "$WS_OUT" | grep -q "done"; then
+async def test_single():
+    uri = f'ws://127.0.0.1:$DAEMON_PORT/v1/ws/chat'
+    async with websockets.connect(uri) as ws:
+        await ws.send(json.dumps({
+            'type': 'chat',
+            'messages': [{'role': 'user', 'content': 'Say hello in 3 words'}]
+        }))
+        
+        got_started = False
+        got_done = False
+        for _ in range(100):
+            msg = await asyncio.wait_for(ws.recv(), timeout=5)
+            data = json.loads(msg)
+            if data.get('type') == 'started':
+                got_started = True
+            if data.get('type') == 'done':
+                got_done = True
+                break
+        
+        if got_done:
+            print('PASS: WS chat produced done event')
+            return True
+        else:
+            print('FAIL: No done event')
+            return False
+
+try:
+    result = asyncio.run(test_single())
+    exit(0 if result else 1)
+except Exception as e:
+    print(f'FAIL: Exception {e}')
+    exit(1)
+" 2>&1
+
+RC=$?
+if [[ $RC -eq 0 ]]; then
     pass "WS chat produces done event"
-elif [[ "$WS_OUT" == "WS_FAILED" ]]; then
-    fail "WS chat failed (timeout/connection error)"
-    echo "  daemon log tail:"
-    tail -10 "$DAEMON_LOG" 2>/dev/null || true
+elif [[ $RC -eq 42 ]]; then
+    echo "  ⏭️  Skipping (no websockets Python lib)"
 else
-    fail "WS chat missing done event"
-    echo "  Output: $(echo "$WS_OUT" | head -c 200)"
+    fail "WS single chat failed"
+    echo "  daemon log tail:"
+    tail -5 "$DAEMON_LOG" 2>/dev/null || true
 fi
 
 # ---- Test 3: Cancel + re-chat ----

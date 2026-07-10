@@ -272,79 +272,95 @@ async fn handle_chat(
         ).await
     });
 
-    // Drain agent events and stream to client
+    // Drain agent events and stream to client.
+    // Use select! so cancel is processed even when event channel is idle.
     let mut first_event = true;
     let mut was_cancelled = false;
-    while let Some(event) = event_rx.recv().await {
-        // Check for cancel (non-destructive — connection stays alive)
-        if let Ok(cancel_cmd) = cmd_rx.try_recv() {
-            if matches!(cancel_cmd, WsCommand::Cancel) {
-                handle.abort();
-                send_json(ws_tx, &serde_json::json!({
-                    "type": "cancelled",
-                    "partial_content": total_content,
-                })).await;
-                was_cancelled = true;
-                break;
-            }
-        }
-
-        match event {
-            AgentEvent::TextDelta(text) => {
-                if first_event {
-                    first_event = false;
-                    send_json(ws_tx, &serde_json::json!({
-                        "type": "started",
-                        "took_ms": started.elapsed().as_millis(),
-                    })).await;
+    loop {
+        tokio::select! {
+            event = event_rx.recv() => {
+                match event {
+                    Some(AgentEvent::TextDelta(text)) => {
+                        if first_event {
+                            first_event = false;
+                            send_json(ws_tx, &serde_json::json!({
+                                "type": "started",
+                                "took_ms": started.elapsed().as_millis(),
+                            })).await;
+                        }
+                        total_content.push_str(&text);
+                        send_json(ws_tx, &serde_json::json!({
+                            "type": "token",
+                            "content": text,
+                        })).await;
+                    }
+                    Some(AgentEvent::ToolCallStart { id, name, .. }) => {
+                        send_json(ws_tx, &serde_json::json!({
+                            "type": "tool_call_start",
+                            "id": id,
+                            "name": name,
+                        })).await;
+                    }
+                    Some(AgentEvent::ToolResult { id, name, output, success }) => {
+                        send_json(ws_tx, &serde_json::json!({
+                            "type": "tool_result",
+                            "id": id,
+                            "name": name,
+                            "output": output,
+                            "success": success,
+                        })).await;
+                    }
+                    Some(AgentEvent::Done { total_tokens }) => {
+                        let elapsed_ms = started.elapsed().as_millis();
+                        let tokens_per_sec = if elapsed_ms > 0 {
+                            (total_tokens as f64 / (elapsed_ms as f64 / 1000.0)) as u32
+                        } else {
+                            0
+                        };
+                        send_json(ws_tx, &serde_json::json!({
+                            "type": "done",
+                            "content": total_content,
+                            "usage": {
+                                "prompt_tokens": input_tokens,
+                                "completion_tokens": total_tokens.saturating_sub(input_tokens),
+                                "total_tokens": total_tokens,
+                            },
+                            "took_ms": elapsed_ms,
+                            "tokens_per_sec": tokens_per_sec,
+                        })).await;
+                    }
+                    Some(AgentEvent::Error(message)) => {
+                        send_json(ws_tx, &serde_json::json!({
+                            "type": "error",
+                            "message": message,
+                        })).await;
+                        return Err(message);
+                    }
+                    None => {
+                        // Event channel closed (agent finished or panicked)
+                        break;
+                    }
                 }
-                total_content.push_str(&text);
-                send_json(ws_tx, &serde_json::json!({
-                    "type": "token",
-                    "content": text,
-                })).await;
             }
-            AgentEvent::ToolCallStart { id, name, .. } => {
-                send_json(ws_tx, &serde_json::json!({
-                    "type": "tool_call_start",
-                    "id": id,
-                    "name": name,
-                })).await;
-            }
-            AgentEvent::ToolResult { id, name, output, success } => {
-                send_json(ws_tx, &serde_json::json!({
-                    "type": "tool_result",
-                    "id": id,
-                    "name": name,
-                    "output": output,
-                    "success": success,
-                })).await;
-            }
-            AgentEvent::Done { total_tokens } => {
-                let elapsed_ms = started.elapsed().as_millis();
-                let tokens_per_sec = if elapsed_ms > 0 {
-                    (total_tokens as f64 / (elapsed_ms as f64 / 1000.0)) as u32
-                } else {
-                    0
-                };
-                send_json(ws_tx, &serde_json::json!({
-                    "type": "done",
-                    "content": total_content,
-                    "usage": {
-                        "prompt_tokens": input_tokens,
-                        "completion_tokens": total_tokens.saturating_sub(input_tokens),
-                        "total_tokens": total_tokens,
-                    },
-                    "took_ms": elapsed_ms,
-                    "tokens_per_sec": tokens_per_sec,
-                })).await;
-            }
-            AgentEvent::Error(message) => {
-                send_json(ws_tx, &serde_json::json!({
-                    "type": "error",
-                    "message": message,
-                })).await;
-                return Err(message);
+            cmd = cmd_rx.recv() => {
+                match cmd {
+                    Some(WsCommand::Cancel) => {
+                        handle.abort();
+                        send_json(ws_tx, &serde_json::json!({
+                            "type": "cancelled",
+                            "partial_content": total_content,
+                        })).await;
+                        was_cancelled = true;
+                        break;
+                    }
+                    Some(_) => {
+                        // Non-cancel commands (shouldn't arrive during a turn)
+                    }
+                    None => {
+                        // Command channel closed — break out
+                        break;
+                    }
+                }
             }
         }
     }
