@@ -1,0 +1,17 @@
+[package]
+name = "ohagent-sandbox"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "On-demand isolated compute VMs for heavy workloads (Java/GraalVM, k3s)"
+
+[dependencies]
+tokio = { workspace = true, features = ["full"] }
+serde = { workspace = true }
+serde_json = "1"
+reqwest = { workspace = true, features = ["json"] }
+dashmap = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+rand = "0.8"

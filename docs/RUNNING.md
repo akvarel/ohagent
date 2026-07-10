@@ -38,8 +38,31 @@ Any message to the bot starts a Jcode AI session. Full coding, research, file op
 | `/lang` | Toggle EN → LV → RU |
 | `/help` | Show all commands |
 | `/model` | Show/set model preferences |
+| `/sandbox compile-java repo=<url>` | External VM for GraalVM native-image compilation |
 
-### 4. REST API
+### 4. Sandbox (external VMs)
+
+Provision isolated VMs on-demand for heavy workloads. VMs are firewalled
+from the main server — they **cannot** modify ohAgent configuration.
+
+| Command | VM | Cost | Use case |
+|---|---|---|---|
+| `/sandbox compile-java repo=<url>` | CPX41 (8 vCPU, 16 GB) | €0.022/hr | GraalVM native-image |
+| `/sandbox rust-build repo=<url>` | CPX41 (8 vCPU, 16 GB) | €0.022/hr | cargo build --release |
+| `/sandbox k3s-test cmd=<cmd>` | CPX51 (16 vCPU, 32 GB) | €0.048/hr | K8s cluster test |
+| `/sandbox run cmd=<cmd>` | CPX41 (8 vCPU, 16 GB) | €0.022/hr | Any shell command |
+
+```text
+# Example
+/sandbox compile-java repo=https://github.com/user/spring-app ttl=30m
+
+# Result: VM created, GraalVM installed, repo cloned, native-image runs
+# VM auto-destroyed after TTL (or /sandbox destroy <job_id>)
+```
+
+See [SANDBOX-SERVERS.md](SANDBOX-SERVERS.md) for full architecture and isolation guarantees.
+
+### 5. REST API
 
 ```bash
 # Health (no auth)

@@ -4634,6 +4634,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ohagent-sandbox"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "dashmap",
+ "rand 0.8.6",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "ohagent-skills"
 version = "0.1.0"
 dependencies = [
