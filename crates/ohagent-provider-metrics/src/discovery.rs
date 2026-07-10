@@ -40,7 +40,7 @@ pub fn probe_patterns(provider: &str) -> Vec<String> {
 /// Discover the real model IDs and pricing from a provider's API.
 /// Returns: Vec of (model_id, supports_chat, supports_vision, supports_audio)
 pub async fn discover_models(
-    provider: &str,
+    _provider: &str,
     api_base: &str,
     api_key: &str,
 ) -> Result<Vec<(String, Vec<String>)>, String> {

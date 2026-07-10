@@ -87,7 +87,7 @@ pub fn should_compress(
 pub fn parse_merge_response(
     response_json: &str,
     existing: &RollingSummary,
-    new_messages_len: usize,
+    _new_messages_len: usize,
     new_topics: Vec<TopicRef>,
 ) -> Option<(String, Vec<TopicRef>)> {
     let parsed: serde_json::Value = serde_json::from_str(response_json).ok()?;

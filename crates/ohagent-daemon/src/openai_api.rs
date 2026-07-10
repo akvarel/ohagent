@@ -448,7 +448,7 @@ pub async fn chat_completions_handler(
         let user_msg = req.messages.last()
             .map(|m| m.content.as_str())
             .unwrap_or("");
-        let mut plugin_msg = ohagent_plugins::PluginMessage::new(
+        let plugin_msg = ohagent_plugins::PluginMessage::new(
             user_msg.to_string(),
             "default".to_string(),
             "openai-api".to_string(),
@@ -835,7 +835,7 @@ async fn handle_non_streaming_with_tools(
 
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
-    let handle = tokio::spawn(async move {
+    let _handle = tokio::spawn(async move {
         agent_runner::run_agent_turn(provider, messages, system, tool_defs, tr, tx).await
     });
 

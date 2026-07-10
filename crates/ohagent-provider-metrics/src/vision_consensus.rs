@@ -110,7 +110,7 @@ pub fn run_consensus(
         }
 
         let max_count = counts.values().max().copied().unwrap_or(0);
-        let best_val = counts.iter()
+        let _best_val = counts.iter()
             .max_by_key(|(_, &c)| c)
             .map(|(&v, _)| v.to_string())
             .unwrap_or_default();
@@ -162,7 +162,7 @@ fn extract_field(data: &ReceiptData, field: &str) -> String {
 fn find_best_model(
     results: &[(String, ReceiptData)],
     field_values: &HashMap<&str, Vec<(&str, String)>>,
-    threshold: usize,
+    _threshold: usize,
 ) -> usize {
     let mut best_score = 0usize;
     let mut best_idx = 0usize;

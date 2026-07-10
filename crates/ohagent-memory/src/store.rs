@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use tracing::{debug, info};
 
-use crate::models::{ConversationSummary, MemoryConfig, MemoryEntry, MemorySource, RollingSummary, TopicRef};
+use crate::models::{ConversationSummary, MemoryConfig, MemoryEntry, MemorySource, RollingSummary};
 use crate::Result;
 
 /// The memory store — thread-safe wrapper around an SQLite connection.

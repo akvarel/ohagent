@@ -155,7 +155,7 @@ async fn handle_chat(
     _cmd_tx: &mpsc::UnboundedSender<WsCommand>,
     cmd_rx: &mut mpsc::UnboundedReceiver<WsCommand>,
 ) -> Result<(), String> {
-    let (jcode_msgs, mut system) = convert_messages(messages);
+    let (jcode_msgs, system) = convert_messages(messages);
 
     // Build system prompt (AGENTS.md, memory context, skills)
     let system = if let Some(ref builder) = state.system_prompt_builder {

@@ -3,8 +3,7 @@
 //! Routes queries through the CMC controller, adapting ModelRouter's
 //! model selection decisions to CMC's branching, probing, and stopping.
 
-use std::sync::Arc;
-use tracing::{debug, info};
+use tracing::debug;
 
 use crate::budget::{BudgetTracker, PricingProvider};
 use crate::cmc::{CmcConfig, CmcController, CmcDecision, PoolStats};

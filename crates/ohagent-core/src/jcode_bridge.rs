@@ -14,7 +14,7 @@ use jcode_app_core::{
     },
 };
 use jcode_provider_core::Provider as ProviderTrait;
-use jcode_message_types::{ContentBlock, Message, Role, StreamEvent, ToolDefinition};
+use jcode_message_types::ToolDefinition;
 use crate::agent_runner::{self, AgentEvent};
 use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};

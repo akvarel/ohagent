@@ -61,7 +61,7 @@ impl DynamicRouter {
 
         // Convert all prices to EUR for comparison
         let eur_rates: Vec<(&str, f64)> = vec![("USD", 0.92), ("EUR", 1.0), ("CNY", 0.13)];
-        let to_eur = |currency: &str, price: f64| -> f64 {
+        let _to_eur = |currency: &str, price: f64| -> f64 {
             eur_rates.iter().find(|(c, _)| *c == currency).map(|(_, r)| price * r).unwrap_or(price)
         };
 

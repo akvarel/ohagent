@@ -24,7 +24,7 @@ use tracing::{debug, info, warn};
 
 use ohagent_core::model_router::{ModelRouter, RoutedModel};
 use ohagent_reasoning::budget::{BudgetTracker, BudgetConfig};
-use ohagent_reasoning::cmc::{CmcConfig, BranchState, PoolStats};
+use ohagent_reasoning::cmc::CmcConfig;
 use ohagent_reasoning::router::{ReasoningRouter, ReasoningAction, ReasoningStep};
 use ohagent_core::pricing::PricingRegistry;
 

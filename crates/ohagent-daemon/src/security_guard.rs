@@ -17,7 +17,7 @@
 
 /// Check if a command or file operation is attempting to modify
 /// system configuration. Returns `Ok(())` if safe, `Err(reason)` if blocked.
-pub fn check_command_safety(command: &str, working_dir: &str) -> Result<(), String> {
+pub fn check_command_safety(command: &str, _working_dir: &str) -> Result<(), String> {
     let lower = command.to_lowercase();
 
     // ── Block kubectl mutations ──

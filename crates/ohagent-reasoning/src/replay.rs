@@ -16,9 +16,8 @@
 //! ```
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::path::PathBuf;
-use tracing::{debug, info};
+use tracing::info;
 
 use crate::cmc::{CmcConfig, CmcController, CmcDecision};
 

@@ -238,7 +238,7 @@ fn normalize_gemini_receipt(raw: Value) -> ReceiptData {
     let mut total = num_val(&raw, "total", 0.0);
 
     // Extract from vat_details if available
-    if (sub == 0.0 || total == 0.0) {
+    if sub == 0.0 || total == 0.0 {
         if let Some(vd) = raw.get("vat_details").and_then(|v| v.as_array()) {
             if let Some(vd0) = vd.first().and_then(|v| v.as_object()) {
                 if sub == 0.0 { sub = vd0.get("net_amount").and_then(|v| v.as_f64()).unwrap_or(0.0); }

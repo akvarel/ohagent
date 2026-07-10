@@ -15,7 +15,7 @@
 
 use std::sync::Mutex;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use flate2::read::GzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;

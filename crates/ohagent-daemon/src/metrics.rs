@@ -17,7 +17,7 @@ use axum::{
     Extension,
 };
 use prometheus::{
-    register_counter_vec, register_gauge, Counter, CounterVec, Encoder, Gauge, TextEncoder,
+    register_counter_vec, register_gauge, CounterVec, Encoder, Gauge, TextEncoder,
 };
 use std::sync::Arc;
 use std::time::Instant;
@@ -123,7 +123,7 @@ pub async fn metrics_middleware(
 
 /// GET /metrics — Prometheus scrape endpoint.
 pub async fn metrics_handler(
-    Extension(state): Extension<MetricsState>,
+    Extension(_state): Extension<MetricsState>,
 ) -> Result<String, axum::http::StatusCode> {
     let metric_families = prometheus::gather();
     let mut buffer = Vec::new();

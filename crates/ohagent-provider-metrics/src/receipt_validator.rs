@@ -97,7 +97,7 @@ pub struct ReceiptItem {
 /// Auto-detects VAT allocation lines and excludes them from item sum.
 pub fn validate_receipt(data: &ReceiptData) -> ReceiptVerdict {
     let mut issues: Vec<String> = Vec::new();
-    let mut fixes: Vec<String> = Vec::new();
+    let fixes: Vec<String> = Vec::new();
     let mut warnings: Vec<String> = Vec::new();
     let mut score: u32 = 100;
 

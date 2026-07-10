@@ -46,7 +46,7 @@ fn bash_tool(workspace_dir: &str) -> Tool {
                 None => return ToolResult::err("Missing command", "command is required"),
             };
 
-            let timeout_ms = params
+            let _timeout_ms = params
                 .get("timeout_ms")
                 .and_then(|v| v.as_u64())
                 .unwrap_or(120_000);

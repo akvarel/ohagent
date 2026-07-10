@@ -37,11 +37,11 @@ use ohagent_memory::engine::MemoryEngine;
 use ohagent_memory::models::MemoryConfig;
 use ohagent_skills::registry::SkillRegistry;
 use ohagent_skills::SkillConfig;
-use crate::health::{HealthRegistry, HealthStatus};
+use crate::health::HealthRegistry;
 use crate::system_prompt::{PersistentInstructions, SystemPromptBuilder, SkillPrompt};
 use jcode_provider_core::Provider;
 use jcode_base::mcp::SharedMcpPool;
-use ohagent_plugins::{PluginConfig, PluginManager};
+use ohagent_plugins::PluginManager;
 use ohagent_provider_metrics::{GeminiOcrClient, GeminiOcrConfig};
 use std::sync::Mutex as StdMutex;
 

@@ -7,7 +7,7 @@
 //! Tracks applied migrations in a `_migrations` table within each SQLite database.
 
 use rusqlite::Connection;
-use tracing::{info, warn};
+use tracing::info;
 
 /// A single database migration.
 pub struct Migration {

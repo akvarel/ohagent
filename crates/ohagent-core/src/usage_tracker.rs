@@ -3,7 +3,7 @@
 //! Tracks every model call: which model, what task, token usage,
 //! duration, estimated cost. Stores in SQLite alongside other data.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};

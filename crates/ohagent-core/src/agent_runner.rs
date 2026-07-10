@@ -79,7 +79,7 @@ pub async fn run_agent_turn(
     let mut total_input_tokens: u32 = 0;
     let mut total_output_tokens: u32 = 0;
 
-    for round in 0..MAX_TOOL_ROUNDS {
+    for _round in 0..MAX_TOOL_ROUNDS {
         let stream = provider
             .complete(&current_messages, &tool_defs, &system, None)
             .await

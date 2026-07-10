@@ -126,7 +126,7 @@ impl VaultClient {
     pub async fn authenticate(&mut self, method: &AuthMethod) -> Result<(), VaultError> {
         match method {
             AuthMethod::Token => {
-                let token = self
+                let _token = self
                     .token
                     .as_ref()
                     .ok_or_else(|| VaultError::Auth("No VAULT_TOKEN set".into()))?;

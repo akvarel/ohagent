@@ -12,8 +12,8 @@ use ohagent_core::context_estimator;
 use ohagent_memory::engine::MemoryEngine;
 use ohagent_memory::models::{RollingSummary, TopicRef};
 use ohagent_memory::rolling_summary::{
-    self, should_compress, build_merge_prompt, parse_merge_response,
-    merge_and_save, COMPRESSION_TOKEN_THRESHOLD, COMPRESSION_ITERATION_THRESHOLD,
+    should_compress, build_merge_prompt, parse_merge_response,
+    merge_and_save,
 };
 use tracing::{debug, info, warn};
 

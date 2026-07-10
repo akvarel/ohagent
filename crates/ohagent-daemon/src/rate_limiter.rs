@@ -7,9 +7,7 @@
 //! For production, replace with a Redis/DragonflyDB-backed implementation.
 
 use dashmap::DashMap;
-use std::sync::Arc;
 use std::time::{Duration, Instant};
-use tokio::sync::Mutex;
 
 /// Configuration for the rate limiter.
 #[derive(Debug, Clone)]
