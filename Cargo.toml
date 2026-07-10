@@ -17,6 +17,7 @@ members = [
     "crates/ohagent-aggregator-core",
     "crates/ohagent-aggregator-plugin",
     "crates/ohagent-sandbox",
+    "crates/ohagent-cli",
 ]
 
 [workspace.package]

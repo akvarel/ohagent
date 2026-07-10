@@ -49,7 +49,7 @@ pub enum AgentEvent {
     /// Text delta — stream to user
     TextDelta(String),
     /// Tool call started
-    ToolCallStart { id: String, name: String },
+    ToolCallStart { id: String, name: String, input: String },
     /// Tool execution result
     ToolResult { id: String, name: String, output: String, success: bool },
     /// Turn complete
@@ -103,6 +103,7 @@ pub async fn run_agent_turn(
                     let _ = event_tx.send(AgentEvent::ToolCallStart {
                         id: id.clone(),
                         name: name.clone(),
+                        input: String::new(),
                     });
                     current_tool = Some(PendingTool {
                         id,

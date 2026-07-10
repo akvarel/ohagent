@@ -937,7 +937,7 @@ async fn handle_streaming_with_tools(
                     let json = serde_json::to_string(&chunk).unwrap_or_default();
                     yield Ok(Event::default().data(json));
                 }
-                AgentEvent::ToolCallStart { name, id: tid } => {
+                AgentEvent::ToolCallStart { name, id: tid, .. } => {
                     yield Ok(Event::default().comment(format!("tool:{name}:{tid}")));
                 }
                 AgentEvent::Error(msg) => {
