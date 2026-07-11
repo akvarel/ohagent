@@ -100,6 +100,28 @@ tools = true
 fim_completion = false
 chat_prefix = false
 
+# ── Tier: enterprise / Copilot ACP (no API key needed) ──
+
+[[models]]
+id = "copilot-gpt-4o"
+provider = "copilot-acp"
+api_key_env = "COPILOT_CLI_PATH"
+display = "GitHub Copilot GPT-4o (ACP)"
+capabilities = ["coding", "general_chat", "analysis", "agentic"]
+cost_tier = "medium"
+context = 128_000
+tools = true
+
+[[models]]
+id = "copilot-gpt-4o-mini"
+provider = "copilot-acp"
+api_key_env = "COPILOT_CLI_PATH"
+display = "GitHub Copilot GPT-4o Mini (ACP)"
+capabilities = ["coding", "general_chat", "analysis", "agentic"]
+cost_tier = "low"
+context = 128_000
+tools = true
+
 # ── Tier: enterprise / LoRA fine-tuned variants ──
 
 [[models]]

@@ -85,6 +85,7 @@ ohAgent resolves secrets in priority order: **Vault → environment variables �
 | `ZAI_API_KEY` | Recommended | Z.ai API key — GLM-OCR + GLM-4.6V (bbox + vision) |
 | `TELEGRAM_BOT_TOKEN` | For Telegram | Telegram Bot API token |
 | `SF_API_KEY` | Recommended | SiliconFlow API key (200+ models, LongCat-2.0, LoRA) |
+| `COPILOT_CLI_PATH` | Optional | Path to `copilot` CLI binary (default: `copilot` in PATH) |
 | `HETZNER_API_TOKEN` | For GPU infra | Hetzner Cloud API token |
 | `WA_VERIFY_TOKEN` | For WhatsApp | Meta webhook verify token |
 | `WA_PHONE_ID` | For WhatsApp | WhatsApp Business phone number ID |
@@ -458,6 +459,40 @@ serverless_lora = true
 
 When routed, the SiliconFlow provider sets `OPENAI_EXTRA_BODY={"lora_id": "..."}`
 so the API applies the LoRA adapter automatically.
+
+### GitHub Copilot via ACP Protocol
+
+In corporate environments where direct API access is blocked, ohAgent can use
+GitHub Copilot as an LLM backend via the ACP protocol (`copilot --acp --stdio`).
+
+**No API key required** — only the `copilot` CLI binary with GitHub authentication.
+
+```toml
+[[models]]
+id = "copilot-gpt-4o"
+provider = "copilot-acp"
+display = "GitHub Copilot GPT-4o (ACP)"
+capabilities = ["coding", "general_chat", "analysis", "agentic"]
+cost_tier = "medium"
+context = 128_000
+tools = true
+```
+
+The provider communicates via ACP JSON-RPC 2.0 over stdin/stdout:
+1. Spawns `copilot --acp --stdio`
+2. Initialises ACP session (handshake)
+3. Sends user message, streams response
+4. Closes session on completion
+
+**Prerequisites:**
+- GitHub Copilot CLI installed (`npm install -g @github/copilot` or `gh extension install github/gh-copilot`)
+- Authenticated via `copilot login` or `gh auth login`
+- Optional: `COPILOT_CLI_PATH` env var for custom binary path
+
+**Limitations:**
+- No structured outputs / JSON mode (depends on Copilot backend)
+- Each turn spawns a fresh child process (trade-off for simplicity)
+- Copilot tools are limited — ohAgent's built-in tools compensate
 
 ---
 

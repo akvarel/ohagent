@@ -772,6 +772,17 @@ impl ModelRouter {
                     std::env::set_var("OPENAI_EXTRA_BODY", extra.to_string());
                 }
             }
+            "copilot-acp" => {
+                // GitHub Copilot via ACP protocol (copilot --acp --stdio).
+                // No API key needed — only the copilot CLI binary.
+                // Model name is passed through to the Copilot backend.
+                if !crate::copilot_acp::CopilotAcpProvider::is_available() {
+                    return Err(anyhow::anyhow!(
+                        "copilot CLI not found. Install GitHub Copilot CLI or set COPILOT_CLI_PATH"
+                    ));
+                }
+                return Ok(Arc::new(crate::copilot_acp::CopilotAcpProvider::new(&entry.id)));
+            }
             _ => {
                 // Unknown provider — try as openrouter model
                 let key = std::env::var(&entry.api_key_env)

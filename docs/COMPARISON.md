@@ -597,5 +597,6 @@ hermes_tools_mcp_server.py — MCP сервер
 8. ✅ **Parallel tool execution** — `spawn_blocking` + `join_all` (00e6bf6)
 9. ✅ **Security audit навыков** — SHA-256 + trusted sources + dangerous patterns (290697f)
 10. ❌ **Provider auto-detection** — отклонено (low value в ohAgent архитектуре)
-11. ❌ **ACP/Copilot провайдер** — TODO: добавить в jcode bridge как провайдера
-    - Позволяет работать в организациях где whitelist только на Copilot backend
+11. ✅ **ACP/Copilot провайдер** — `CopilotAcpProvider`, spawns `copilot --acp --stdio`,
+    communicates via JSON-RPC 2.0 (ACP protocol). No API key needed — only `copilot` CLI.
+    Registered in model router as `"copilot-acp"`. (f744ee5)
