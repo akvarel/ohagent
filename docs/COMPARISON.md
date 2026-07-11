@@ -1,7 +1,7 @@
 # jcode vs ohAgent — Сравнительная характеристика
 
-> **jcode** v0.37.0 (3cb1287e) — первичный инструмент с открытым исходным кодом под MIT.
-> **ohAgent** v0.1.0 (d4cb42b) — OrangeHat AI Agent, 24/7 персональный ассистент на базе jcode.
+> **jcode** v0.43.0 (c4b2efe4) — первичный инструмент с открытым исходным кодом под MIT.
+> **ohAgent** v0.1.0 (bfba272) — OrangeHat AI Agent, 24/7 персональный ассистент на базе jcode.
 >
 > **Принцип:** ohAgent берёт runtime и движок jcode, надстраивая поверх инфраструктуру
 > постоянного daemon-процесса, мульти-платформенные шлюзы и multi-tenant архитектуру.
@@ -22,8 +22,8 @@ git log --oneline master...HEAD  # посмотреть новые коммит�
 # git checkout <new-tag-or-commit>
 
 # 2. Обновить версии в этом файле
-#    - jcode: заменить v0.37.0 (3cb1287e) на новую
-#    - ohAgent: заменить v0.1.0 (d4cb42b) на новую
+#    - jcode: заменить v0.43.0 (c4b2efe4) на новую
+#    - ohAgent: заменить v0.1.0 (bfba272) на новую
 
 # 3. Проверить новые фичи jcode в README.md
 less /sharedssd/git/orangehat/ohAgent/jcode/README.md
@@ -66,7 +66,8 @@ git commit -m "docs: update comparison table — jcode v<new> vs ohAgent v<new>"
 | **Web Dashboard** | Нет | Да — React SPA |
 | **OpenAI-compatible REST API** | Нет | Да — `POST /v1/chat/completions`, `GET /v1/models` |
 | **WebSocket streaming** | Нет (только внутренние каналы) | Да — `GET /v1/ws/chat` с tool call events |
-| **Side panel** | Да — real-time diff viewer, mermaid | Нет |
+| **Mermaid rendering** | Да — inline, собственный рендерер (1800x быстрее) | Нет |
+| **LaTeX rendering** | Да — терминальная математика | Нет |
 | **Info widgets** | Да — занимают только негативное пространство | Нет |
 
 ## 3. Агентный движок
@@ -144,7 +145,7 @@ git commit -m "docs: update comparison table — jcode v<new> vs ohAgent v<new>"
 
 ## История изменений
 
-### v0.1.0 — 2026-07-10
+### ohAgent v0.1.0 — 2026-07-10
 - Первый выпуск ohAgent
 - Daemon + CLI TUI + WebSocket streaming
 - Cancel mid-stream через `tokio::select!`
@@ -156,13 +157,8 @@ git commit -m "docs: update comparison table — jcode v<new> vs ohAgent v<new>"
 - Session persistence + message logging + usage tracking
 - K8s deployment manifests + GitLab CI
 
-### jcode v0.37.0 — актуальная версия
-- 40+ provider integrations (OAuth + API key)
-- Swarm file-shift detection
-- Memory graph with semantic embeddings
-- Side panel + mermaid inline rendering
-- 1000+ fps TUI rendering
-- Self-dev mode
-- Browser automation (Firefox Agent Bridge)
-- Cross-harness session resume
-- Ambient mode
+### jcode v0.43.0 (c4b2efe4) — 2026-07-11 (обновление с v0.37.0)
+- LaTeX rendering в терминале
+- Swarm agent cards под spawn calls
+- Поддержка common LaTeX containers
+- TUI fixes, упрощение low-confidence guidance
