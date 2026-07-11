@@ -850,7 +850,10 @@ impl Daemon {
     ///
     /// - Every 10 minutes: scan conversations, propose new skills
     /// - Every 5 minutes: evaluate existing skills, promote/demote
-    /// - Every 30 minutes: curate (merge, prune, enforce limits)
+    /// - Every 10 minutes: curate (merge, prune, enforce limits)
+    ///   but only if no eval/creation happened recently (avoids
+    ///   disrupting active sessions — mirrors Hermes agent's
+    ///   idle-aware curator trigger)
     async fn start_skills_cron(&self) {
         let memory = self.memory.clone();
         let skills = self.skills.clone();
@@ -865,6 +868,11 @@ impl Daemon {
             let memory = memory.unwrap();
             let skills = skills.unwrap();
             let config = SkillConfig::default();
+
+            // Minimum idle time before curator runs (2 hours).
+            // If eval or creation tasks ran recently, user is active — skip curation.
+            const MIN_CURATOR_IDLE_SECS: u64 = 7200;
+            let mut last_curator_run: std::time::Instant = std::time::Instant::now();
 
             // Use two intervals: short for eval, longer for creation & curation
             let mut eval_tick = tokio::time::interval(std::time::Duration::from_secs(300)); // 5 min
@@ -900,6 +908,19 @@ impl Daemon {
                         }
                     }
                     _ = curate_tick.tick() => {
+                        // Only curate if enough idle time has passed
+                        let idle_secs = last_curator_run.elapsed().as_secs();
+                        if idle_secs < MIN_CURATOR_IDLE_SECS {
+                            tracing::debug!(
+                                idle_secs = idle_secs,
+                                min_idle_secs = MIN_CURATOR_IDLE_SECS,
+                                "Skipping curator — agent recently active"
+                            );
+                            // Reset the timer so we don't check every tick
+                            last_curator_run = std::time::Instant::now();
+                            continue;
+                        }
+                        last_curator_run = std::time::Instant::now();
                         if let Ok(tenants) = skills.all_tenants() {
                             for tid in &tenants {
                                 match ohagent_skills::curator::curate(&skills, tid, &config) {
