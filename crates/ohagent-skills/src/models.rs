@@ -43,6 +43,8 @@ pub struct Skill {
     pub quality_score: f32,
     /// Tags for categorization.
     pub tags: Vec<String>,
+    /// Pinned — curator never archives or prunes pinned skills.
+    pub pinned: bool,
 }
 
 /// How a skill came to exist.

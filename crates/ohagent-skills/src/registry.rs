@@ -79,6 +79,10 @@ impl SkillRegistry {
             CREATE INDEX IF NOT EXISTS idx_usage_tenant ON skill_usage(tenant_id);
             ",
         )?;
+        // Add pinned column (migration: safe to run on existing databases)
+        conn.execute_batch(
+            "ALTER TABLE skills ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;"
+        ).ok();
         debug!("Skill schema initialized");
         Ok(())
     }
@@ -93,8 +97,8 @@ impl SkillRegistry {
         conn.execute(
             "INSERT OR REPLACE INTO skills
              (id, tenant_id, name, description, triggers, instructions, version, origin, status,
-              created_at, updated_at, last_used_at, use_count, success_count, failure_count, quality_score, tags)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17)",
+              created_at, updated_at, last_used_at, use_count, success_count, failure_count, quality_score, tags, pinned)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17,?18)",
             params![
                 skill.id, skill.tenant_id, skill.name, skill.description,
                 triggers_json, skill.instructions, skill.version, skill.origin.to_string(),
@@ -102,7 +106,7 @@ impl SkillRegistry {
                 skill.created_at.to_rfc3339(), skill.updated_at.to_rfc3339(),
                 skill.last_used_at.map(|t| t.to_rfc3339()),
                 skill.use_count, skill.success_count, skill.failure_count,
-                skill.quality_score, tags_json,
+                skill.quality_score, tags_json, skill.pinned as i32,
             ],
         )?;
         debug!(id = %skill.id, name = %skill.name, "Skill saved");
@@ -306,6 +310,7 @@ impl SkillRegistry {
             failure_count: row.get(14).unwrap_or(0),
             quality_score: row.get(15).unwrap_or(0.5),
             tags: serde_json::from_str(&tags_str).unwrap_or_default(),
+            pinned: row.get::<_, i32>(18).unwrap_or(0) != 0,
         }
     }
 }
@@ -365,6 +370,7 @@ mod tests {
             failure_count: 0,
             quality_score: 0.5,
             tags: vec!["test".into()],
+            pinned: false,
         }
     }
 

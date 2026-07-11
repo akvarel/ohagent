@@ -201,6 +201,7 @@ mod tests {
             failure_count: 0,
             quality_score: 0.5,
             tags: vec![],
+            pinned: false,
         };
         reg.save(&skill).unwrap();
 
@@ -234,6 +235,7 @@ mod tests {
             failure_count: 0,
             quality_score: 0.5,
             tags: vec![],
+            pinned: false,
         };
         reg.save(&skill).unwrap();
 

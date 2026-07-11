@@ -29,6 +29,10 @@ pub fn curate(
     // 1. Prune very old retired skills
     let all_skills = registry.list(tenant_id, None, 200)?;
     for skill in &all_skills {
+        if skill.pinned {
+            debug!(name = %skill.name, "Skipping pinned skill in curation");
+            continue;
+        }
         if skill.status == SkillStatus::Retired {
             let days_retired = (Utc::now() - skill.updated_at).num_days();
             if days_retired > 90 {
@@ -39,10 +43,10 @@ pub fn curate(
         }
     }
 
-    // 2. Merge similar active skills
+    // 2. Merge similar active skills (skip pinned)
     let active: Vec<&Skill> = all_skills
         .iter()
-        .filter(|s| s.status == SkillStatus::Active)
+        .filter(|s| s.status == SkillStatus::Active && !s.pinned)
         .collect();
 
     let merged = merge_similar(registry, &active)?;
@@ -55,6 +59,9 @@ pub fn curate(
         sorted.sort_by(|a, b| b.quality_score.partial_cmp(&a.quality_score).unwrap_or(std::cmp::Ordering::Equal));
 
         for skill in sorted.iter().skip(config.max_skills_per_tenant) {
+            if skill.pinned {
+                continue;
+            }
             if skill.quality_score < 0.3 {
                 registry.delete(&skill.id)?;
                 report.pruned += 1;
@@ -220,6 +227,7 @@ mod tests {
             failure_count: 0,
             quality_score: 0.5,
             tags: vec!["ops".into()],
+            pinned: false,
         };
         let b = Skill {
             id: "b".into(),
@@ -239,6 +247,7 @@ mod tests {
             failure_count: 0,
             quality_score: 0.5,
             tags: vec!["ops".into()],
+            pinned: false,
         };
 
         let sim = similarity_score(&a, &b);

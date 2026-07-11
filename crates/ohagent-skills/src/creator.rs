@@ -65,6 +65,7 @@ pub fn propose_skills(
             failure_count: 0,
             quality_score: 0.5,
             tags: pattern.tags,
+            pinned: false,
         };
 
         registry.save(&skill)?;
@@ -234,6 +235,7 @@ mod tests {
                 source: ohagent_memory::models::MemorySource::Conversation,
                 importance: 0.8,
                 tags: vec![],
+            pinned: false,
                 embedding: None,
                 created_at: Utc::now(),
                 last_accessed_at: Utc::now(),
@@ -247,6 +249,7 @@ mod tests {
                 source: ohagent_memory::models::MemorySource::Conversation,
                 importance: 0.7,
                 tags: vec![],
+            pinned: false,
                 embedding: None,
                 created_at: Utc::now(),
                 last_accessed_at: Utc::now(),

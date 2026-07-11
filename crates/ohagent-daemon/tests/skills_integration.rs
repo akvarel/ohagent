@@ -159,6 +159,7 @@ fn test_full_skills_lifecycle() {
         failure_count: 1,
         quality_score: 0.05,
         tags: vec!["old".into()],
+        pinned: false,
     };
     reg.save(&old_skill).expect("save old skill");
 
