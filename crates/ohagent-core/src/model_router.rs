@@ -141,6 +141,10 @@ pub enum Capability {
     Ocr,
     Translation,
     Embedding,
+    /// Agentic — model natively supports tool calling, delegation,
+    /// and multi-step agent workflows. Not classifier-driven;
+    /// models declare it in models.toml.
+    Agentic,
 }
 
 impl Capability {
@@ -157,6 +161,7 @@ impl Capability {
             Capability::Ocr => "ocr",
             Capability::Translation => "translation",
             Capability::Embedding => "embedding",
+            Capability::Agentic => "agentic",
         }
     }
 
@@ -175,6 +180,7 @@ impl Capability {
             "ocr" => Some(Capability::Ocr),
             "translation" => Some(Capability::Translation),
             "embedding" => Some(Capability::Embedding),
+            "agentic" => Some(Capability::Agentic),
             _ => None,
         }
     }
@@ -188,6 +194,7 @@ impl Capability {
             | Capability::Ocr
             | Capability::Translation
             | Capability::Embedding
+            | Capability::Agentic
         )
     }
 }
