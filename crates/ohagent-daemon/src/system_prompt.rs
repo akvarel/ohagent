@@ -144,6 +144,68 @@ impl SystemPromptBuilder {
         Self { skills, tenant_overrides }
     }
 
+    /// Preprocess skill instructions: substitute template vars and execute inline shell.
+    ///
+    /// Supported template variables:
+    /// - `${HERMES_SKILL_DIR}` — path to the skill's directory
+    /// - `${HERMES_SESSION_ID}` — current session hash
+    ///
+    /// Inline shell: `` !`command` `` — executes command and replaces with stdout.
+    /// Shell is always `bash -c`. Execution is best-effort; failures produce
+    /// a short `[inline-shell error: ...]` marker.
+    pub fn preprocess_skill(text: &str, skill_dir: Option<&str>, session_id: Option<&str>) -> String {
+        use std::sync::OnceLock;
+        static INLINE_SHELL_RE: OnceLock<regex::Regex> = OnceLock::new();
+        static TEMPLATE_RE: OnceLock<regex::Regex> = OnceLock::new();
+
+        // Step 1: substitute template variables
+        let template_re = TEMPLATE_RE.get_or_init(|| {
+            regex::Regex::new(r"\$\{(HERMES_SKILL_DIR|HERMES_SESSION_ID)\}").unwrap()
+        });
+        let after_templates = template_re.replace_all(text, |caps: &regex::Captures| {
+            match caps.get(1).map(|m| m.as_str()) {
+                Some("HERMES_SKILL_DIR") => skill_dir.unwrap_or(""),
+                Some("HERMES_SESSION_ID") => session_id.unwrap_or(""),
+                _ => "",
+            }
+            .to_string()
+        }).to_string();
+
+        // Step 2: execute inline shell snippets
+        let shell_re = INLINE_SHELL_RE.get_or_init(|| {
+            regex::Regex::new(r"!`([^`\n]+)`").unwrap()
+        });
+        shell_re.replace_all(&after_templates, |caps: &regex::Captures| {
+            let command = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+            if command.is_empty() {
+                return String::new();
+            }
+            let output = std::process::Command::new("bash")
+                .args(["-c", command])
+                .output();
+            match output {
+                Ok(out) if out.status.success() => {
+                    let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                    if stdout.len() > 4000 {
+                        format!("{}\n...[output truncated to 4K chars]", &stdout[..4000])
+                    } else {
+                        stdout
+                    }
+                }
+                Ok(out) => {
+                    let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+                    let preview = if stderr.len() > 200 {
+                        format!("{}...", &stderr[..200])
+                    } else {
+                        stderr
+                    };
+                    format!("[inline-shell error: {}]", preview)
+                }
+                Err(e) => format!("[inline-shell error: {}]", e),
+            }
+        }).to_string()
+    }
+
     /// Load AGENTS.md files following Jcode's resolution order:
     /// 1. ~/.AGENTS.md (global, always)
     /// 2. Current project_dir's AGENTS.md (project)
@@ -333,9 +395,15 @@ impl SystemPromptBuilder {
         }
         let mut out = String::from("Available skills:\n\n");
         for skill in skills {
+            // Preprocess inline shell and template variables in skill instructions
+            let preprocessed = Self::preprocess_skill(
+                &skill.instructions,
+                None,   // skill_dir — not available at this level; caller passes None
+                None,   // session_id — not available at assembly time
+            );
             out.push_str(&format!(
                 "### /{} — {}\nTrigger: {}\n{}\n\n",
-                skill.name, skill.id, skill.trigger, skill.instructions
+                skill.name, skill.id, skill.trigger, preprocessed
             ));
         }
         out
