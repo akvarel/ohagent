@@ -209,6 +209,7 @@ mod tests {
                 embeddings: None, rerankers: None, vision: None,
                 json_mode: None, structured_outputs: None, tools: None,
                 fim_completion: None, chat_prefix: None,
+                base_model: None, lora_id: None,
             },
             ModelEntry {
                 id: "dall-e-3".into(), provider: "openai-image".into(),
@@ -223,6 +224,7 @@ mod tests {
                 embeddings: None, rerankers: None, vision: None,
                 json_mode: None, structured_outputs: None, tools: None,
                 fim_completion: None, chat_prefix: None,
+                base_model: None, lora_id: None,
             },
         ]
     }

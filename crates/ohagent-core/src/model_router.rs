@@ -101,6 +101,12 @@ pub struct ModelEntry {
     /// Prefix-based chat completion.
     #[serde(default)]
     pub chat_prefix: Option<bool>,
+    /// Base model ID (for LoRA adapters, fine-tuned variants).
+    #[serde(default)]
+    pub base_model: Option<String>,
+    /// LoRA adapter ID (e.g. "acme/coding-assistant-v3").
+    #[serde(default)]
+    pub lora_id: Option<String>,
 }
 
 fn default_enabled() -> bool {
@@ -759,6 +765,12 @@ impl ModelRouter {
                 std::env::set_var("OPENAI_BASE_URL", "https://api.siliconflow.com/v1");
                 multi.set_model(&format!("openai:{}", entry.id))
                     .with_context(|| format!("Failed to set model openai:{}", entry.id))?;
+                // If the model has a LoRA adapter, set the extra_body env var
+                // so the provider can pass it in API requests.
+                if let Some(ref lora) = entry.lora_id {
+                    let extra = serde_json::json!({"lora_id": lora});
+                    std::env::set_var("OPENAI_EXTRA_BODY", extra.to_string());
+                }
             }
             _ => {
                 // Unknown provider — try as openrouter model

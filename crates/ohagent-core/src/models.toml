@@ -100,6 +100,40 @@ tools = true
 fim_completion = false
 chat_prefix = false
 
+# ── Tier: enterprise / LoRA fine-tuned variants ──
+
+[[models]]
+id = "longcat-acme-coder"
+provider = "siliconflow"
+api_key_env = "SF_API_KEY"
+display = "LongCat-2.0 ACME Coder (LoRA)"
+base_model = "meituan-longcat/LongCat-2.0"
+lora_id = "acme/coding-assistant-v3"
+capabilities = ["coding", "agentic"]
+cost_tier = "medium"
+context = 1_049_000
+input_price = 0.75
+output_price = 2.95
+serverless = true
+serverless_lora = true
+tools = true
+
+[[models]]
+id = "longcat-hs-auditor"
+provider = "siliconflow"
+api_key_env = "SF_API_KEY"
+display = "LongCat-2.0 HomeSecurity Auditor (LoRA)"
+base_model = "meituan-longcat/LongCat-2.0"
+lora_id = "homesecurity/audit-policy-v1"
+capabilities = ["analysis", "reasoning"]
+cost_tier = "medium"
+context = 1_049_000
+input_price = 0.75
+output_price = 2.95
+serverless = true
+serverless_lora = true
+tools = false
+
 [[models]]
 id = "openai-gpt-4o"
 provider = "openai"
