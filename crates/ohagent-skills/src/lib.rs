@@ -15,6 +15,7 @@ pub mod curator;
 pub mod evaluator;
 pub mod models;
 pub mod registry;
+pub mod security_audit;
 
 /// Re-export key types for convenience.
 pub use models::{Skill, SkillConfig, SkillOrigin, SkillStatus, SkillUsage};

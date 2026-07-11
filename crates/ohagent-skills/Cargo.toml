@@ -18,3 +18,4 @@ rusqlite = { workspace = true }
 shellexpand = { workspace = true }
 ohagent-core = { path = "../ohagent-core" }
 ohagent-memory = { path = "../ohagent-memory" }
+sha2 = "0.10"
