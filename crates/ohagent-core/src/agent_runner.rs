@@ -196,31 +196,60 @@ pub async fn run_agent_turn(
             return Ok(total);
         }
 
-        // Execute tools and add results to conversation
+        // Execute tools in parallel using spawn_blocking for sync handlers
         let mut tool_result_blocks: Vec<ContentBlock> = Vec::new();
         let mut assistant_content: Vec<ContentBlock> = Vec::new();
 
+        // Map tool IDs to their raw input for assistant content construction
+        let mut tool_input_by_id: std::collections::HashMap<String, String> = std::collections::HashMap::new();
         for tool in &pending_tools {
-            // Try to parse tool input as JSON params
-            let params: JsonValue = match serde_json::from_str(&tool.input) {
-                Ok(v) => v,
-                Err(_) => serde_json::json!({"input": tool.input}),
-            };
+            tool_input_by_id.insert(tool.id.clone(), tool.input.clone());
+        }
 
-            let result = match tool_registry.execute(&tool.name, params) {
-                Some(r) => r,
-                None => ToolResult {
-                    success: false,
-                    output: format!("Unknown tool: {}", tool.name),
-                    data: None,
-                    error: Some(format!("Tool '{}' not found in registry", tool.name)),
-                },
+        // Build parallel tasks for independent tool calls
+        let tool_tasks: Vec<_> = pending_tools.iter().map(|tool| {
+            let tool_registry = Arc::clone(&tool_registry);
+            let tool_name = tool.name.clone();
+            let tool_id = tool.id.clone();
+            let tool_input = tool.input.clone();
+
+            tokio::task::spawn_blocking(move || {
+                let params: JsonValue = match serde_json::from_str(&tool_input) {
+                    Ok(v) => v,
+                    Err(_) => serde_json::json!({"input": tool_input}),
+                };
+
+                let result = match tool_registry.execute(&tool_name, params) {
+                    Some(r) => r,
+                    None => ToolResult {
+                        success: false,
+                        output: format!("Unknown tool: {}", tool_name),
+                        data: None,
+                        error: Some(format!("Tool '{}' not found in registry", tool_name)),
+                    },
+                };
+
+                (tool_id, tool_name, result)
+            })
+        }).collect();
+
+        // Await all parallel tool executions
+        let tool_results = futures::future::join_all(tool_tasks).await;
+
+        for tool_result in tool_results {
+            let (tool_id, tool_name, result) = match tool_result {
+                Ok(r) => r,
+                Err(e) => {
+                    let msg = format!("Tool thread panicked: {e}");
+                    let _ = event_tx.send(AgentEvent::Error(msg.clone()));
+                    continue;
+                }
             };
 
             if tool_progress_mode == ToolProgressMode::All {
                 let _ = event_tx.send(AgentEvent::ToolResult {
-                    id: tool.id.clone(),
-                    name: tool.name.clone(),
+                    id: tool_id.clone(),
+                    name: tool_name.clone(),
                     output: result.output.clone(),
                     success: result.success,
                 });
@@ -232,18 +261,22 @@ pub async fn run_agent_turn(
                     result.output.clone()
                 };
                 let _ = event_tx.send(AgentEvent::ToolResult {
-                    id: tool.id.clone(),
-                    name: tool.name.clone(),
+                    id: tool_id.clone(),
+                    name: tool_name.clone(),
                     output: preview,
                     success: result.success,
                 });
             }
 
             // Build assistant tool_use content block
+            let tool_input_str = tool_input_by_id.get(&tool_id)
+                .map(|s| s.as_str())
+                .unwrap_or("");
             assistant_content.push(ContentBlock::ToolUse {
-                id: tool.id.clone(),
-                name: tool.name.clone(),
-                input: serde_json::from_str(&tool.input).unwrap_or(serde_json::Value::String(tool.input.clone())),
+                id: tool_id.clone(),
+                name: tool_name.clone(),
+                input: serde_json::from_str(tool_input_str)
+                    .unwrap_or(serde_json::Value::String(tool_input_str.to_string())),
                 thought_signature: None,
             });
 
@@ -255,7 +288,7 @@ pub async fn run_agent_turn(
             };
 
             tool_result_blocks.push(ContentBlock::ToolResult {
-                tool_use_id: tool.id.clone(),
+                tool_use_id: tool_id.clone(),
                 content: result_content,
                 is_error: Some(!result.success),
             });
