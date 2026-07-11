@@ -67,6 +67,40 @@ pub struct ModelEntry {
     /// Whether model is enabled (can be toggled at runtime via API)
     #[serde(default = "default_enabled")]
     pub enabled: bool,
+    // ── Platform feature flags (from SiliconFlow / provider feature cards) ──
+    /// Supports serverless inference (pay-per-token, no GPU reservation).
+    #[serde(default)]
+    pub serverless: Option<bool>,
+    /// Supports serverless LoRA adapters.
+    #[serde(default)]
+    pub serverless_lora: Option<bool>,
+    /// Fine-tuning available.
+    #[serde(default)]
+    pub fine_tuning: Option<bool>,
+    /// Can be used as an embedding model.
+    #[serde(default)]
+    pub embeddings: Option<bool>,
+    /// Supports reranker API.
+    #[serde(default)]
+    pub rerankers: Option<bool>,
+    /// Accepts image input (vision).
+    #[serde(default)]
+    pub vision: Option<bool>,
+    /// JSON mode (guaranteed JSON output).
+    #[serde(default)]
+    pub json_mode: Option<bool>,
+    /// Structured Outputs (JSON Schema enforcement).
+    #[serde(default)]
+    pub structured_outputs: Option<bool>,
+    /// Native tool / function calling support.
+    #[serde(default)]
+    pub tools: Option<bool>,
+    /// Fill-in-the-Middle completion.
+    #[serde(default)]
+    pub fim_completion: Option<bool>,
+    /// Prefix-based chat completion.
+    #[serde(default)]
+    pub chat_prefix: Option<bool>,
 }
 
 fn default_enabled() -> bool {

@@ -205,6 +205,10 @@ mod tests {
                 off_peak_start_utc: Some("16:30".into()),
                 off_peak_end_utc: Some("00:30".into()),
                 enabled: true,
+                serverless: None, serverless_lora: None, fine_tuning: None,
+                embeddings: None, rerankers: None, vision: None,
+                json_mode: None, structured_outputs: None, tools: None,
+                fim_completion: None, chat_prefix: None,
             },
             ModelEntry {
                 id: "dall-e-3".into(), provider: "openai-image".into(),
@@ -215,6 +219,10 @@ mod tests {
                 off_peak_start_utc: None,
                 off_peak_end_utc: None,
                 enabled: true,
+                serverless: None, serverless_lora: None, fine_tuning: None,
+                embeddings: None, rerankers: None, vision: None,
+                json_mode: None, structured_outputs: None, tools: None,
+                fim_completion: None, chat_prefix: None,
             },
         ]
     }
