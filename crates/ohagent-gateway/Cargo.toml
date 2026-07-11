@@ -31,3 +31,4 @@ hex = "0.4"
 base64 = "0.22"
 shellexpand = { workspace = true }
 futures = { workspace = true }
+regex = "1"

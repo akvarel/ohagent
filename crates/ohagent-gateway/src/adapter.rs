@@ -8,6 +8,21 @@ use std::sync::Arc;
 use ohagent_core::jcode_bridge::JcodeBridge;
 use crate::i18n::Lang;
 
+/// Regex patterns for noisy status/error messages that should not be sent
+/// to chat platforms (they're operational noise, not user-facing).
+static NOISY_STATUS_RE: once_cell::sync::Lazy<regex::Regex> = once_cell::sync::Lazy::new(|| {
+    regex::Regex::new(
+        r"(?i)(auxiliary\s+.+\s+failed)|(compression\s+summary\s+failed)|(fallback\s+context\s+marker)|(configured\s+compression\s+model\s+.+\s+failed)|(no\s+auxiliary\s+llm\s+provider\s+configured)|(auto-lowered\s+compression\s+threshold)|(compacting\s+context)|(rate\s+limited\.\s+waiting\s+\d+)|(retrying\s+in\s+\d+)|(max\s+retries\s+\(\d+\).*(?:trying\s+fallback|exhausted|invalid\s+responses))|(stream\s+(?:drop|drop\s+mid\s+tool-call).+retry\s+\d+)|(stale\s+connections\s+from\s+a\s+previous\s+provider\s+issue)"
+    ).unwrap()
+});
+
+/// Check whether a status/error message is operational noise that should be
+/// suppressed from chat platforms. Returns true for messages like "rate
+/// limited. waiting 5" that users don't need to see.
+pub fn is_noisy_status(text: &str) -> bool {
+    NOISY_STATUS_RE.is_match(text)
+}
+
 /// An incoming file/photo attachment.
 #[derive(Debug, Clone)]
 pub struct FileAttachment {
@@ -52,6 +67,27 @@ pub struct OutgoingMessage {
     /// Optional inline keyboard buttons.
     /// Each inner vec is a row of buttons.
     pub inline_keyboard: Option<Vec<Vec<InlineButton>>>,
+}
+
+impl OutgoingMessage {
+    /// Create a new OutgoingMessage, filtering noisy operational status messages.
+    ///
+    /// If `text` matches known noisy patterns (rate limits, retries, compression
+    /// events), the message text is replaced with a brief silent acknowledgement
+    /// so the user isn't spammed with operational noise.
+    pub fn new_filtered(chat_id: String, text: String, markdown: bool) -> Self {
+        let text = if crate::adapter::is_noisy_status(&text) {
+            "⋯".to_string()
+        } else {
+            text
+        };
+        Self {
+            chat_id,
+            text,
+            markdown,
+            inline_keyboard: None,
+        }
+    }
 }
 
 /// A button in an inline keyboard.
