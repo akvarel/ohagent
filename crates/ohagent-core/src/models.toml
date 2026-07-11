@@ -78,6 +78,17 @@ off_peak_start_utc = "16:30"
 off_peak_end_utc = "00:30"
 
 [[models]]
+id = "meituan-longcat/LongCat-2.0"
+provider = "siliconflow"
+api_key_env = "SF_API_KEY"
+display = "LongCat-2.0 (via SiliconFlow)"
+capabilities = ["coding", "general_chat", "analysis", "reasoning"]
+cost_tier = "medium"
+context = 1_049_000
+input_price = 0.75
+output_price = 2.95
+
+[[models]]
 id = "openai-gpt-4o"
 provider = "openai"
 api_key_env = "OPENAI_API_KEY"

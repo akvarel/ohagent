@@ -710,6 +710,15 @@ impl ModelRouter {
                 multi.set_model(&format!("openai:{}", entry.id))
                     .with_context(|| format!("Failed to set model openai:{}", entry.id))?;
             }
+            "siliconflow" => {
+                // SiliconFlow — OpenAI-compatible API
+                let key = std::env::var(&entry.api_key_env)
+                    .with_context(|| format!("{} not set", entry.api_key_env))?;
+                std::env::set_var("OPENAI_API_KEY", &key);
+                std::env::set_var("OPENAI_BASE_URL", "https://api.siliconflow.com/v1");
+                multi.set_model(&format!("openai:{}", entry.id))
+                    .with_context(|| format!("Failed to set model openai:{}", entry.id))?;
+            }
             _ => {
                 // Unknown provider — try as openrouter model
                 let key = std::env::var(&entry.api_key_env)
