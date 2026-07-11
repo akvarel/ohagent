@@ -349,3 +349,251 @@ git commit -m "docs: update comparison table — jcode v<new> vs ohAgent v<new>"
 - Нет serverless (Modal/Daytona)
 - Меньше community skills
 - Нет voice/TTS
+
+---
+
+# Код-уровневый анализ Hermes Agent
+
+Основан на прямом чтении исходного кода Hermes Agent v0.18.2 (5ecc079).
+Репозиторий клонирован в `/sharedssd/git/hermes-agent/`.
+
+## 1. Общая архитектура
+
+```
+hermes-agent/          # 147 MB, 1 382 175 строк Python
+├── run_agent.py        # 6K — AIAgent class (основной, вынесен)
+├── agent/              # 112 файлов — ядро агента
+│   ├── agent_init.py   # 2.1K — init_agent() — 60+ параметров, ~2100 строк
+│   ├── conversation_loop.py # 5.3K — run_conversation() — 1 user turn
+│   ├── curator.py      # 2K — curator — фоновое обслуживание навыков
+│   ├── learning_graph.py# 228 — граф обучения (десктоп)
+│   ├── memory_manager.py# 1K — оркестратор memory provider-ов
+│   ├── transports/     # 10 файлов — адаптеры API (Anthropic, OpenAI, Bedrock, Codex)
+│   └── ...             # providers, LSP, PET, secret sources
+├── gateway/
+│   ├── run.py          # 21K — gateway daemon (огромный монолит)
+│   ├── platforms/      # базовая абстракция платформ
+│   └── slash_commands.py
+├── hermes_cli/         # CLI interface
+│   ├── main.py         # 14.7K — точка входа CLI
+│   ├── web_server.py   # 17.2K — веб-сервер
+│   ├── config.py       # 8.5K — конфигурация
+│   ├── auth.py         # 8.3K — авторизация
+│   ├── gateway.py      # 7.1K — gateway manager
+│   ├── kanban_db.py    # 8.7K — kanban
+│   └── ...
+├── plugins/
+│   ├── platforms/      # 20 платформ!
+│   ├── memory/         # 9 memory provider-ов (Honcho, mem0, holographic...)
+│   └── ...
+├── tools/              # 100+ файлов — инструменты
+│   ├── skills_tool.py   # просмотр навыков
+│   ├── skills_hub.py    # Skills Hub (agentskills.io)
+│   ├── skill_manager_tool.py # управление навыками
+│   ├── skill_usage.py   # трекинг использования
+│   └── ...
+├── skills/             # 19 категорий, много built-in навыков
+└── tests/              # 31 файл тестов
+```
+
+## 2. Масштаб — сравнение строк кода
+
+| Компонент | Hermes (строк) | ohAgent (строк) |
+|---|---|---|
+| **Общий код** | 1 382 175 Python | ~15 000 Rust |
+| **gateway/run.py** | 20 983 (один файл) | ~500 (модульная структура) |
+| **hermes_state.py** | 6 459 (один файл) | Нет аналога |
+| **agent_init.py** | 2 105 (init с 60+ параметрами) | ~300 |
+| **agent/conversation_loop.py** | 5 343 (один turn) | ~500 |
+| **Модулей** | 112 в agent/ + 100+ tools | ~50 модулей |
+
+**Вывод:** Кодовая база Hermes на **2 порядка** больше. Это даёт больше фич, но:
+- Монолитные файлы (20K gateway/run.py)
+- Сложность поддержки
+- Долгий старт (Python venv + загрузка всех модулей)
+
+## 3. Self-learning loop (curator.py)
+
+**Файл:** `agent/curator.py` (~2K строк)
+
+Куратор — это background review агент, который запускается когда:
+1. Основной агент бездействует >2 часов
+2. Последний запуск куратора был >7 дней назад
+
+**Что делает:**
+- Авто-перевод жизненного цикла навыков (active → stale → archived)
+- Создание consolidate-навыков (LLM строит umbrella-навыки из похожих)
+- Никогда не удаляет — только архивирует (архив восстанавливаем)
+- Использует **auxiliary client** (вторую, более дешёвую модель)
+- Pinned навыки bypass все авто-транзишены
+
+**Конфигурация куратора:**
+```python
+DEFAULT_INTERVAL_HOURS = 24 * 7  # 7 дней
+DEFAULT_MIN_IDLE_HOURS = 2        # min idle перед запуском
+DEFAULT_STALE_AFTER_DAYS = 30     # stale через 30 дней
+DEFAULT_ARCHIVE_AFTER_DAYS = 90   # archive через 90 дней
+DEFAULT_CONSOLIDATE = False       # consolidate OFF by default
+```
+
+**ohAgent vs Hermes:** У ohAgent есть cron-based Creator/Evaluator/Curator, но Hermes глубже:
+- Lifecycle management (stale → archive)
+- Graceful pin/unpin
+- Consolidated skill building
+- Failsafe (никогда не удаляет)
+
+## 4. Gateway-архитектура
+
+**Файл:** `gateway/run.py` (~21K строк) — **монолит №1**
+
+**20 платформ:**
+```
+telegram, discord, slack, whatsapp, signal,
+email, matrix, mattermost, irc, feishu,
+dingtalk, google_chat, line, teams, wecom,
+ntfy, photon, raft, simplex, homeassistant
+```
+
+**Как работает:**
+1. **GatewayRunner** class — управляет lifecycle всех платформ
+2. Каждая платформа — `adapter.py` с общим интерфейсом
+3. **Agent cache** — LRU cache на 128 AIAgent-ов, idle TTL 1 час
+4. **SessionDB** — SQLite для персистентности сессий
+5. **Потоки** — каждая платформа в отдельном asyncio loop
+
+**Ключевые фичи:**
+- `_TELEGRAM_NOISY_STATUS_RE` — фильтр шумных статус-сообщений для gateway
+- `_AGENT_CACHE_MAX_SIZE = 128` — кеш агентов
+- `_TELEGRAM_COMMAND_MENTION_RE` — slash-команды на всех платформах
+
+**ohAgent vs Hermes:** 
+- ohAgent имеет 3 платформы (Telegram, Slack, WhatsApp)
+- Hermes имеет 20 платформ. Разрыв в платформах огромен.
+
+## 5. Система навыков
+
+Структура навыков:
+```
+skills/
+├── autonomous-ai-agents/
+├── computer-use/
+├── creative/ (comfyui, excalidraw)
+├── email/
+├── github/
+├── media/ (youtube-content)
+├── productivity/ (maps, ocr, google-workspace, powerpoint)
+├── research/ (arxiv, polymarket)
+├── software-development/
+└── ...
+```
+
+**Каждый навык — это директория с SKILL.md** (YAML frontmatter):
+```yaml
+---
+name: skill-name
+description: Brief description
+version: 1.0.0
+metadata:
+  hermes:
+    tags: [fine-tuning, llm]
+    related_skills: [peft, lora]
+---
+```
+
+- `tools/skills_tool.py` — просмотр навыков
+- `tools/skill_manager_tool.py` — управление (create/update/archive)
+- `tools/skill_usage.py` — трекинг использования (score-based)
+- `tools/skills_hub.py` — интеграция с agentskills.io (90k skills)
+- `tools/skills_guard.py` — security scan для hub-скиллов
+
+**ohAgent vs Hermes:** Hermes имеет:
+- Skills Hub (90k community skills)
+- GitHubSource для скачивания навыков из GitHub репозиториев
+- Security audit импортируемых навыков
+- Usage tracking с весами
+- Ast-based audit (skills_ast_audit.py)
+
+## 6. Memory система
+
+**Два уровня:**
+1. **Built-in:** MEMORY.md / USER.md (файловая система) — через `tools/memory_tool.py`
+2. **Plugin:** 9 memory provider-ов через `agent/memory_manager.py`:
+   `byterover, hindsight, holographic, honcho, mem0, openviking, retaindb, supermemory`
+
+**Honcho** (от Plastic Labs) — самое продвинутое:
+- Dialectic user modeling (моделирование пользователя через диалог)
+- Per-user, per-chat scoping
+- Gateway identity propagation (user_id, chat_id, platform)
+
+**Процесс синхронизации:**
+- pre-turn: prefetch_all() → контекст
+- post-turn: sync_all() → сохранение
+- background: queue_prefetch_all() для следующего turn-а
+
+**ohAgent vs Hermes:**
+- ohAgent: SQLite + rolling summary + semantic search
+- Hermes: FTS5 + LLM summarization + Honcho + 9 plugin providers
+- Hermes глубже в user modeling, но сложнее в конфигурации
+
+## 7. Conversation loop
+
+**agent/conversation_loop.py** (~5.3K строк) — ядро обработки одного user turn-а:
+
+1. **build_turn_context()** — сборка контекста (memory, skills, system prompt)
+2. **API call** — через выбранный транспорт (Anthropic, OpenAI, Codex, Bedrock)
+3. **Tool execution** — с параллельным выполнением (ThreadPoolExecutor)
+4. **Error handling** — retry/fallback/compression
+5. **Post-turn hooks** — background_review, curator nudge
+
+**Ключевые фичи:**
+- `_budget_exhausted_injected` — не давит на модель до исчерпания бюджета
+- `_codex_reasoning_replay_enabled` — replay encrypted reasoning
+- `_stream_context_scrubber` — scrub <memory-context> в стриме
+- `_tool_worker_threads` — трекинг параллельных tool worker-ов
+
+## 8. Provider система
+
+**agent/transports/** — 10 адаптеров API:
+```
+anthropic.py        — Anthropic Messages API
+openai.py (через chat_completions.py) — OpenAI-compatible
+bedrock.py          — AWS Bedrock
+codex.py            — OpenAI Codex
+codex_app_server.py — Codex App Server
+hermes_tools_mcp_server.py — MCP сервер
+```
+
+**Auto-detection** в agent_init.py (210 строк switch logic):
+- `api.anthropic.com` → Anthropic Messages API
+- `bedrock-runtime.*.amazonaws.com` → Bedrock Converse
+- `api.openai.com` + gpt-5.x → Codex Responses API
+- Third-party `*/anthropic` → Anthropic adapter
+- Copilot → ACP
+- MoA → Mixture-of-Agents
+
+## 9. Ключевые отличия от README-уровня
+
+| Что говорит README | Что показывает код |
+|---|---|
+| Hermes = self-improving agent | Да, curator.py + skills lifecycle |
+| TUI with autocomplete | TUI в ui-tui/ (TypeScript) через tui_gateway/ |
+| 40+ tools | 100+ файлов в tools/ |
+| Telegram, Discord, Slack, WhatsApp, Signal | 20 платформ! + email, matrix, irc, feishu и др. |
+| Memory через Honcho | 9 memory provider-ов, Honcho — один из |
+| FTS5 session search | tools/session_search_tool.py — есть |
+| 300+ models через Nous Portal | portal_tags.py — да, gateway auth |
+| Skills Hub 90k+ skills | tools/skills_hub.py — GitHub + agentskills.io |
+| Cron scheduler | cron/ директория + tools/cronjob_tools.py |
+
+## 10. Что ohAgent может взять из кода Hermes
+
+1. **Memory provider plugin system** — абстракция MemoryProvider + Manager
+2. **Skills lifecycle** — stale → archive с pin/unpin
+3. **Gateway agent cache** — LRU с idle TTL
+4. **Background curator** — отложенный review через дешёвую модель
+5. **Platform command filter** — regex для шумных статусов
+6. **Tool progress modes** — all/none/streaming
+7. **Inline shell в навыках** — `${VAR}` template + `!`shell``
+8. **Parallel tool execution** — ThreadPoolExecutor для независимых вызовов
+9. **Security audit навыков** — AST-based + content hash + trusted repos
+10. **Provider auto-detection** — switch по URL/модели
