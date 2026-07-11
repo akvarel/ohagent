@@ -837,7 +837,7 @@ async fn handle_non_streaming_with_tools(
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
     let _handle = tokio::spawn(async move {
-        agent_runner::run_agent_turn(provider, messages, system, tool_defs, tr, tx).await
+        agent_runner::run_agent_turn(provider, messages, system, tool_defs, tr, tx, agent_runner::ToolProgressMode::All).await
     });
 
     let mut content = String::new();
@@ -915,7 +915,7 @@ async fn handle_streaming_with_tools(
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
     tokio::spawn(async move {
-        let _ = agent_runner::run_agent_turn(provider, messages, system, tool_defs, tr, tx).await;
+        let _ = agent_runner::run_agent_turn(provider, messages, system, tool_defs, tr, tx, agent_runner::ToolProgressMode::All).await;
     });
 
     let id_clone = id.clone();

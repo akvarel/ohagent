@@ -181,6 +181,7 @@ impl SessionHandle {
                 tool_defs,
                 tr,
                 event_tx,
+                agent_runner::ToolProgressMode::All,
             )
             .await
         });

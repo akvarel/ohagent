@@ -36,6 +36,33 @@ use crate::tools::{ToolRegistry, ToolResult};
 /// Max tool-calling rounds before giving up (safety limit).
 const MAX_TOOL_ROUNDS: usize = 5;
 
+/// Controls what tool execution information is streamed to the client.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToolProgressMode {
+    /// Stream everything: tool call start, tool result, text deltas
+    All,
+    /// Stream only the final result, no intermediate tool call events
+    None,
+    /// Stream tool call start metadata but suppress large tool result outputs
+    StreamingOnly,
+}
+
+impl Default for ToolProgressMode {
+    fn default() -> Self {
+        Self::All
+    }
+}
+
+impl ToolProgressMode {
+    pub fn from_str(s: &str) -> Self {
+        match s.trim().to_lowercase().as_str() {
+            "none" => Self::None,
+            "streaming" | "streaming-only" => Self::StreamingOnly,
+            _ => Self::All,
+        }
+    }
+}
+
 /// Internal struct tracking an in-progress tool call while streaming.
 struct PendingTool {
     id: String,
@@ -74,6 +101,7 @@ pub async fn run_agent_turn(
     tool_defs: Vec<ToolDefinition>,
     tool_registry: Arc<ToolRegistry>,
     event_tx: mpsc::UnboundedSender<AgentEvent>,
+    tool_progress_mode: ToolProgressMode,
 ) -> Result<u32, String> {
     let mut current_messages = messages;
     let mut total_input_tokens: u32 = 0;
@@ -98,13 +126,24 @@ pub async fn run_agent_turn(
                     has_text = true;
                     let _ = event_tx.send(AgentEvent::TextDelta(text));
                 }
-                Ok(StreamEvent::ToolUseStart { id, name }) => {
+                Ok(StreamEvent::ToolUseStart { id, name }) if tool_progress_mode == ToolProgressMode::None => {
                     has_tools = true;
-                    let _ = event_tx.send(AgentEvent::ToolCallStart {
-                        id: id.clone(),
-                        name: name.clone(),
+                    current_tool = Some(PendingTool {
+                        id,
+                        name,
                         input: String::new(),
                     });
+                    tool_input_buffer.clear();
+                }
+                Ok(StreamEvent::ToolUseStart { id, name }) => {
+                    has_tools = true;
+                    if tool_progress_mode != ToolProgressMode::None {
+                        let _ = event_tx.send(AgentEvent::ToolCallStart {
+                            id: id.clone(),
+                            name: name.clone(),
+                            input: String::new(),
+                        });
+                    }
                     current_tool = Some(PendingTool {
                         id,
                         name,
@@ -178,12 +217,27 @@ pub async fn run_agent_turn(
                 },
             };
 
-            let _ = event_tx.send(AgentEvent::ToolResult {
-                id: tool.id.clone(),
-                name: tool.name.clone(),
-                output: result.output.clone(),
-                success: result.success,
-            });
+            if tool_progress_mode == ToolProgressMode::All {
+                let _ = event_tx.send(AgentEvent::ToolResult {
+                    id: tool.id.clone(),
+                    name: tool.name.clone(),
+                    output: result.output.clone(),
+                    success: result.success,
+                });
+            } else if tool_progress_mode == ToolProgressMode::StreamingOnly {
+                // Truncate large outputs for streaming-only mode
+                let preview = if result.output.len() > 200 {
+                    format!("{}... [{} bytes total]", &result.output[..200], result.output.len())
+                } else {
+                    result.output.clone()
+                };
+                let _ = event_tx.send(AgentEvent::ToolResult {
+                    id: tool.id.clone(),
+                    name: tool.name.clone(),
+                    output: preview,
+                    success: result.success,
+                });
+            }
 
             // Build assistant tool_use content block
             assistant_content.push(ContentBlock::ToolUse {

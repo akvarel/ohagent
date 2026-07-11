@@ -293,6 +293,7 @@ async fn handle_chat(
             runner_defs,
             runner_tr,
             event_tx,
+            agent_runner::ToolProgressMode::All,
         ).await
     });
 
