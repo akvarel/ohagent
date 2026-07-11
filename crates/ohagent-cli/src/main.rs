@@ -20,7 +20,7 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Wrap},
     Terminal,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 
 // ── CLI args ──
@@ -31,6 +31,10 @@ struct Cli {
     /// WebSocket URL of ohAgent daemon
     #[arg(long, default_value = "ws://localhost:9090/v1/ws/chat")]
     url: String,
+
+    /// Review mode: skip memory, skills, and past context for unbiased analysis
+    #[arg(long, default_value_t = false)]
+    review: bool,
 }
 
 // ── WebSocket protocol types ──
@@ -163,7 +167,7 @@ async fn main() -> Result<()> {
     let mut terminal = Terminal::new(backend)?;
     terminal.clear()?;
 
-    let result = run_app(&mut terminal, &cli.url).await;
+    let result = run_app(&mut terminal, &cli.url, cli.review).await;
 
     // Restore terminal
     crossterm::terminal::disable_raw_mode()?;
@@ -176,8 +180,12 @@ async fn main() -> Result<()> {
     result
 }
 
-async fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, ws_url: &str) -> Result<()> {
+async fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, ws_url: &str, review_mode: bool) -> Result<()> {
     let mut app = App::new();
+
+    if review_mode {
+        app.model.push_str(" [review]");
+    }
 
     // Connect to daemon WebSocket using the raw URL string
     let (ws_stream, _) = connect_async(ws_url).await?;
@@ -430,11 +438,14 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, ws_
                                 });
 
                                 // Send via WebSocket
-                                let chat_msg = serde_json::json!({
+                                let mut chat_msg = serde_json::json!({
                                     "type": "chat",
                                     "model": app.model,
                                     "messages": [{"role": "user", "content": msg}],
                                 });
+                                if review_mode {
+                                    chat_msg["review"] = serde_json::json!(true);
+                                }
                                 if ws_tx.send(Message::Text(chat_msg.to_string().into())).await.is_err() {
                                     app.connected = false;
                                     app.status_msg = "Disconnected".into();

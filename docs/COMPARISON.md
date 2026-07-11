@@ -597,3 +597,7 @@ hermes_tools_mcp_server.py — MCP сервер
 8. **Parallel tool execution** — ThreadPoolExecutor для независимых вызовов
 9. **Security audit навыков** — AST-based + content hash + trusted repos
 10. **Provider auto-detection** — switch по URL/модели
+11. **ACP/Copilot провайдер** — `copilot --acp --stdio` как enterprise-LLM через ACP протокол (`agent-client-protocol==0.9.0`)
+    - Hermes: `agent/copilot_acp_client.py` — subprocess → ACP session → stream → OpenAI-compatible
+    - ohAgent: добавить в jcode bridge как провайдера без API-ключа, только наличие `copilot` CLI
+    - Позволяет работать в организациях где whitelist только на Copilot backend

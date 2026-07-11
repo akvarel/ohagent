@@ -428,6 +428,7 @@ pub async fn chat_completions_handler(
             compressed.as_deref(),
             &rag_strings,
             &budget,
+            false,
         );
 
         tracing::info!(

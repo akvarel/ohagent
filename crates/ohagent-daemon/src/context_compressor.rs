@@ -227,6 +227,7 @@ pub struct RollingSummaryStats {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ohagent_memory::rolling_summary::{COMPRESSION_TOKEN_THRESHOLD, COMPRESSION_ITERATION_THRESHOLD};
 
     #[test]
     fn test_threshold_constants() {

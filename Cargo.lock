@@ -3178,6 +3178,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-stream",
+ "tokio-util",
  "unicode-width 0.2.0",
  "url",
  "urlencoding",
@@ -3505,6 +3506,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "futures",
+ "httpdate",
  "jcode-logging",
  "jcode-message-types",
  "rand 0.9.4",
@@ -7363,6 +7365,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-sink",
+ "futures-util",
  "pin-project-lite",
  "tokio",
 ]

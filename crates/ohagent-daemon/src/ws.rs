@@ -61,6 +61,7 @@ enum WsCommand {
         messages: Vec<OpenAiWsMessage>,
         temperature: Option<f32>,
         max_tokens: Option<u32>,
+        review: bool,
     },
 }
 
@@ -90,11 +91,15 @@ async fn handle_ws(ws: WebSocket, state: ApiState) {
                                             .unwrap_or_default();
                                     let temperature = val["temperature"].as_f64().map(|t| t as f32);
                                     let max_tokens = val["max_tokens"].as_u64().map(|t| t as u32);
+                                    let review = val.get("review")
+                                        .and_then(|v| v.as_bool())
+                                        .unwrap_or(false);
                                     WsCommand::Chat {
                                         model: model.to_string(),
                                         messages,
                                         temperature,
                                         max_tokens,
+                                        review,
                                     }
                                 }
                                 Some("cancel") => WsCommand::Cancel,
@@ -125,9 +130,9 @@ async fn handle_ws(ws: WebSocket, state: ApiState) {
                 WsCommand::Cancel => {
                     send_json(&mut ws_tx, &serde_json::json!({"type": "cancelled"})).await;
                 }
-                WsCommand::Chat { model: _model, messages, temperature, max_tokens } => {
+                WsCommand::Chat { model: _model, messages, temperature, max_tokens, review } => {
                     let result = handle_chat(
-                        &state, &messages, temperature, max_tokens,
+                        &state, &messages, temperature, max_tokens, review,
                         &mut ws_tx, &cmd_tx_writer, &mut cmd_rx,
                     ).await;
                     if let Err(e) = result {
@@ -156,6 +161,7 @@ async fn handle_chat(
     messages: &[OpenAiWsMessage],
     _temperature: Option<f32>,
     _max_tokens: Option<u32>,
+    review: bool,
     ws_tx: &mut futures::stream::SplitSink<WebSocket, Message>,
     _cmd_tx: &mpsc::UnboundedSender<WsCommand>,
     cmd_rx: &mut mpsc::UnboundedReceiver<WsCommand>,
@@ -163,6 +169,7 @@ async fn handle_chat(
     let (jcode_msgs, system) = convert_messages(messages);
 
     // Build system prompt (AGENTS.md, memory context, skills)
+    // When review=true, memory RAG and skills are skipped for unbiased analysis.
     let system = if let Some(ref builder) = state.system_prompt_builder {
         let budget = crate::system_prompt::PromptBudget::from_window(128_000);
         let project_dir = std::env::current_dir()
@@ -172,26 +179,36 @@ async fn handle_chat(
             .map(|m| m.content.as_str())
             .unwrap_or("");
 
-        let compressed = state.memory.as_ref().and_then(|mem| {
-            ohagent_memory::rolling_summary::load_or_create(
-                mem.store(), "default", "default",
-            ).ok()
-            .and_then(|rs| if rs.compressed_history.is_empty() { None } else { Some(rs.compressed_history) })
-        });
+        // In review mode, skip loading compressed history and memory RAG
+        // to avoid biasing the agent with accumulated context.
+        let compressed: Option<String> = if !review {
+            state.memory.as_ref().and_then(|mem| {
+                ohagent_memory::rolling_summary::load_or_create(
+                    mem.store(), "default", "default",
+                ).ok()
+                .and_then(|rs| if rs.compressed_history.is_empty() { None } else { Some(rs.compressed_history) })
+            })
+        } else {
+            None
+        };
 
-        let rag_strings: Vec<String> = if let Some(ref mem) = state.memory {
-            mem.search("default", user_msg).ok()
-                .map(|r| r.into_iter().take(5)
-                    .map(|r| format!("[{}] {}", r.entry.id, r.entry.content))
-                    .collect())
-                .unwrap_or_default()
+        let rag_strings: Vec<String> = if !review {
+            if let Some(ref mem) = state.memory {
+                mem.search("default", user_msg).ok()
+                    .map(|r| r.into_iter().take(5)
+                        .map(|r| format!("[{}] {}", r.entry.id, r.entry.content))
+                        .collect())
+                    .unwrap_or_default()
+            } else {
+                Vec::new()
+            }
         } else {
             Vec::new()
         };
 
         let assembled = builder.assemble(
             &project_dir, user_msg, &system,
-            compressed.as_deref(), &rag_strings, &budget,
+            compressed.as_deref(), &rag_strings, &budget, review,
         );
         assembled.system
     } else {
@@ -203,18 +220,20 @@ async fn handle_chat(
         &jcode_msgs, &system,
     );
 
-    // Session heartbeat
-    if let Some(ref ss) = state.session_store {
-        let tenant = "default";
-        let shash = &messages.first()
-            .map(|m| {
-                use std::hash::{Hash, Hasher};
-                let mut h = std::collections::hash_map::DefaultHasher::new();
-                m.content.hash(&mut h);
-                format!("{:x}", h.finish())
-            })
-            .unwrap_or_else(|| "default".into());
-        let _ = ss.heartbeat(tenant, shash, messages.len() as u32, input_tokens as u64, ".");
+    // Session heartbeat — skipped in review mode to avoid persisting ephemeral sessions
+    if !review {
+        if let Some(ref ss) = state.session_store {
+            let tenant = "default";
+            let shash = &messages.first()
+                .map(|m| {
+                    use std::hash::{Hash, Hasher};
+                    let mut h = std::collections::hash_map::DefaultHasher::new();
+                    m.content.hash(&mut h);
+                    format!("{:x}", h.finish())
+                })
+                .unwrap_or_else(|| "default".into());
+            let _ = ss.heartbeat(tenant, shash, messages.len() as u32, input_tokens as u64, ".");
+        }
     }
 
     // Resolve provider

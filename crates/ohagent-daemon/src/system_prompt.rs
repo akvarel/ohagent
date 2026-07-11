@@ -211,6 +211,9 @@ impl SystemPromptBuilder {
     /// `compressed_history` — from RollingSummary, if available (layer 4).
     /// `memory_rag` — relevant memories from MemoryEngine.search() (layer 3).
     /// `budget` — token budget for the target model.
+    /// `review_mode` — when true, skip skills and memory RAG layers entirely.
+    ///   Use for critical review sessions where accumulated context would
+    ///   bias the agent (e.g. reviewing another agent's work product).
     pub fn assemble(
         &self,
         project_dir: &PathBuf,
@@ -219,6 +222,7 @@ impl SystemPromptBuilder {
         compressed_history: Option<&str>,
         memory_rag: &[String],
         budget: &PromptBudget,
+        review_mode: bool,
     ) -> AssembledPrompt {
         let mut layer_tokens = LayerTokens::default();
 
@@ -228,16 +232,26 @@ impl SystemPromptBuilder {
         let rules_text = trim_to_budget(&rules_text, budget.rules_max);
         layer_tokens.rules = estimate_tokens(&rules_text);
 
-        // ── Layer 2: Skills (filtered: only those matching user message) ──
-        let relevant_skills = Self::find_relevant_skills(&self.skills, user_message);
-        let skills_text = Self::format_skills_static(&relevant_skills);
-        let skills_text = trim_to_budget(&skills_text, budget.skills_max);
-        layer_tokens.skills = estimate_tokens(&skills_text);
+        // ── Layer 2: Skills (skipped in review mode) ──
+        let skills_text = if !review_mode {
+            let relevant_skills = Self::find_relevant_skills(&self.skills, user_message);
+            let text = Self::format_skills_static(&relevant_skills);
+            let text = trim_to_budget(&text, budget.skills_max);
+            layer_tokens.skills = estimate_tokens(&text);
+            text
+        } else {
+            String::new()
+        };
 
-        // ── Layer 3: Memory RAG ──
-        let rag_text = memory_rag.join("\n");
-        let rag_text = trim_to_budget(&rag_text, budget.memory_rag_max);
-        layer_tokens.memory_rag = estimate_tokens(&rag_text);
+        // ── Layer 3: Memory RAG (skipped in review mode) ──
+        let rag_text = if !review_mode {
+            let text = memory_rag.join("\n");
+            let text = trim_to_budget(&text, budget.memory_rag_max);
+            layer_tokens.memory_rag = estimate_tokens(&text);
+            text
+        } else {
+            String::new()
+        };
 
         // ── Layer 4: Compressed history ──
         if let Some(ch) = compressed_history {
@@ -248,6 +262,13 @@ impl SystemPromptBuilder {
 
         // ── Build the fixed prefix (layers 1-4) ──
         let mut system = String::new();
+        if review_mode {
+            system.push_str("── REVIEW MODE ACTIVE ──\n");
+            system.push_str("You are in review mode. Persistent memory, accumulated skills, ");
+            system.push_str("and past conversation history are intentionally excluded. ");
+            system.push_str("Provide a fresh, unbiased critical analysis based only on the ");
+            system.push_str("context provided in this request.\n\n");
+        }
         if !rules_text.is_empty() {
             system.push_str("── RULES ──\n");
             system.push_str(&rules_text);
@@ -449,14 +470,14 @@ mod tests {
         let cwd = PathBuf::from(".");
 
         // Short conversation
-        let result = builder.assemble(&cwd, "hello", "hello", None, &[], &budget);
+        let result = builder.assemble(&cwd, "hello", "hello", None, &[], &budget, false);
         assert!(!result.needs_compression);
         assert!(result.system.contains("── SKILLS ──"));
         assert!(result.system.contains("test-skill"));
 
         // Very long conversation — should need compression
         let long_conv = "long message. ".repeat(50_000);
-        let result = builder.assemble(&cwd, "long", &long_conv, None, &[], &budget);
+        let result = builder.assemble(&cwd, "long", &long_conv, None, &[], &budget, false);
         assert!(result.needs_compression);
     }
 
@@ -473,6 +494,7 @@ mod tests {
             Some("compressed: user wanted pizza"),
             &[],
             &budget,
+            false,
         );
         assert!(result.system.contains("── CONVERSATION HISTORY ──"));
         assert!(result.system.contains("pizza"));
@@ -489,7 +511,7 @@ mod tests {
         let builder = test_builder();
         let budget = PromptBudget::from_window(128_000);
 
-        let result = builder.assemble(&tmp, "hello", "hello", None, &[], &budget);
+        let result = builder.assemble(&tmp, "hello", "hello", None, &[], &budget, false);
         assert!(result.system.contains("Test Project"));
         assert!(result.system.contains("always test"));
 
@@ -506,8 +528,8 @@ mod tests {
         let cwd_a = PathBuf::from("/tmp/a");
         let cwd_b = PathBuf::from("/tmp/b");
 
-        let result_a = builder.assemble(&cwd_a, "hi", "hi", None, &[], &budget);
-        let result_b = builder.assemble(&cwd_b, "hi", "hi", None, &[], &budget);
+        let result_a = builder.assemble(&cwd_a, "hi", "hi", None, &[], &budget, false);
+        let result_b = builder.assemble(&cwd_b, "hi", "hi", None, &[], &budget, false);
 
         // Both should assemble without panicking
         assert!(!result_a.system.is_empty());
@@ -529,9 +551,28 @@ mod tests {
 
         // Even with non-existent project_dir, global rules should load
         // (if ~/.AGENTS.md exists on this machine)
-        let result = builder.assemble(&PathBuf::from("/nonexistent"), "hi", "hi", None, &[], &budget);
+        let result = builder.assemble(&PathBuf::from("/nonexistent"), "hi", "hi", None, &[], &budget, false);
         // Should not panic — just might not have rules if ~/.AGENTS.md doesn't exist
         assert!(!result.system.is_empty());
+    }
+
+    #[test]
+    fn test_review_mode_skips_skills_and_memory() {
+        let builder = test_builder();
+        let budget = PromptBudget::from_window(128_000);
+        let cwd = PathBuf::from(".");
+
+        // Normal mode — skills present
+        let normal = builder.assemble(&cwd, "hello", "hello", None, &[], &budget, false);
+        assert!(normal.system.contains("── SKILLS ──"), "normal mode should include skills");
+
+        // Review mode — no skills, no memory RAG, has banner
+        let review = builder.assemble(&cwd, "hello", "hello", None, &[], &budget, true);
+        assert!(review.system.contains("── REVIEW MODE ACTIVE ──"), "review mode should show banner");
+        assert!(!review.system.contains("── SKILLS ──"), "review mode should skip skills");
+        assert!(!review.system.contains("── RELEVANT CONTEXT ──"), "review mode should skip memory RAG");
+        // Rules are still present
+        assert!(review.system.contains("── RULES ──"), "review mode should keep rules");
     }
 
     #[test]
@@ -543,7 +584,7 @@ mod tests {
         // Query about deployment — only deploy skill should appear in skills section
         let result = builder.assemble(
             &cwd, "deploy to kubernetes", "deploy to kubernetes",
-            None, &[], &budget,
+            None, &[], &budget, false,
         );
         let skills_section = extract_skills_section(&result.system);
         assert!(skills_section.contains("/deploy"), "expected deploy skill");
@@ -552,7 +593,7 @@ mod tests {
         // Query about testing — only test skill should appear in skills section
         let result = builder.assemble(
             &cwd, "run the test suite", "run the test suite",
-            None, &[], &budget,
+            None, &[], &budget, false,
         );
         let skills_section = extract_skills_section(&result.system);
         assert!(skills_section.contains("test-skill"), "expected test-skill");
@@ -561,7 +602,7 @@ mod tests {
         // Unrelated query — all skills fall back
         let result = builder.assemble(
             &cwd, "hello world", "hello world",
-            None, &[], &budget,
+            None, &[], &budget, false,
         );
         // Fallback: all skills included
         assert!(result.system.contains("── SKILLS ──"));
