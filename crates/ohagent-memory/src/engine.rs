@@ -9,6 +9,7 @@ use std::sync::Arc;
 use tracing::info;
 
 use crate::embeddings::embed_entry;
+use crate::manager::MemoryManager;
 use crate::models::{ConversationSummary, MemoryConfig, MemoryEntry, MemoryNudge, RollingSummary, SearchResult};
 use crate::nudge;
 use crate::retrieval;
@@ -19,21 +20,38 @@ use crate::Result;
 
 /// The central memory engine.
 ///
-/// Thread-safe: wraps MemoryStore in Arc for sharing across components.
+/// Thread-safe: wraps MemoryManager in Arc for sharing across components.
+/// By default, uses an SQLite-backed MemoryStore as the primary provider.
+/// Call `add_provider` before use to register custom backends.
 pub struct MemoryEngine {
+    manager: MemoryManager,
     store: Arc<MemoryStore>,
     config: MemoryConfig,
 }
 
 impl MemoryEngine {
     /// Open or create the memory database and return an engine.
+    ///
+    /// Registers the SQLite MemoryStore as the default primary provider.
+    /// Call `add_provider` explicitly to override with a custom backend.
     pub fn open(config: MemoryConfig) -> Result<Self> {
         let store = Arc::new(MemoryStore::open(config.clone())?);
         info!(
             db_path = %config.db_path,
             "Memory engine initialized"
         );
-        Ok(Self { store, config })
+        Ok(Self { manager: MemoryManager::new(), store, config })
+    }
+
+    /// Register an additional memory provider (e.g. Dragonfly, PostgreSQL).
+    /// The first registered provider is the primary.
+    pub fn add_provider(&mut self, provider: Box<dyn crate::provider::MemoryProvider>) {
+        self.manager.add_provider(provider);
+    }
+
+    /// Get the underlying memory manager (for advanced configuration).
+    pub fn manager(&self) -> &MemoryManager {
+        &self.manager
     }
 
     // ── Memory Entries ──

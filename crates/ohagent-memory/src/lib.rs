@@ -11,8 +11,10 @@
 
 pub mod embeddings;
 pub mod engine;
+pub mod manager;
 pub mod models;
 pub mod nudge;
+pub mod provider;
 pub mod retrieval;
 pub mod rolling_summary;
 pub mod store;

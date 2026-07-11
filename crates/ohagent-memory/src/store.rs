@@ -1,4 +1,4 @@
-//! SQLite-backed memory store.
+//! SQLite-backed memory store — implements the MemoryProvider trait.
 //!
 //! Stores memory entries, embeddings, and conversation summaries.
 //! Schema: memory_entries + memory_embeddings + conversation_summaries.
@@ -10,6 +10,7 @@ use std::sync::Mutex;
 use tracing::{debug, info};
 
 use crate::models::{ConversationSummary, MemoryConfig, MemoryEntry, MemorySource, RollingSummary};
+use crate::provider::MemoryProvider;
 use crate::Result;
 
 /// The memory store — thread-safe wrapper around an SQLite connection.
@@ -430,6 +431,78 @@ impl MemoryStore {
             last_accessed_at: parse_datetime(&row.get::<_, String>(8).unwrap_or_default()),
             access_count: row.get(9).unwrap_or(0),
         })
+    }
+}
+
+// ── MemoryProvider trait implementation ──
+
+impl MemoryProvider for MemoryStore {
+    fn name(&self) -> &str {
+        "sqlite"
+    }
+
+    fn insert(&self, entry: &MemoryEntry) -> Result<()> {
+        self.insert(entry)
+    }
+
+    fn get(&self, id: &str) -> Result<Option<MemoryEntry>> {
+        self.get(id)
+    }
+
+    fn delete(&self, id: &str) -> Result<()> {
+        self.delete(id)
+    }
+
+    fn list_by_tenant(
+        &self,
+        tenant_id: &str,
+        session_id: Option<&str>,
+        limit: usize,
+    ) -> Result<Vec<MemoryEntry>> {
+        self.list_by_tenant(tenant_id, session_id, limit)
+    }
+
+    fn entries_with_embeddings(
+        &self,
+        tenant_id: &str,
+    ) -> Result<Vec<(MemoryEntry, Vec<f32>)>> {
+        self.entries_with_embeddings(tenant_id)
+    }
+
+    fn count(&self, tenant_id: &str) -> Result<usize> {
+        self.count(tenant_id)
+    }
+
+    fn clear_tenant(&self, tenant_id: &str) -> Result<()> {
+        self.clear_tenant(tenant_id)
+    }
+
+    fn save_summary(&self, summary: &ConversationSummary) -> Result<()> {
+        self.save_summary(summary)
+    }
+
+    fn get_summary(
+        &self,
+        tenant_id: &str,
+        session_id: &str,
+    ) -> Result<Option<ConversationSummary>> {
+        self.get_summary(tenant_id, session_id)
+    }
+
+    fn save_rolling_summary(&self, rs: &RollingSummary) -> Result<()> {
+        self.save_rolling_summary(rs)
+    }
+
+    fn get_rolling_summary(
+        &self,
+        tenant_id: &str,
+        session_id: &str,
+    ) -> Result<Option<RollingSummary>> {
+        self.get_rolling_summary(tenant_id, session_id)
+    }
+
+    fn delete_rolling_summary(&self, tenant_id: &str, session_id: &str) -> Result<()> {
+        self.delete_rolling_summary(tenant_id, session_id)
     }
 }
 
