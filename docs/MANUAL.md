@@ -67,6 +67,7 @@ cargo run --release -p ohagent-daemon
 | `--log-level` | `info` | Log level: trace, debug, info, warn, error |
 | `--health-port` | `9090` | Health check HTTP port |
 | `--telegram` | `true` | Enable Telegram gateway |
+| `--review` | `false` | Review mode — skip memory, skills, past context for unbiased analysis |
 
 ### Environment Variables (via Vault → env → keys.toml)
 
@@ -83,6 +84,7 @@ ohAgent resolves secrets in priority order: **Vault → environment variables �
 | `GOOGLE_API_KEY` | Recommended | Google AI Studio — Gemini models (best Latvian OCR) |
 | `ZAI_API_KEY` | Recommended | Z.ai API key — GLM-OCR + GLM-4.6V (bbox + vision) |
 | `TELEGRAM_BOT_TOKEN` | For Telegram | Telegram Bot API token |
+| `SF_API_KEY` | Recommended | SiliconFlow API key (200+ models, LongCat-2.0, LoRA) |
 | `HETZNER_API_TOKEN` | For GPU infra | Hetzner Cloud API token |
 | `WA_VERIFY_TOKEN` | For WhatsApp | Meta webhook verify token |
 | `WA_PHONE_ID` | For WhatsApp | WhatsApp Business phone number ID |
@@ -189,6 +191,32 @@ ohAgent remembers conversations across sessions. The memory engine stores:
 
 Memory is stored in SQLite at `~/.ohagent/memory.db` by default.
 
+### Pluggable Memory Provider System
+
+The memory engine supports **pluggable backends** via the `MemoryProvider` trait.
+The SQLite store is the default provider, but any backend implementing the trait
+can be registered:
+
+```rust
+pub trait MemoryProvider: Send + Sync {
+    fn name(&self) -> &str;
+    fn insert(&self, entry: &MemoryEntry) -> Result<()>;
+    fn get(&self, id: &str) -> Result<Option<MemoryEntry>>;
+    fn search(&self, tenant_id: &str, query: &str) -> Result<Vec<SearchResult>>;
+    // ... rolling summaries, conversation summaries, embeddings
+}
+```
+
+To register a custom provider:
+
+```rust
+let mut engine = MemoryEngine::open(config)?;
+engine.add_provider(Box::new(MyPostgresProvider::new()?));
+```
+
+The `MemoryManager` orchestrates one primary provider with optional fallback
+providers. All existing code continues working unchanged.
+
 ### Embeddings (optional)
 
 For best results, enable embeddings:
@@ -232,6 +260,40 @@ Use `/skilluse <name>` after the agent successfully completes a task using a kno
 | `Active` | Proven useful through usage |
 | `Disabled` | Quality dropped below threshold |
 | `Retired` | Stale — unused for too long |
+
+### Pinning Skills
+
+Skills can be **pinned** to prevent the curator from pruning or archiving them:
+
+```bash
+sqlite3 ~/.ohagent/skills.db "UPDATE skills SET pinned = 1 WHERE name = 'deploy-to-k8s'"
+```
+
+Pinned skills are skipped by pruning, merging, and limit enforcement.
+
+### Inline Shell and Template Variables
+
+Skill instructions support dynamic content:
+
+- **Template variables**: `${HERMES_SKILL_DIR}`, `${HERMES_SESSION_ID}`
+- **Inline shell**: `` !`date +%Y-%m-%d` `` — executes bash, replaces with stdout
+- Output capped at 4K chars; errors produce `[inline-shell error: ...]`
+
+### Idle-Aware Curator
+
+The curator waits for **2 hours of inactivity** before running maintenance.
+If the agent is actively processing requests, curation is deferred.
+
+### Security Audit for Imported Skills
+
+Imported skills are scanned for dangerous patterns:
+
+| Feature | Description |
+|---|---|
+| **Content hash** | SHA-256 fingerprint |
+| **Trusted sources** | agentskills.io, GitHub (nousresearch, orangehat) |
+| **Dangerous patterns** | `rm -rf /`, fork bombs, SQL injection |
+| **Verdict** | Pass / Review / Block |
 
 ---
 
@@ -324,6 +386,79 @@ curl -X POST http://localhost:9090/v1/chat/completions \
 `GET /v1/models` returns models from all configured providers: `deepseek-chat`,
 `deepseek-reasoner`, `claude-3-5-sonnet-*`, `gpt-4o`, etc.
 
+### Capability-Based Model Routing
+
+Each model declares its capabilities in the catalog (`models.toml`):
+
+```toml
+[[models]]
+id = "meituan-longcat/LongCat-2.0"
+provider = "siliconflow"
+api_key_env = "SF_API_KEY"
+display = "LongCat-2.0 (via SiliconFlow)"
+capabilities = ["coding", "general_chat", "analysis", "reasoning", "agentic"]
+cost_tier = "medium"
+context = 1_049_000
+input_price = 0.75
+output_price = 2.95
+# Feature flags
+serverless = true
+serverless_lora = true
+tools = true
+json_mode = false
+structured_outputs = false
+vision = false
+```
+
+### Agentic Capability
+
+Models that natively support tool calling, delegation, and multi-step agent
+workflows declare the `"agentic"` capability. The router uses this to prefer
+agent-capable models for tool-heavy tasks without requiring keyword detection.
+
+All 10 agent-capable models currently in catalog:
+- **Low tier**: DeepSeek V4 Flash, GLM-5.2, GPT-4o Mini, Claude Haiku 4.5
+- **Medium tier**: DeepSeek V4 Pro, LongCat-2.0, GPT-4o, Claude Sonnet 4.6
+- **High tier**: o4-mini, Claude Opus 4.5
+
+### Platform Feature Flags
+
+Every model entry can declare platform-specific features:
+
+| Field | Type | Description |
+|---|---|---|
+| `serverless` | bool | Pay-per-token inference |
+| `serverless_lora` | bool | Serverless LoRA adapters |
+| `fine_tuning` | bool | Fine-tuning available |
+| `embeddings` | bool | Embedding model |
+| `vision` | bool | Image input supported |
+| `json_mode` | bool | Guaranteed JSON output |
+| `structured_outputs` | bool | JSON Schema enforcement |
+| `tools` | bool | Native tool calling |
+| `base_model` | string | Parent model ID (for LoRA) |
+| `lora_id` | string | LoRA adapter ID |
+
+### Serverless LoRA (Enterprise)
+
+Enterprises can deploy fine-tuned model variants without GPU reservations
+using serverless LoRA on SiliconFlow:
+
+```toml
+[[models]]
+id = "longcat-acme-coder"
+provider = "siliconflow"
+api_key_env = "SF_API_KEY"
+display = "LongCat-2.0 ACME Coder (LoRA)"
+base_model = "meituan-longcat/LongCat-2.0"
+lora_id = "acme/coding-assistant-v3"
+capabilities = ["coding", "agentic"]
+serverless = true
+serverless_lora = true
+```
+
+When routed, the SiliconFlow provider sets `OPENAI_EXTRA_BODY={"lora_id": "..."}`
+so the API applies the LoRA adapter automatically.
+
 ---
 
 ## Multi-Platform Gateways (Phase 8)
@@ -369,6 +504,32 @@ before forwarding to the agent.
 
 Both adapters are optional. If their env vars are not set, the daemon prints
 a warning and continues with other gateways (Telegram, etc.) still operational.
+
+### Gateway Session Cache
+
+The gateway caches agent sessions to avoid re-initialising per message:
+
+| Parameter | Default | Description |
+|---|---|---|
+| Max sessions | 128 | LRU eviction when exceeded |
+| Idle TTL | 1 hour | Evict sessions idle longer than this |
+| Eviction policy | LRU | Least recently used session evicted first |
+
+Session creation is lazy — sessions are created on first message and cached.
+Eviction is silent and does not affect active conversations.
+
+### Platform Noise Filter
+
+Operational noise (rate limits, retries, compression events) is automatically
+suppressed from chat platforms. Messages matching known noise patterns are
+replaced with a silent "⋯" marker instead of spamming the user.
+
+Patterns filtered:
+- `rate limited. waiting <N>` — rate limit backoff messages
+- `retrying in <N>` — provider retry announcements
+- `compacting context` — compression in progress
+- `max retries (<N>)...` — exhaustion notices
+- `auxiliary ... failed` — secondary model failures
 
 ---
 
@@ -900,6 +1061,9 @@ The binary is at `./target/release/ohagent`.
 
 # Custom URL
 ./target/release/ohagent --url ws://192.168.1.100:9090/v1/ws/chat
+
+# Review mode — skip memory, skills, and past context for unbiased analysis
+./target/release/ohagent --review
 ```
 
 ### Controls
@@ -915,6 +1079,20 @@ The binary is at `./target/release/ohagent`.
 - Inline display of tool calls (`[bash] ls -la`) and results
 - Cancellation via `Esc` — connection stays alive for follow-up messages
 - Type your message and press Enter to send
+- Review mode (`--review`) for unbiased critical analysis
+
+### Tool Progress Modes
+
+The agent runner supports three tool progress modes controlling what is
+streamed to the client:
+
+| Mode | Description |
+|---|---|
+| `All` | Stream everything — tool call starts, results, text deltas (default) |
+| `None` | Suppress all tool events, only stream text deltas |
+| `StreamingOnly` | Stream tool call metadata, truncate large tool results to 200 chars |
+
+Set via `ToolProgressMode` in code or the `review` flag in WebSocket protocol.
 
 ---
 
@@ -934,7 +1112,7 @@ GET /v1/ws/chat  → WebSocket upgrade (JSON protocol)
 
 | Type | Fields | Description |
 |---|---|---|
-| `chat` | `model`, `messages[]`, `temperature?`, `max_tokens?` | Start a new chat turn |
+| `chat` | `model`, `messages[]`, `temperature?`, `max_tokens?`, `review?` | Start a new chat turn. `review: true` skips memory and skills for unbiased analysis |
 | `cancel` | *(none)* | Cancel the current turn mid-response |
 
 **Server → Client** (JSON):

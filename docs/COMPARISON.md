@@ -587,17 +587,15 @@ hermes_tools_mcp_server.py — MCP сервер
 
 ## 10. Что ohAgent может взять из кода Hermes
 
-1. **Memory provider plugin system** — абстракция MemoryProvider + Manager
-2. **Skills lifecycle** — stale → archive с pin/unpin
-3. **Gateway agent cache** — LRU с idle TTL
-4. **Background curator** — отложенный review через дешёвую модель
-5. **Platform command filter** — regex для шумных статусов
-6. **Tool progress modes** — all/none/streaming
-7. **Inline shell в навыках** — `${VAR}` template + `!`shell``
-8. **Parallel tool execution** — ThreadPoolExecutor для независимых вызовов
-9. **Security audit навыков** — AST-based + content hash + trusted repos
-10. **Provider auto-detection** — switch по URL/модели
-11. **ACP/Copilot провайдер** — `copilot --acp --stdio` как enterprise-LLM через ACP протокол (`agent-client-protocol==0.9.0`)
-    - Hermes: `agent/copilot_acp_client.py` — subprocess → ACP session → stream → OpenAI-compatible
-    - ohAgent: добавить в jcode bridge как провайдера без API-ключа, только наличие `copilot` CLI
+1. ✅ **Memory provider plugin system** — `MemoryProvider` trait + `MemoryManager` (13b5b11)
+2. ✅ **Skills lifecycle** — `pinned: bool` + curator skips pinned skills (0a01497)
+3. ✅ **Gateway agent cache** — LRU (128) + TTL (1h) with AtomicU64 (c3c4bc2)
+4. ✅ **Background curator idle trigger** — 2h idle check before curation (69b587c)
+5. ✅ **Platform command filter** — `is_noisy_status()` regex (1b5e1a6)
+6. ✅ **Tool progress modes** — `ToolProgressMode` enum (All/None/StreamingOnly) (4f78bc8)
+7. ✅ **Inline shell в навыках** — `!`shell`` + `${VAR}` templates (aa707ed)
+8. ✅ **Parallel tool execution** — `spawn_blocking` + `join_all` (00e6bf6)
+9. ✅ **Security audit навыков** — SHA-256 + trusted sources + dangerous patterns (290697f)
+10. ❌ **Provider auto-detection** — отклонено (low value в ohAgent архитектуре)
+11. ❌ **ACP/Copilot провайдер** — TODO: добавить в jcode bridge как провайдера
     - Позволяет работать в организациях где whitelist только на Copilot backend

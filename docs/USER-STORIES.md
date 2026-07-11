@@ -160,6 +160,52 @@ and more accurate over time.
 
 ---
 
+## Story 11: Review Mode (Unbiased Analysis)
+
+**As a** user reviewing another agent's work product
+**I want** to start a session that skips all accumulated memory, skills, and past context
+**So that** I get an unbiased, critical analysis without the agent being
+influenced by its own past knowledge or personality.
+
+**Acceptance criteria:**
+- `ohagent --review` starts a review session
+- Skills and memory RAG are excluded from the system prompt
+- System prompt shows "REVIEW MODE ACTIVE" banner
+- AGENTS.md rules are still loaded (only persistent bias is removed)
+- Rolling summary and session heartbeat are skipped
+- Rules provide context for the review task
+
+---
+
+## Story 12: Enterprise Serverless LoRA
+
+**As an** enterprise customer with fine-tuned models
+**I want** to deploy LoRA adapters on SiliconFlow without GPU reservations
+**So that** I can use custom model variants without managing infrastructure.
+
+**Acceptance criteria:**
+- Model catalog supports `base_model` and `lora_id` fields
+- SiliconFlow provider passes `lora_id` as `extra_body` in API requests
+- Router can select LoRA models for specific tenants
+- No GPU reservations needed — serverless inference
+
+---
+
+## Story 13: Skills Security Audit
+
+**As an** operator importing skills from community hubs
+**I want** every imported skill to be content-hashed and scanned for dangerous patterns
+**So that** malicious or broken skills cannot harm the agent or the system.
+
+**Acceptance criteria:**
+- SHA-256 content hash for every imported skill
+- Trusted source allowlist (agentskills.io, GitHub nousresearch/orangehat)
+- Dangerous pattern detection (rm -rf, fork bomb, SQL injection)
+- Three-level verdict: Pass / Review / Block
+- Blocked skills are never activated
+
+---
+
 ## Implementation Status
 
 | # | Story | Phase | Priority |
@@ -174,6 +220,9 @@ and more accurate over time.
 | 8 | Dashboard | Phase 5 | P2 |
 | 9 | Secure Secret Management | Phase 10 | P1 |
 | 10 | Crash Recovery | Phase 13 | P1 |
+| 11 | Review Mode | Phase 13 | P1 |
+| 12 | Enterprise Serverless LoRA | Phase 4 | P2 |
+| 13 | Skills Security Audit | Phase 4 | P2 |
 
 ---
 
