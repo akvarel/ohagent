@@ -36,6 +36,11 @@ use crate::tools::{ToolRegistry, ToolResult};
 /// Max tool-calling rounds before giving up (safety limit).
 const MAX_TOOL_ROUNDS: usize = 5;
 
+/// Max empty-response retries before giving up.
+/// The model may produce no visible output (reasoning-only / guardrail).
+/// We auto-inject a "continue" prompt up to this many times.
+const MAX_EMPTY_RETRIES: u32 = 3;
+
 /// Controls what tool execution information is streamed to the client.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ToolProgressMode {
@@ -106,6 +111,7 @@ pub async fn run_agent_turn(
     let mut current_messages = messages;
     let mut total_input_tokens: u32 = 0;
     let mut total_output_tokens: u32 = 0;
+    let mut empty_retries: u32 = 0;
 
     for _round in 0..MAX_TOOL_ROUNDS {
         let stream = provider
@@ -185,10 +191,44 @@ pub async fn run_agent_turn(
             }
         }
 
-        // If no tool calls, the turn is complete
+        // If no tool calls, the turn is complete — unless it was an empty
+        // response with only reasoning (provider-side guardrail or silent
+        // filter). In that case, inject a "continue" prompt automatically
+        // instead of returning an empty Done.
+        let empty_silent_response = !has_text && pending_tools.is_empty();
         if !has_tools || pending_tools.is_empty() {
-            // Add assistant response to messages for future turns
-            // (we don't track full content here — caller handles it)
+            if empty_silent_response {
+                // The model produced no visible output — likely a provider-side
+                // guardrail or reasoning-only response. Inject a continuation
+                // prompt to nudge the model to actually respond.
+                empty_retries += 1;
+                if empty_retries > MAX_EMPTY_RETRIES {
+                    let msg = format!(
+                        "Model returned empty response {} times (reasoning-only / guardrail). \
+                         Rephrasing the request may help.",
+                        empty_retries
+                    );
+                    tracing::warn!(msg);
+                    let _ = event_tx.send(AgentEvent::Error(msg.clone()));
+                    return Err(msg);
+                }
+                tracing::debug!(
+                    retry = empty_retries,
+                    max = MAX_EMPTY_RETRIES,
+                    "Empty silent response — injecting continuation prompt"
+                );
+                current_messages.push(Message {
+                    role: Role::User,
+                    content: vec![ContentBlock::Text {
+                        text: "Continue. Please provide your response now.".to_string(),
+                        cache_control: None,
+                    }],
+                    timestamp: None,
+                    tool_duration_ms: None,
+                });
+                continue; // Go to next round with the continuation prompt
+            }
+            // Normal completion — the model produced text or explicitly ended
             let total = total_input_tokens + total_output_tokens;
             let _ = event_tx.send(AgentEvent::Done {
                 total_tokens: total,
