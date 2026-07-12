@@ -79,6 +79,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/webhooks/whatsapp", get(crate::webhooks::wa_verify))
         .route("/webhooks/whatsapp", post(crate::webhooks::wa_webhook))
         .route("/webhooks/slack", post(crate::webhooks::slack_webhook))
+        .route("/webhooks/viber", post(crate::webhooks::viber_webhook))
         .with_state(state.webhook_state.clone());
 
     Router::new()

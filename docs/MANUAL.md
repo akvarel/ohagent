@@ -90,6 +90,8 @@ ohAgent resolves secrets in priority order: **Vault → environment variables �
 | `WA_VERIFY_TOKEN` | For WhatsApp | Meta webhook verify token |
 | `WA_PHONE_ID` | For WhatsApp | WhatsApp Business phone number ID |
 | `WA_ACCESS_TOKEN` | For WhatsApp | Meta permanent access token |
+| `VIBER_AUTH_TOKEN` | For Viber | Viber Bot authentication token |
+| `VIBER_WEBHOOK_URL` | For Viber | Public HTTPS URL for Viber webhook |
 | `SLACK_BOT_TOKEN` | For Slack | Slack Bot User OAuth Token (xoxb-...) |
 | `SLACK_SIGNING_SECRET` | For Slack | Slack Events API signing secret |
 | `OHAGENT_API_KEY` | Optional | API auth key for dashboard/audit endpoints |
@@ -534,6 +536,31 @@ The webhook handles both the GET verification challenge and POST message events.
 
 The bot responds when mentioned (`@ohagent ...`) and strips the mention prefix
 before forwarding to the agent.
+
+### Viber (REST API + Webhooks)
+
+| Variable | Required | Description |
+|---|---|---|
+| `VIBER_AUTH_TOKEN` | Yes | Bot authentication token from Viber Admin Panel |
+| `VIBER_WEBHOOK_URL` | Yes | Public HTTPS URL (e.g. `https://your-domain`) |
+
+**Setup steps:**
+1. Create a Bot Account at https://partners.viber.com
+2. Copy the authentication token from the Admin Panel
+3. Set `VIBER_AUTH_TOKEN` and your public HTTPS URL as `VIBER_WEBHOOK_URL`
+4. The daemon automatically registers the webhook with Viber on startup:
+   `https://your-domain/webhooks/viber`
+5. Viber sends `message`, `conversation_started`, and `subscribed` events
+
+**Features:**
+- Text messages: incoming and outgoing
+- Conversation started: auto-welcome via `/start` command
+- Webhook validation: handled automatically on first registration
+- No external polling — fully event-driven via webhooks
+
+**Limitations:**
+- Photos/files not yet supported (only text)
+- Markdown rendering is basic (Viber uses [b]/[i] tags)
 
 ### Graceful Degradation
 

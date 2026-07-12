@@ -32,6 +32,7 @@ use ohagent_core::vault::{resolve_secret, VaultClient};
 use ohagent_gateway::platforms::telegram::TelegramAdapter;
 use ohagent_gateway::platforms::whatsapp::WhatsAppAdapter;
 use ohagent_gateway::platforms::slack::SlackAdapter;
+use ohagent_gateway::platforms::viber::ViberAdapter;
 use ohagent_gateway::adapter::PlatformAdapter;
 use ohagent_memory::engine::MemoryEngine;
 use ohagent_memory::models::MemoryConfig;
@@ -130,6 +131,7 @@ struct Daemon {
     scheduler: Option<Arc<ohagent_core::scheduler::Scheduler>>,
     whatsapp: Option<Arc<WhatsAppAdapter>>,
     slack: Option<Arc<SlackAdapter>>,
+    viber: Option<Arc<ViberAdapter>>,
     /// Kept alive to own MCP server child processes (passed to bridge on startup).
     #[allow(dead_code)]
     mcp_pool: Option<Arc<SharedMcpPool>>,
@@ -163,6 +165,7 @@ impl Daemon {
             ("telegram", "Telegram gateway"),
             ("whatsapp", "WhatsApp gateway"),
             ("slack", "Slack gateway"),
+            ("viber", "Viber gateway"),
             ("gemini_ocr", "Gemini OCR for receipts"),
             ("scheduler", "Cron scheduler"),
             ("push", "Push notification service"),
@@ -552,6 +555,20 @@ impl Daemon {
             }
         };
 
+        // Initialize Viber adapter (if configured)
+        let viber = match ViberAdapter::from_env() {
+            Ok(v) => {
+                info!("Viber adapter initialized");
+                health.set_healthy("viber", "Viber gateway ready");
+                Some(Arc::new(v))
+            }
+            Err(e) => {
+                tracing::debug!(error = %e, "Viber not configured, skipping");
+                health.set_degraded("viber", "Not configured");
+                None
+            }
+        };
+
         // Initialize API auth (key from env or generated)
         let auth_config = auth::AuthConfig::from_env();
 
@@ -697,6 +714,7 @@ impl Daemon {
             scheduler,
             whatsapp,
             slack,
+            viber,
             mcp_pool,
             plugin_manager: Arc::new(StdMutex::new(plugin_manager)),
             gemini_ocr,
@@ -734,6 +752,7 @@ impl Daemon {
             webhook_state: webhooks::WebhookState {
                 whatsapp: self.whatsapp.clone(),
                 slack: self.slack.clone(),
+                viber: self.viber.clone(),
             },
         };
 
@@ -829,6 +848,17 @@ impl Daemon {
                 Ok(()) => info!("Telegram gateway started"),
                 Err(e) => tracing::warn!(error = %e, "Telegram gateway not started"),
             }
+        }
+
+        // Start Viber gateway (if configured)
+        if let Some(ref viber) = self.viber {
+            let bridge = Arc::clone(&self.bridge);
+            let v = Arc::clone(viber);
+            tokio::spawn(async move {
+                if let Err(e) = v.start(bridge).await {
+                    tracing::error!(error = %e, "Viber gateway failed to start");
+                }
+            });
         }
 
         // Start skills cron (creation, evaluation, curation)

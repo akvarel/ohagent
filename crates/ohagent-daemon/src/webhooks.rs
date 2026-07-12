@@ -13,13 +13,14 @@ use axum::{
 };
 use serde::Deserialize;
 
-use ohagent_gateway::platforms::{slack::SlackAdapter, whatsapp::WhatsAppAdapter};
+use ohagent_gateway::platforms::{slack::SlackAdapter, viber::ViberAdapter, whatsapp::WhatsAppAdapter};
 
 /// Shared state for webhook handlers.
 #[derive(Clone)]
 pub struct WebhookState {
     pub whatsapp: Option<Arc<WhatsAppAdapter>>,
     pub slack: Option<Arc<SlackAdapter>>,
+    pub viber: Option<Arc<ViberAdapter>>,
 }
 
 // ── WhatsApp webhook ──
@@ -101,6 +102,28 @@ pub async fn slack_webhook(
             .into_response(),
         Err(e) => {
             tracing::error!(error = %e, "Slack webhook error");
+            (StatusCode::INTERNAL_SERVER_ERROR, e).into_response()
+        }
+    }
+}
+
+// ── Viber webhook ──
+
+/// POST /webhooks/viber — Viber callbacks.
+pub async fn viber_webhook(
+    State(state): State<WebhookState>,
+    body: String,
+) -> Response {
+    let adapter = match &state.viber {
+        Some(a) => a,
+        None => return (StatusCode::SERVICE_UNAVAILABLE, "Viber not configured").into_response(),
+    };
+
+    match adapter.handle_webhook(&body).await {
+        Ok((status, body)) => (StatusCode::from_u16(status).unwrap_or(StatusCode::OK), body)
+            .into_response(),
+        Err(e) => {
+            tracing::error!(error = %e, "Viber webhook error");
             (StatusCode::INTERNAL_SERVER_ERROR, e).into_response()
         }
     }

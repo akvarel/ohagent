@@ -12,6 +12,7 @@ pub mod session;
 pub mod platforms {
     //! Platform-specific adapters.
     pub mod telegram;
+    pub mod viber;
     pub mod whatsapp;
     pub mod slack;
 }
