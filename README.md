@@ -1,6 +1,6 @@
 # ohAgent — 24/7 Personal AI Super-Agent
 
-**ohAgent** is a self-hosted, always-on AI agent built on Jcode v0.37.0.
+**ohAgent** is a self-hosted, always-on AI agent built on Jcode v0.56.0.
 It lives in your Telegram, remembers everything, learns from your tasks,
 processes receipts with sub-cent OCR, and scales to thousands of users.
 
