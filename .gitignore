@@ -24,3 +24,10 @@ Thumbs.db
 
 # Cargo (local)
 .cargo/config.toml
+
+# Internal docs & CI (not for GitHub)
+.gitlab-ci.yml
+PRODUCT-BRIEF*.md
+PRODUCT-LENS-REVIEW.md
+scripts/ocr_results.json
+scripts/reference/
