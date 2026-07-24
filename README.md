@@ -6,7 +6,7 @@ processes receipts with sub-cent OCR, and scales to thousands of users.
 
 <p align="center">
   <img src="https://img.shields.io/badge/rust-1.82%2B-orange" alt="Rust 1.82+">
-  <img src="https://img.shields.io/badge/jcode-v0.37.0-blue" alt="Jcode v0.37.0">
+  <img src="https://img.shields.io/badge/jcode-v0.56.0-blue" alt="Jcode v0.56.0">
   <img src="https://img.shields.io/badge/status-active%20development-brightgreen" alt="Status">
   <img src="https://img.shields.io/badge/platform-Telegram-blue" alt="Telegram">
   <img src="https://img.shields.io/badge/OCR-Gemini%20Free-4285F4" alt="Gemini OCR">
@@ -42,7 +42,7 @@ ohAgent is always on, remembers everything, and gets smarter.
 
 ```bash
 # Clone and start
-git clone --recurse-submodules https://github.com/orangehat/ohAgent.git
+git clone --recurse-submodules https://github.com/akvarel/ohAgent.git
 cd ohAgent
 
 # Set your keys
@@ -126,7 +126,7 @@ Telegram/WhatsApp/Slack
    │    │                    │
    ▼    ▼                    ▼
 Jcode   Memory Engine    Skills Engine
-v0.37  SQLite+vector    Auto-learns
+v0.56  SQLite+vector    Auto-learns
         │
    ┌────┼────────────┬──────────────┐
    │    │            │              │
@@ -136,7 +136,7 @@ V4-Flash  Flash    EU/GDPR     200+ models
         │
    Receipt Pipeline
    ┌─────────────────┐
-   │ Gemini → Arbiter │ 4s, FREE, 4/4
+   │ Gemini → Arbiter│ 4s, FREE, 4/4
    └─────────────────┘
 
 Background:
@@ -162,7 +162,6 @@ resources:
 # Zero-downtime: RollingUpdate maxUnavailable=0
 ```
 
-**Cost**: €28/mo at 100 users. €250/mo at 10K users.
 No GPU. We proxy, not compute.
 
 See [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md) for full cost breakdown.
@@ -205,4 +204,4 @@ Full comparison: [MODEL-GUIDE.md](docs/MODEL-GUIDE.md)
 
 ## License
 
-MIT — [OrangeHat](https://github.com/orangehat)
+MIT — [OrangeHat.AI](https://github.com/akvarel)
