@@ -46,6 +46,15 @@ mod deepseek_integration {
     #[ignore = "requires a live DeepSeek credential and network access"]
     async fn deepseek_headless_e2e() {
         let _ = std::env::var("DEEPSEEK_API_KEY").expect("DEEPSEEK_API_KEY must be set");
+        let workspace = std::env::temp_dir().join(format!(
+            "ohagent-sdk-workspace-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        assert!(!workspace.exists());
 
         register_runtimes();
 
@@ -66,7 +75,7 @@ mod deepseek_integration {
             .create_session(ohagent_core::jcode_bridge::SessionConfig {
                 tenant_id: "deepseek-integration".into(),
                 model: Some("deepseek-v4-flash".into()),
-                working_dir: Some(std::env::current_dir().unwrap().to_string_lossy().into()),
+                working_dir: Some(workspace.to_string_lossy().into()),
                 selfdev: false,
                 report_back_to: None,
             })
@@ -74,6 +83,7 @@ mod deepseek_integration {
             .expect("create headless session");
 
         eprintln!("Session created: {}", session.session_id());
+        assert!(workspace.is_dir());
 
         assert!(bridge
             .get_session("deepseek-integration", session.session_id())
