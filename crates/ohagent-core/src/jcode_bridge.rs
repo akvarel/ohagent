@@ -232,7 +232,15 @@ impl JcodeBridge {
         }
         let root = self.runtime_root();
         let hash = stable_hash_hex(tenant_id);
-        Ok(root.join(hash))
+        let home = root.join(hash);
+        let socket = home.join("run").join("jcode-api.sock");
+        if socket.as_os_str().as_encoded_bytes().len() >= 108 {
+            return Err(BridgeError::Session(format!(
+                "OHAGENT_JCODE_RUNTIME_ROOT is too long for the Unix socket path: {} bytes",
+                socket.as_os_str().as_encoded_bytes().len()
+            )));
+        }
+        Ok(home)
     }
 
     pub fn session_scope_key(
@@ -423,5 +431,6 @@ fn validate_safe_absolute_path(path: &str, label: &str) -> Result<(), BridgeErro
 }
 
 fn stable_hash_hex(value: &str) -> String {
-    format!("rt-{:x}", Sha256::digest(value.as_bytes()))
+    let digest = format!("{:x}", Sha256::digest(value.as_bytes()));
+    format!("rt-{}", &digest[..32])
 }

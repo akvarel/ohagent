@@ -46,12 +46,11 @@ fn runtime_path_uses_frozen_sha256_tenant_key() {
 
 #[test]
 fn runtime_path_rejects_a_root_that_cannot_fit_the_unix_socket() {
-    let bridge = JcodeBridge::new(Arc::new(jcode_base::provider::MultiProvider::new())).with_config(
-        JcodeBridgeConfig {
+    let bridge = JcodeBridge::new(Arc::new(jcode_base::provider::MultiProvider::new()))
+        .with_config(JcodeBridgeConfig {
             runtime_root: Some(PathBuf::from(format!("/{}", "x".repeat(90)))),
             jcode_binary: Some(PathBuf::from("/usr/local/bin/jcode-test")),
-        },
-    );
+        });
 
     let error = bridge
         .runtime_home_for_tenant("tenant-a")

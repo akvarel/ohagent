@@ -22,12 +22,10 @@ require_literal Dockerfile 'ENV OHAGENT_JCODE_RUNTIME_ROOT=/home/jcode/jr'
 require_literal docker-compose.yml 'OHAGENT_JCODE_BINARY: /usr/local/bin/jcode'
 require_literal docker-compose.yml 'OHAGENT_JCODE_RUNTIME_ROOT: /home/jcode/jr/compose'
 
-require_literal k8s/base/deployment.yaml 'fieldPath: metadata.name'
 require_literal k8s/base/deployment.yaml 'name: OHAGENT_JCODE_BINARY'
 require_literal k8s/base/deployment.yaml 'value: /usr/local/bin/jcode'
 require_literal k8s/base/deployment.yaml 'name: OHAGENT_JCODE_RUNTIME_ROOT'
 require_literal k8s/base/deployment.yaml 'value: /home/jcode/jr/$(POD_UID)'
 require_literal k8s/base/deployment.yaml 'fieldPath: metadata.uid'
-require_literal k8s/base/deployment.yaml 'value: /home/jcode/.ohagent/jcode-runtimes/$(POD_NAME)'
 
 printf 'Jcode SDK runtime packaging contract passed.\n'

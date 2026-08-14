@@ -96,8 +96,8 @@ RUN useradd --create-home --shell /bin/bash jcode
 COPY --from=builder /out/ohagent-daemon /usr/local/bin/ohagent-daemon
 COPY --from=builder /out/jcode /usr/local/bin/jcode
 ENV OHAGENT_JCODE_BINARY=/usr/local/bin/jcode
-ENV OHAGENT_JCODE_RUNTIME_ROOT=/home/jcode/.ohagent/jcode-runtimes
-RUN mkdir -p /home/jcode/.ohagent/jcode-runtimes && chown -R jcode:jcode /home/jcode
+ENV OHAGENT_JCODE_RUNTIME_ROOT=/home/jcode/jr
+RUN mkdir -p /home/jcode/jr && chown -R jcode:jcode /home/jcode
 
 USER jcode
 WORKDIR /home/jcode
