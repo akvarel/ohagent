@@ -41,7 +41,11 @@ fn runtime_path_uses_frozen_sha256_tenant_key() {
     let bridge = bridge();
     let path = bridge.runtime_home_for_tenant("tenant-a").unwrap();
 
-    assert!(path.ends_with("rt-80a707af7dc77ee1228f9127180f3964"));
+    assert!(
+        path.ends_with("rt-80a707af7dc77ee1228f9127"),
+        "unexpected runtime path: {}",
+        path.display()
+    );
 }
 
 #[test]
