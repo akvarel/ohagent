@@ -99,8 +99,8 @@ COPY --from=builder /out/ohagent-daemon /usr/local/bin/ohagent-daemon
 COPY --from=builder /out/jcode /usr/local/bin/jcode
 COPY --from=builder /out/jcode-harness-api-bridge /usr/local/bin/jcode-harness-api-bridge
 ENV OHAGENT_JCODE_BINARY=/usr/local/bin/jcode
-ENV OHAGENT_JCODE_RUNTIME_ROOT=/home/jcode/jr
-RUN mkdir -p /home/jcode/jr && chown -R jcode:jcode /home/jcode
+ENV OHAGENT_JCODE_RUNTIME_ROOT=/home/jcode/.ohagent/j
+RUN mkdir -p /home/jcode/.ohagent/j && chown -R jcode:jcode /home/jcode
 
 USER jcode
 WORKDIR /home/jcode

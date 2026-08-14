@@ -61,7 +61,7 @@ spec:
             # Each replica owns a distinct runtime/socket tree while tenant
             # hashing inside ohAgent provides the next isolation boundary.
             - name: OHAGENT_JCODE_RUNTIME_ROOT
-              value: /home/jcode/jr/$(POD_UID)
+              value: /home/jcode/.ohagent/j/$(POD_UID)
             - name: VAULT_TOKEN
               valueFrom:
                 secretKeyRef:

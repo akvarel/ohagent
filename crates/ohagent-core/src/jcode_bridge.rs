@@ -452,5 +452,5 @@ async fn prepare_workspace(path: &Path) -> Result<(), BridgeError> {
 
 fn stable_hash_hex(value: &str) -> String {
     let digest = format!("{:x}", Sha256::digest(value.as_bytes()));
-    format!("rt-{}", &digest[..32])
+    format!("rt-{}", &digest[..24])
 }

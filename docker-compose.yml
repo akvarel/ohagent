@@ -138,7 +138,7 @@ for line in content.split('\n'):
       # Jcode public SDK runtime. The compose suffix keeps this runtime domain
       # separate from host and Kubernetes installations sharing the volume.
       OHAGENT_JCODE_BINARY: /usr/local/bin/jcode
-      OHAGENT_JCODE_RUNTIME_ROOT: /home/jcode/jr/compose
+      OHAGENT_JCODE_RUNTIME_ROOT: /home/jcode/.ohagent/j/compose
       # Logging
       RUST_LOG: ${RUST_LOG:-info}
     volumes:
