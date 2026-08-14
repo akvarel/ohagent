@@ -13,8 +13,8 @@ require_literal() {
   fi
 }
 
-require_literal Dockerfile 'cargo build --$BUILD_PROFILE -p jcode --bin jcode'
-require_literal Dockerfile 'cp target/$BUILD_PROFILE/jcode /out/'
+require_literal Dockerfile 'cargo build --manifest-path jcode/Cargo.toml --$BUILD_PROFILE -p jcode --bin jcode --target-dir target/jcode-runtime'
+require_literal Dockerfile 'cp target/jcode-runtime/$BUILD_PROFILE/jcode /out/'
 require_literal Dockerfile 'COPY --from=builder /out/jcode /usr/local/bin/jcode'
 require_literal Dockerfile 'ENV OHAGENT_JCODE_BINARY=/usr/local/bin/jcode'
 require_literal Dockerfile 'ENV OHAGENT_JCODE_RUNTIME_ROOT=/home/jcode/.ohagent/jcode-runtimes'
