@@ -1,24 +1,18 @@
-//! Jcode Bridge — programmatic API for embedding Jcode's agent loop.
+//! Jcode Bridge — programmatic API for embedding Jcode through the public SDK.
 //!
-//! This module wraps Jcode's internal headless session API into a clean,
-//! ergonomic interface that ohAgent can use from daemon, gateway, and cron.
+//! ohAgent owns tenancy, routing, and gateway concerns. Jcode owns session
+//! execution and built-in tools through its public SDK/runtime boundary.
 
-use jcode_agent_runtime::SoftInterruptSource;
-use jcode_app_core::{
-    agent::Agent,
-    server::{
-        headless::create_headless_session,
-        client_lifecycle::process_message_streaming_mpsc,
-        state::SessionInterruptQueues,
-        SessionAgents, SwarmMember,
-    },
-};
+use crate::model_router::ModelRouter;
+use crate::tools::ToolRegistry;
+use jcode_base::mcp::SharedMcpPool;
 use jcode_provider_core::Provider as ProviderTrait;
-use jcode_message_types::ToolDefinition;
-use crate::agent_runner::{self, AgentEvent};
-use std::collections::{HashMap, HashSet};
+use jcode_sdk::{JcodeClient, LaunchOptions, LaunchedInstance, RunOptions, SessionInfo};
+use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
+use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use tokio::sync::{Mutex as TokioMutex, RwLock};
+use tokio::sync::RwLock;
 use tracing::info;
 
 /// Error type for Jcode bridge operations.
@@ -32,347 +26,404 @@ pub enum BridgeError {
     Provider(String),
 }
 
+/// Bridge-level runtime configuration.
+#[derive(Debug, Clone, Default)]
+pub struct JcodeBridgeConfig {
+    /// Persistent root for tenant-private Jcode homes. Env fallback: OHAGENT_JCODE_RUNTIME_ROOT.
+    pub runtime_root: Option<PathBuf>,
+    /// Jcode binary used for private SDK runtimes. Env fallback: OHAGENT_JCODE_BINARY.
+    pub jcode_binary: Option<PathBuf>,
+}
+
 /// Configuration for creating a new agent session.
 #[derive(Debug, Clone)]
 pub struct SessionConfig {
-    /// Optional model override
+    /// Explicit tenant or security-domain identifier. Never used raw in filesystem paths.
+    pub tenant_id: String,
+    /// Optional model override.
     pub model: Option<String>,
-    /// Working directory for the agent
+    /// Safe absolute workspace path for the agent.
     pub working_dir: Option<String>,
-    /// Whether to enable self-dev tools
+    /// Unsupported by the SDK bridge. Rejected instead of silently ignored.
     pub selfdev: bool,
-    /// Session ID to report results back to (for swarm delegation)
+    /// Unsupported by the SDK bridge. Rejected instead of silently ignored.
     pub report_back_to: Option<String>,
 }
 
-/// A handle to a running Jcode agent session.
-///
-/// Created via `JcodeBridge::create_session()`.
-/// Clone is cheap — it clones the Arc inside.
+/// A handle to a Jcode SDK session.
 #[derive(Clone)]
 pub struct SessionHandle {
     pub session_id: String,
-    pub agent: Arc<TokioMutex<Agent>>,
-    pub tool_registry: Option<Arc<ToolRegistry>>,
-    provider: Arc<dyn ProviderTrait>,
+    tenant_id: String,
+    client: Arc<JcodeClient>,
 }
 
 impl SessionHandle {
-    /// Send a text message to this agent.
-    ///
-    /// The message is processed through Jcode's agent loop.
-    /// For messages with attachments, use `send_message_with_images` instead.
     pub async fn send_message(&self, content: &str) -> Result<(), BridgeError> {
-        self.send_message_with_images(content, Vec::new()).await
+        self.send_message_with_images(content, Vec::new())
+            .await
+            .map(drop)
     }
 
-    /// Send a text message with attached images to this agent.
-    ///
-    /// `images` is a list of `(media_type, base64_encoded_data)` tuples.
-    /// Supported media types: "image/png", "image/jpeg", "image/gif", "image/webp".
-    ///
-    /// The message is processed through Jcode's agent loop.
-    /// Returns `Ok(())` when the agent has finished processing.
+    /// Send a text message with images and return assistant text collected by the SDK.
     pub async fn send_message_with_images(
         &self,
         content: &str,
         images: Vec<(String, String)>,
-    ) -> Result<(), BridgeError> {
-        let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel();
-
-        let agent = Arc::clone(&self.agent);
-        let text = content.to_string();
-
-        // Spawn processing in background
-        let handle = tokio::spawn(async move {
-            process_message_streaming_mpsc(
-                agent,
-                &text,
-                images,
-                None,
-                event_tx,
+    ) -> Result<String, BridgeError> {
+        let client = Arc::clone(&self.client);
+        let session_id = self.session_id.clone();
+        let content = content.to_string();
+        tokio::task::spawn_blocking(move || {
+            client.run(
+                &session_id,
+                &content,
+                RunOptions {
+                    images,
+                    on_event: None,
+                    auto_approve: false,
+                },
             )
-            .await
-        });
-
-        // Drain events while processing
-        while event_rx.recv().await.is_some() {}
-
-        handle
-            .await
-            .map_err(|e| BridgeError::Message(e.to_string()))?
-            .map_err(|e| BridgeError::Message(e.to_string()))?;
-
-        Ok(())
+        })
+        .await
+        .map_err(|e| BridgeError::Message(e.to_string()))?
+        .map(|turn| turn.text)
+        .map_err(|e| BridgeError::Message(e.to_string()))
     }
 
     /// Send a soft interrupt signal to stop the current agent operation.
-    pub async fn interrupt(&self) {
-        let agent = self.agent.lock().await;
-        agent.soft_interrupt_queue()
-            .lock()
-            .unwrap()
-            .push(jcode_agent_runtime::SoftInterruptMessage {
-                content: "ohAgent gateway interrupt".to_string(),
-                urgent: true,
-                source: SoftInterruptSource::User,
-            });
+    pub async fn interrupt(&self) -> Result<(), BridgeError> {
+        let client = Arc::clone(&self.client);
+        let session_id = self.session_id.clone();
+        tokio::task::spawn_blocking(move || {
+            client.soft_interrupt(&session_id, "ohAgent gateway interrupt", true)
+        })
+        .await
+        .map_err(|e| BridgeError::Message(e.to_string()))?
+        .map_err(|e| BridgeError::Message(e.to_string()))
     }
 
-    /// Send a message with tool augmentation via agent_runner.
-    ///
-    /// When the bridge has tools registered, messages route through
-    /// `run_agent_turn()` instead of `process_message_streaming_mpsc()`.
-    /// This enables bash, write, edit, and other built-in tools in
-    /// non-OpenAI-API contexts (Telegram, WhatsApp, etc.).
-    ///
-    /// Returns the full text response from the agent.
-    pub async fn send_message_with_tools(
-        &self,
-        content: &str,
-    ) -> Result<String, BridgeError> {
-        let tr = match &self.tool_registry {
-            Some(tr) if !tr.list().is_empty() => Arc::clone(tr),
-            _ => {
-                // No tools — fall back to regular send_message
-                self.send_message(content).await?;
-                return Ok(String::new()); // response is empty (processed async)
-            }
-        };
-
-        // Build tool definitions
-        let tool_defs: Vec<ToolDefinition> = tr
-            .list()
-            .into_iter()
-            .map(|(name, desc)| {
-                let schema = tr
-                    .get(&name)
-                    .map(|t| t.parameters_schema.clone())
-                    .unwrap_or(serde_json::Value::Null);
-                ToolDefinition {
-                    name,
-                    description: desc,
-                    input_schema: schema,
-                }
-            })
-            .collect();
-
-        // Build messages from content
-        let messages = vec![jcode_message_types::Message {
-            role: jcode_message_types::Role::User,
-            content: vec![jcode_message_types::ContentBlock::Text {
-                text: content.to_string(),
-                cache_control: None,
-            }],
-            timestamp: None,
-            tool_duration_ms: None,
-        }];
-
-        let (event_tx, mut event_rx) = tokio::sync::mpsc::unbounded_channel();
-
-        let provider = Arc::clone(&self.provider);
-        let system = String::new(); // System prompt is handled by jcode's agent
-
-        let handle = tokio::spawn(async move {
-            agent_runner::run_agent_turn(
-                provider,
-                messages,
-                system,
-                tool_defs,
-                tr,
-                event_tx,
-                agent_runner::ToolProgressMode::All,
-            )
-            .await
-        });
-
-        // Collect text deltas
-        let mut response = String::new();
-        while let Some(event) = event_rx.recv().await {
-            if let AgentEvent::TextDelta(text) = event {
-                response.push_str(&text);
-            }
-        }
-
-        handle
+    /// Cancel the current session turn.
+    pub async fn cancel(&self) -> Result<(), BridgeError> {
+        let client = Arc::clone(&self.client);
+        let session_id = self.session_id.clone();
+        tokio::task::spawn_blocking(move || client.cancel(&session_id))
             .await
             .map_err(|e| BridgeError::Message(e.to_string()))?
-            .map_err(|e| BridgeError::Message(e))?;
-
-        Ok(response)
+            .map_err(|e| BridgeError::Message(e.to_string()))
     }
 
-    /// Get the session ID.
+    /// Compatibility shim. Jcode SDK owns built-in tool execution.
+    pub async fn send_message_with_tools(&self, content: &str) -> Result<String, BridgeError> {
+        self.send_message_with_images(content, Vec::new()).await
+    }
+
     pub fn session_id(&self) -> &str {
         &self.session_id
     }
+
+    pub fn tenant_id(&self) -> &str {
+        &self.tenant_id
+    }
 }
 
-use crate::model_router::ModelRouter;
-use crate::tools::ToolRegistry;
-use jcode_base::mcp::SharedMcpPool;
+struct TenantRuntime {
+    _instance: LaunchedInstance,
+    client: Arc<JcodeClient>,
+}
 
 /// Main bridge between ohAgent and Jcode.
-///
-/// Manages the lifecycle of Jcode sessions.
-/// Provider is configured externally and passed in.
 pub struct JcodeBridge {
-    sessions: SessionAgents,
-    global_session_id: Arc<RwLock<String>>,
+    sessions: Arc<RwLock<HashMap<String, (String, Arc<JcodeClient>)>>>,
+    runtimes: Arc<RwLock<HashMap<String, Arc<TenantRuntime>>>>,
     provider: Arc<dyn ProviderTrait>,
     router: Option<Arc<Mutex<ModelRouter>>>,
     tool_registry: Arc<ToolRegistry>,
     mcp_pool: Option<Arc<SharedMcpPool>>,
-    swarm_members: Arc<RwLock<HashMap<String, SwarmMember>>>,
-    swarms_by_id: Arc<RwLock<HashMap<String, HashSet<String>>>>,
-    swarm_coordinators: Arc<RwLock<HashMap<String, String>>>,
-    swarm_plans: Arc<RwLock<HashMap<String, jcode_app_core::plan::VersionedPlan>>>,
-    soft_interrupt_queues: SessionInterruptQueues,
+    config: JcodeBridgeConfig,
 }
 
 impl JcodeBridge {
-    /// Create a new Jcode bridge with the given provider.
-    ///
-    /// The provider must implement `jcode_provider_core::Provider`.
-    /// Use Jcode's provider resolution or create a custom provider externally.
     pub fn new(provider: Arc<dyn ProviderTrait>) -> Self {
-        info!("Initializing Jcode bridge");
+        info!("Initializing Jcode SDK bridge");
         Self {
             sessions: Arc::new(RwLock::new(HashMap::new())),
-            global_session_id: Arc::new(RwLock::new(String::new())),
+            runtimes: Arc::new(RwLock::new(HashMap::new())),
             provider,
             router: None,
             tool_registry: Arc::new(ToolRegistry::new()),
             mcp_pool: None,
-            swarm_members: Arc::new(RwLock::new(HashMap::new())),
-            swarms_by_id: Arc::new(RwLock::new(HashMap::new())),
-            swarm_coordinators: Arc::new(RwLock::new(HashMap::new())),
-            swarm_plans: Arc::new(RwLock::new(HashMap::new())),
-            soft_interrupt_queues: Arc::new(RwLock::new(HashMap::new())),
+            config: JcodeBridgeConfig::default(),
         }
     }
 
-    /// Attach a model router for intelligent model selection.
+    pub fn with_config(mut self, config: JcodeBridgeConfig) -> Self {
+        self.config = config;
+        self
+    }
+
     pub fn with_router(mut self, router: Arc<Mutex<ModelRouter>>) -> Self {
         self.router = Some(router);
         self
     }
 
-    /// Register tools that agents can invoke.
+    /// Retained for OpenAI/ws provider paths. Gateway session execution no longer invokes it.
     pub fn with_tools(mut self, registry: ToolRegistry) -> Self {
         self.tool_registry = Arc::new(registry);
         self
     }
 
-    /// Attach a shared MCP server pool for tool discovery.
-    ///
-    /// When set, all sessions created through this bridge will have access
-    /// to `mcp__<server>__<tool>` tools registered by the pool.
     pub fn with_mcp_pool(mut self, pool: Arc<SharedMcpPool>) -> Self {
         self.mcp_pool = Some(pool);
         self
     }
 
-    /// Get a reference to the tool registry.
     pub fn tools(&self) -> &Arc<ToolRegistry> {
         &self.tool_registry
     }
 
-    /// Human-readable name of the provider (e.g. "deepseek", "anthropic").
     pub fn provider_name(&self) -> String {
         self.provider.display_name()
     }
 
-    /// Get a reference to the underlying provider for direct API calls.
+    /// Get a reference to the underlying provider for direct OpenAI/API paths.
     pub fn provider(&self) -> &Arc<dyn ProviderTrait> {
         &self.provider
     }
 
-    /// Route a message to the best model and return the model name.
-    ///
-    /// If no router is configured, returns the default provider name.
     pub fn route_message(&self, tenant_id: &str, message: &str) -> String {
         match &self.router {
-            Some(router) => {
-                match router.lock().unwrap().route(tenant_id, message) {
-                    Ok(routed) => routed.display_name,
-                    Err(_) => self.provider.display_name(),
-                }
-            }
+            Some(router) => router
+                .lock()
+                .unwrap()
+                .route(tenant_id, message)
+                .map(|routed| routed.display_name)
+                .unwrap_or_else(|_| self.provider.display_name()),
             None => self.provider.display_name(),
         }
     }
 
-    /// Create a new headless agent session.
+    pub fn validate_session_config(&self, config: &SessionConfig) -> Result<(), BridgeError> {
+        let mut unsupported = Vec::new();
+        if config.selfdev {
+            unsupported.push("selfdev");
+        }
+        if config.report_back_to.is_some() {
+            unsupported.push("report_back_to");
+        }
+        if !unsupported.is_empty() {
+            return Err(BridgeError::Session(format!(
+                "unsupported SDK session options: {}",
+                unsupported.join(", ")
+            )));
+        }
+        if config.tenant_id.trim().is_empty() {
+            return Err(BridgeError::Session("tenant_id must be explicit".into()));
+        }
+        if let Some(working_dir) = &config.working_dir {
+            validate_safe_absolute_path(working_dir, "working_dir")?;
+        }
+        Ok(())
+    }
+
+    pub fn runtime_home_for_tenant(&self, tenant_id: &str) -> Result<PathBuf, BridgeError> {
+        if tenant_id.trim().is_empty() {
+            return Err(BridgeError::Session("tenant_id must be explicit".into()));
+        }
+        let root = self.runtime_root();
+        let hash = stable_hash_hex(tenant_id);
+        Ok(root.join(hash))
+    }
+
+    pub fn session_scope_key(
+        &self,
+        tenant_id: &str,
+        session_id: &str,
+    ) -> Result<String, BridgeError> {
+        if tenant_id.trim().is_empty() {
+            return Err(BridgeError::Session("tenant_id must be explicit".into()));
+        }
+        if session_id.trim().is_empty() {
+            return Err(BridgeError::Session("session_id must be explicit".into()));
+        }
+        Ok(format!("{}:{session_id}", stable_hash_hex(tenant_id)))
+    }
+
     pub async fn create_session(
         &self,
         config: SessionConfig,
     ) -> Result<SessionHandle, BridgeError> {
-        let command = config.working_dir.as_deref().unwrap_or("");
+        self.validate_session_config(&config)?;
+        let runtime = self.runtime_for_tenant(&config).await?;
+        let client = Arc::clone(&runtime.client);
+        let working_dir = config.working_dir.clone();
+        let session: SessionInfo =
+            tokio::task::spawn_blocking(move || client.create_session(working_dir))
+                .await
+                .map_err(|e| BridgeError::Session(e.to_string()))?
+                .map_err(|e| BridgeError::Session(e.to_string()))?;
 
-        let result_json = create_headless_session(
-            &self.sessions,
-            &self.global_session_id,
-            &self.provider,
-            command,
-            &self.swarm_members,
-            &self.swarms_by_id,
-            &self.swarm_coordinators,
-            &self.swarm_plans,
-            &self.soft_interrupt_queues,
-            config.selfdev,
-            config.model.clone(),
-            None, // provider_key_override
-            None, // route_api_method_override
-            None, // effort_override
-            self.mcp_pool.clone(), // shared MCP pool
-            config.report_back_to.clone(),
-        )
-        .await
-        .map_err(|e| BridgeError::Session(e.to_string()))?;
+        if let Some(model) = config.model.clone() {
+            let client = Arc::clone(&runtime.client);
+            let session_id = session.session_id.clone();
+            tokio::task::spawn_blocking(move || client.set_model(&session_id, &model))
+                .await
+                .map_err(|e| BridgeError::Session(e.to_string()))?
+                .map_err(|e| BridgeError::Session(e.to_string()))?;
+        }
 
-        // Parse session info from result
-        let info: serde_json::Value =
-            serde_json::from_str(&result_json)
-                .map_err(|e| BridgeError::Session(format!("Failed to parse session info: {e}")))?;
-
-        let session_id = info["session_id"]
-            .as_str()
-            .ok_or_else(|| BridgeError::Session("Missing session_id in response".into()))?
-            .to_string();
-
-        // Retrieve the agent from sessions
-        let sessions_guard = self.sessions.read().await;
-        let agent = sessions_guard
-            .get(&session_id)
-            .cloned()
-            .ok_or_else(|| BridgeError::Session(format!("Session {session_id} not found after creation")))?;
-
-        info!(session_id = %session_id, "Created Jcode session");
+        let session_id = session.session_id;
+        let scoped_key = self.session_scope_key(&config.tenant_id, &session_id)?;
+        self.sessions.write().await.insert(
+            scoped_key,
+            (config.tenant_id.clone(), Arc::clone(&runtime.client)),
+        );
 
         Ok(SessionHandle {
             session_id,
-            agent,
-            tool_registry: Some(Arc::clone(&self.tool_registry)),
-            provider: Arc::clone(&self.provider),
+            tenant_id: config.tenant_id,
+            client: Arc::clone(&runtime.client),
         })
     }
 
-    /// Get an existing session by ID.
-    pub async fn get_session(&self, session_id: &str) -> Option<SessionHandle> {
+    pub async fn get_session(&self, tenant_id: &str, session_id: &str) -> Option<SessionHandle> {
+        let key = self.session_scope_key(tenant_id, session_id).ok()?;
         let sessions = self.sessions.read().await;
-        let agent = sessions.get(session_id)?.clone();
-
+        let (stored_tenant_id, client) = sessions.get(&key)?.clone();
         Some(SessionHandle {
             session_id: session_id.to_string(),
-            agent,
-            tool_registry: Some(Arc::clone(&self.tool_registry)),
-            provider: Arc::clone(&self.provider),
+            tenant_id: stored_tenant_id,
+            client,
         })
     }
 
-    /// List all active session IDs.
-    pub async fn list_sessions(&self) -> Vec<String> {
-        self.sessions.read().await.keys().cloned().collect()
+    pub async fn list_sessions(&self, tenant_id: &str) -> Vec<String> {
+        let prefix = match self.session_scope_key(tenant_id, "_") {
+            Ok(key) => key.trim_end_matches('_').to_string(),
+            Err(_) => return Vec::new(),
+        };
+        self.sessions
+            .read()
+            .await
+            .keys()
+            .filter_map(|key| key.strip_prefix(&prefix).map(ToString::to_string))
+            .collect()
     }
+
+    pub async fn archive_session(
+        &self,
+        tenant_id: &str,
+        session_id: &str,
+    ) -> Result<(), BridgeError> {
+        let handle = self
+            .get_session(tenant_id, session_id)
+            .await
+            .ok_or_else(|| BridgeError::Session(format!("session {session_id} not found")))?;
+        tokio::task::spawn_blocking(move || handle.client.archive_session(&handle.session_id))
+            .await
+            .map_err(|e| BridgeError::Session(e.to_string()))?
+            .map_err(|e| BridgeError::Session(e.to_string()))
+    }
+
+    pub async fn detach_session(
+        &self,
+        tenant_id: &str,
+        session_id: &str,
+    ) -> Result<(), BridgeError> {
+        let handle = self
+            .get_session(tenant_id, session_id)
+            .await
+            .ok_or_else(|| BridgeError::Session(format!("session {session_id} not found")))?;
+        tokio::task::spawn_blocking(move || handle.client.detach_session(&handle.session_id))
+            .await
+            .map_err(|e| BridgeError::Session(e.to_string()))?
+            .map_err(|e| BridgeError::Session(e.to_string()))
+    }
+
+    pub async fn drop_session(&self, tenant_id: &str, session_id: &str) -> Result<(), BridgeError> {
+        let key = self.session_scope_key(tenant_id, session_id)?;
+        self.sessions.write().await.remove(&key);
+        Ok(())
+    }
+
+    async fn runtime_for_tenant(
+        &self,
+        config: &SessionConfig,
+    ) -> Result<Arc<TenantRuntime>, BridgeError> {
+        if let Some(existing) = self.runtimes.read().await.get(&config.tenant_id).cloned() {
+            return Ok(existing);
+        }
+
+        let tenant_id = config.tenant_id.clone();
+        let jcode_home = self.runtime_home_for_tenant(&tenant_id)?;
+        let binary = self.jcode_binary();
+        let inherited_working_dir = config.working_dir.as_ref().map(PathBuf::from);
+
+        let runtime = tokio::task::spawn_blocking(move || {
+            let mut launch = LaunchOptions {
+                jcode_home: Some(jcode_home),
+                working_dir: inherited_working_dir,
+                inherit_logins: false,
+                binary,
+                client_name: "ohagent-core".to_string(),
+                ..LaunchOptions::default()
+            };
+            launch.env.insert("JCODE_INHERIT_LOGINS".into(), "0".into());
+            let instance = jcode_sdk::launch_instance(&launch)?;
+            let client = JcodeClient::connect(jcode_sdk::ConnectOptions {
+                socket_path: Some(instance.socket_path.clone()),
+                client_name: "ohagent-core".to_string(),
+                ..jcode_sdk::ConnectOptions::default()
+            })?;
+            Ok::<_, jcode_sdk::Error>(TenantRuntime {
+                _instance: instance,
+                client: Arc::new(client),
+            })
+        })
+        .await
+        .map_err(|e| BridgeError::Session(e.to_string()))?
+        .map_err(|e| BridgeError::Session(e.to_string()))?;
+
+        let runtime = Arc::new(runtime);
+        let mut runtimes = self.runtimes.write().await;
+        Ok(runtimes
+            .entry(config.tenant_id.clone())
+            .or_insert_with(|| Arc::clone(&runtime))
+            .clone())
+    }
+
+    fn runtime_root(&self) -> PathBuf {
+        self.config
+            .runtime_root
+            .clone()
+            .or_else(|| std::env::var_os("OHAGENT_JCODE_RUNTIME_ROOT").map(PathBuf::from))
+            .unwrap_or_else(|| std::env::temp_dir().join("ohagent").join("jcode-runtimes"))
+    }
+
+    fn jcode_binary(&self) -> Option<PathBuf> {
+        self.config
+            .jcode_binary
+            .clone()
+            .or_else(|| std::env::var_os("OHAGENT_JCODE_BINARY").map(PathBuf::from))
+    }
+}
+
+fn validate_safe_absolute_path(path: &str, label: &str) -> Result<(), BridgeError> {
+    let path = Path::new(path);
+    if !path.is_absolute()
+        || path
+            .components()
+            .any(|component| matches!(component, Component::ParentDir))
+    {
+        return Err(BridgeError::Session(format!(
+            "{label} must be an absolute path without traversal"
+        )));
+    }
+    Ok(())
+}
+
+fn stable_hash_hex(value: &str) -> String {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    value.hash(&mut hasher);
+    format!("rt-{:016x}", hasher.finish())
 }

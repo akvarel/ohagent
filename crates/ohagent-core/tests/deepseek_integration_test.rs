@@ -44,8 +44,7 @@ mod deepseek_integration {
     /// ```
     #[tokio::test]
     async fn deepseek_headless_e2e() {
-        let _ = std::env::var("DEEPSEEK_API_KEY")
-            .expect("DEEPSEEK_API_KEY must be set");
+        let _ = std::env::var("DEEPSEEK_API_KEY").expect("DEEPSEEK_API_KEY must be set");
 
         register_runtimes();
 
@@ -64,6 +63,7 @@ mod deepseek_integration {
         // Create headless session
         let session = bridge
             .create_session(ohagent_core::jcode_bridge::SessionConfig {
+                tenant_id: "deepseek-integration".into(),
                 model: Some("deepseek-v4-flash".into()),
                 working_dir: Some(std::env::current_dir().unwrap().to_string_lossy().into()),
                 selfdev: false,
@@ -75,11 +75,11 @@ mod deepseek_integration {
         eprintln!("Session created: {}", session.session_id());
 
         // Send prompt
-        session
-            .send_message("Reply with exactly one word: OK")
+        let response = session
+            .send_message_with_images("Reply with exactly one word: OK", Vec::new())
             .await
             .expect("send_message should succeed");
 
-        eprintln!("✅ DeepSeek headless session works!");
+        assert_eq!(response.trim(), "OK");
     }
 }
