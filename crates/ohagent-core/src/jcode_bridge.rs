@@ -262,6 +262,9 @@ impl JcodeBridge {
         config: SessionConfig,
     ) -> Result<SessionHandle, BridgeError> {
         self.validate_session_config(&config)?;
+        if let Some(working_dir) = config.working_dir.as_deref() {
+            prepare_workspace(Path::new(working_dir)).await?;
+        }
         let runtime = self.runtime_for_tenant(&config).await?;
         let client = Arc::clone(&runtime.client);
         let working_dir = config.working_dir.clone();
@@ -427,6 +430,23 @@ fn validate_safe_absolute_path(path: &str, label: &str) -> Result<(), BridgeErro
             "{label} must be an absolute path without traversal"
         )));
     }
+    Ok(())
+}
+
+async fn prepare_workspace(path: &Path) -> Result<(), BridgeError> {
+    let existed = tokio::fs::metadata(path).await.is_ok();
+    tokio::fs::create_dir_all(path)
+        .await
+        .map_err(|error| BridgeError::Session(format!("create working_dir: {error}")))?;
+
+    #[cfg(unix)]
+    if !existed {
+        use std::os::unix::fs::PermissionsExt;
+        tokio::fs::set_permissions(path, std::fs::Permissions::from_mode(0o700))
+            .await
+            .map_err(|error| BridgeError::Session(format!("secure working_dir: {error}")))?;
+    }
+
     Ok(())
 }
 
