@@ -81,9 +81,11 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/build/target \
     cargo build --$BUILD_PROFILE -p ohagent-daemon \
     && cargo build --manifest-path jcode/Cargo.toml --$BUILD_PROFILE -p jcode --bin jcode --target-dir target/jcode-runtime \
+    && cargo build --manifest-path jcode/Cargo.toml --$BUILD_PROFILE -p jcode-harness-api-server --bin jcode-harness-api-bridge --target-dir target/jcode-runtime \
     && mkdir -p /out \
     && cp target/$BUILD_PROFILE/ohagent-daemon /out/ \
-    && cp target/jcode-runtime/$BUILD_PROFILE/jcode /out/
+    && cp target/jcode-runtime/$BUILD_PROFILE/jcode /out/ \
+    && cp target/jcode-runtime/$BUILD_PROFILE/jcode-harness-api-bridge /out/
 
 # ── Stage 2: Runtime ──
 FROM debian:trixie-slim AS runtime
@@ -95,6 +97,7 @@ RUN apt-get update && apt-get install -y \
 RUN useradd --create-home --shell /bin/bash jcode
 COPY --from=builder /out/ohagent-daemon /usr/local/bin/ohagent-daemon
 COPY --from=builder /out/jcode /usr/local/bin/jcode
+COPY --from=builder /out/jcode-harness-api-bridge /usr/local/bin/jcode-harness-api-bridge
 ENV OHAGENT_JCODE_BINARY=/usr/local/bin/jcode
 ENV OHAGENT_JCODE_RUNTIME_ROOT=/home/jcode/jr
 RUN mkdir -p /home/jcode/jr && chown -R jcode:jcode /home/jcode
