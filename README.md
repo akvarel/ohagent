@@ -1,12 +1,12 @@
 # ohAgent — 24/7 Personal AI Super-Agent
 
-**ohAgent** is a self-hosted, always-on AI agent built on Jcode v0.56.0.
+**ohAgent** is a self-hosted, always-on AI agent built on the public Jcode SDK v0.76.0.
 It lives in your Telegram, remembers everything, learns from your tasks,
 processes receipts with sub-cent OCR, and scales to thousands of users.
 
 <p align="center">
   <img src="https://img.shields.io/badge/rust-1.82%2B-orange" alt="Rust 1.82+">
-  <img src="https://img.shields.io/badge/jcode-v0.56.0-blue" alt="Jcode v0.56.0">
+  <img src="https://img.shields.io/badge/jcode%20sdk-v0.76.0-blue" alt="Jcode SDK v0.76.0">
   <img src="https://img.shields.io/badge/status-active%20development-brightgreen" alt="Status">
   <img src="https://img.shields.io/badge/platform-Telegram-blue" alt="Telegram">
   <img src="https://img.shields.io/badge/OCR-Gemini%20Free-4285F4" alt="Gemini OCR">
@@ -125,8 +125,8 @@ Telegram/WhatsApp/Slack
    ┌────┼────────────────────┐
    │    │                    │
    ▼    ▼                    ▼
-Jcode   Memory Engine    Skills Engine
-v0.56  SQLite+vector    Auto-learns
+Jcode SDK Runtime       Memory Engine    Skills Engine
+v0.76.0, tenant-private SQLite+vector    Auto-learns
         │
    ┌────┼────────────┬──────────────┐
    │    │            │              │
@@ -180,6 +180,7 @@ See [docs/INFRASTRUCTURE.md](docs/INFRASTRUCTURE.md) for full cost breakdown.
 | [SANDBOX.md](docs/SANDBOX.md) | Per-tenant isolated execution pods |
 | [AGGREGATOR-DB.md](docs/AGGREGATOR-DB.md) | PostgreSQL schema for multi-tenant billing |
 | [USAGE.md](docs/USAGE.md) | All usage scenarios: plugins, MCP, routing, deployment |
+| [JCODE_SDK_RUNTIME_ARCHITECTURE.md](docs/JCODE_SDK_RUNTIME_ARCHITECTURE.md) | Public Jcode SDK boundary, tenant isolation, lifecycle, packaging, and acceptance |
 
 ### Skills
 
