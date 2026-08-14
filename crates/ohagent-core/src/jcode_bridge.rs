@@ -8,8 +8,8 @@ use crate::tools::ToolRegistry;
 use jcode_base::mcp::SharedMcpPool;
 use jcode_provider_core::Provider as ProviderTrait;
 use jcode_sdk::{JcodeClient, LaunchOptions, LaunchedInstance, RunOptions, SessionInfo};
+use sha2::{Digest, Sha256};
 use std::collections::HashMap;
-use std::hash::{Hash, Hasher};
 use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tokio::sync::RwLock;
@@ -423,7 +423,5 @@ fn validate_safe_absolute_path(path: &str, label: &str) -> Result<(), BridgeErro
 }
 
 fn stable_hash_hex(value: &str) -> String {
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    value.hash(&mut hasher);
-    format!("rt-{:016x}", hasher.finish())
+    format!("rt-{:x}", Sha256::digest(value.as_bytes()))
 }

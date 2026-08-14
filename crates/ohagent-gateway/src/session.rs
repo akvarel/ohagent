@@ -6,8 +6,8 @@
 
 use dashmap::DashMap;
 use ohagent_core::jcode_bridge::{JcodeBridge, SessionConfig, SessionHandle};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::{info, warn};
 
@@ -208,10 +208,8 @@ fn now_millis() -> u64 {
 }
 
 fn hashed_workspace_component(value: &str) -> String {
-    use std::hash::{Hash, Hasher};
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    value.hash(&mut hasher);
-    format!("ws-{:016x}", hasher.finish())
+    use sha2::{Digest, Sha256};
+    format!("ws-{:x}", Sha256::digest(value.as_bytes()))
 }
 
 #[cfg(test)]

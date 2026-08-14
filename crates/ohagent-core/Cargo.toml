@@ -28,6 +28,7 @@ chrono = { workspace = true }
 flate2 = { workspace = true }
 reqwest = { workspace = true }
 futures = { workspace = true }
+sha2 = "0.10"
 tokio-stream = "0.1"
 ohagent-swarm = { workspace = true }
 
