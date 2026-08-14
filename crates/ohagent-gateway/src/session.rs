@@ -213,3 +213,16 @@ fn hashed_workspace_component(value: &str) -> String {
     value.hash(&mut hasher);
     format!("ws-{:016x}", hasher.finish())
 }
+
+#[cfg(test)]
+mod tenant_workspace_tests {
+    use super::hashed_workspace_component;
+
+    #[test]
+    fn workspace_component_uses_frozen_sha256_tenant_key() {
+        assert_eq!(
+            hashed_workspace_component("tenant-a"),
+            "ws-80a707af7dc77ee1228f9127180f3964835e5beb4c4ab0d812f0fe7593579b3a"
+        );
+    }
+}

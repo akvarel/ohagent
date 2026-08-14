@@ -37,6 +37,16 @@ fn same_tenant_reuses_runtime_path_and_different_tenants_are_isolated() {
 }
 
 #[test]
+fn runtime_path_uses_frozen_sha256_tenant_key() {
+    let bridge = bridge();
+    let path = bridge.runtime_home_for_tenant("tenant-a").unwrap();
+
+    assert!(path.ends_with(
+        "rt-80a707af7dc77ee1228f9127180f3964835e5beb4c4ab0d812f0fe7593579b3a"
+    ));
+}
+
+#[test]
 fn session_scope_keys_include_tenant_boundary() {
     let bridge = bridge();
     let a = bridge.session_scope_key("tenant-a", "session-1").unwrap();
