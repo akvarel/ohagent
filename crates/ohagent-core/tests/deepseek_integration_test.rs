@@ -43,6 +43,7 @@ mod deepseek_integration {
     /// cargo test -p ohagent-core -- deepseek_headless_e2e --nocapture
     /// ```
     #[tokio::test]
+    #[ignore = "requires a live DeepSeek credential and network access"]
     async fn deepseek_headless_e2e() {
         let _ = std::env::var("DEEPSEEK_API_KEY").expect("DEEPSEEK_API_KEY must be set");
 
@@ -73,6 +74,20 @@ mod deepseek_integration {
             .expect("create headless session");
 
         eprintln!("Session created: {}", session.session_id());
+
+        assert!(bridge
+            .get_session("deepseek-integration", session.session_id())
+            .await
+            .is_some());
+        assert!(bridge
+            .get_session("another-tenant", session.session_id())
+            .await
+            .is_none());
+        assert!(bridge.list_sessions("another-tenant").await.is_empty());
+        assert!(bridge
+            .archive_session("another-tenant", session.session_id())
+            .await
+            .is_err());
 
         // Send prompt
         let response = session
