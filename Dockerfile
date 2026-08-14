@@ -74,12 +74,16 @@ COPY crates/ crates/
 # Touch all source files to bust cargo's incremental cache
 RUN find crates -name "*.rs" -exec touch {} +
 
-# Final build
+# Final build. ohAgent uses Jcode through the public SDK, which launches the
+# Jcode runtime as a separate process. Ship both binaries from the same source
+# revision so the SDK and runtime protocol stay compatible.
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/build/target \
     cargo build --$BUILD_PROFILE -p ohagent-daemon \
+    && cargo build --manifest-path jcode/Cargo.toml --$BUILD_PROFILE -p jcode --bin jcode --target-dir target/jcode-runtime \
     && mkdir -p /out \
-    && cp target/$BUILD_PROFILE/ohagent-daemon /out/
+    && cp target/$BUILD_PROFILE/ohagent-daemon /out/ \
+    && cp target/jcode-runtime/$BUILD_PROFILE/jcode /out/
 
 # ── Stage 2: Runtime ──
 FROM debian:trixie-slim AS runtime
@@ -90,7 +94,10 @@ RUN apt-get update && apt-get install -y \
 
 RUN useradd --create-home --shell /bin/bash jcode
 COPY --from=builder /out/ohagent-daemon /usr/local/bin/ohagent-daemon
-RUN mkdir -p /home/jcode/.ohagent && chown -R jcode:jcode /home/jcode
+COPY --from=builder /out/jcode /usr/local/bin/jcode
+ENV OHAGENT_JCODE_BINARY=/usr/local/bin/jcode
+ENV OHAGENT_JCODE_RUNTIME_ROOT=/home/jcode/.ohagent/jcode-runtimes
+RUN mkdir -p /home/jcode/.ohagent/jcode-runtimes && chown -R jcode:jcode /home/jcode
 
 USER jcode
 WORKDIR /home/jcode

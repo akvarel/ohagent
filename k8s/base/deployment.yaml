@@ -52,6 +52,16 @@ spec:
             - configMapRef:
                 name: ohagent-config
           env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OHAGENT_JCODE_BINARY
+              value: /usr/local/bin/jcode
+            # Each replica owns a distinct runtime/socket tree while tenant
+            # hashing inside ohAgent provides the next isolation boundary.
+            - name: OHAGENT_JCODE_RUNTIME_ROOT
+              value: /home/jcode/.ohagent/jcode-runtimes/$(POD_NAME)
             - name: VAULT_TOKEN
               valueFrom:
                 secretKeyRef:

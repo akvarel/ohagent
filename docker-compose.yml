@@ -135,6 +135,10 @@ for line in content.split('\n'):
       VAULT_KV_PATH: secret
       # Auth
       OHAGENT_API_KEY: ${OHAGENT_API_KEY:-dev-key-change-me}
+      # Jcode public SDK runtime. The compose suffix keeps this runtime domain
+      # separate from host and Kubernetes installations sharing the volume.
+      OHAGENT_JCODE_BINARY: /usr/local/bin/jcode
+      OHAGENT_JCODE_RUNTIME_ROOT: /home/jcode/.ohagent/jcode-runtimes/compose
       # Logging
       RUST_LOG: ${RUST_LOG:-info}
     volumes:
