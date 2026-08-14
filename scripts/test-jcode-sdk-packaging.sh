@@ -31,4 +31,8 @@ require_literal k8s/base/deployment.yaml 'name: OHAGENT_JCODE_RUNTIME_ROOT'
 require_literal k8s/base/deployment.yaml 'value: /home/jcode/.ohagent/j/$(POD_UID)'
 require_literal k8s/base/deployment.yaml 'fieldPath: metadata.uid'
 
+if command -v docker >/dev/null 2>&1 && docker compose version >/dev/null 2>&1; then
+  docker compose config --quiet
+fi
+
 printf 'Jcode SDK runtime packaging contract passed.\n'
