@@ -112,9 +112,10 @@ The ohAgent-compatible fork is based directly on upstream Jcode v0.76.0 and carr
 
 1. reconnect a pooled MCP server after its child process dies;
 2. preserve and report the effective working directory on SDK session attach/create;
-3. regression tests documenting both behaviors and the unsupported permission response contract.
+3. regression tests documenting both behaviors and the unsupported permission response contract;
+4. fork-compatible CI that treats `DEPLOY_KEY` as optional when the dependency graph has no SSH-only sources and skips the linked-issue policy only when repository Issues are disabled.
 
-Scheduler, TEAM_MEMORY, ambient-product, and unrelated UI customizations are not required by ohAgent and must not be carried in this minimal branch.
+Scheduler, TEAM_MEMORY, ambient-product, and unrelated UI customizations are not required by ohAgent and must not be carried in this minimal branch. The CI compatibility does not skip build, test, formatting, quality, or release jobs.
 
 ## Packaging
 

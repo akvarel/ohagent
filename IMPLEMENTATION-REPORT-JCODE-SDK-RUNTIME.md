@@ -55,7 +55,8 @@ The branch is based directly on upstream Jcode v0.76.0 and retains only generic 
 
 1. reconnect a pooled MCP server after its process dies;
 2. report the requested working directory when attaching through the harness API;
-3. tests freezing working-directory and unsupported permission-response behavior.
+3. tests freezing working-directory and unsupported permission-response behavior;
+4. fork-compatible workflow handling for an absent optional `DEPLOY_KEY` and repositories with Issues disabled, without bypassing build, test, formatting, quality, or release gates.
 
 Scheduler, TEAM_MEMORY, ambient-product, UI, and unrelated product customizations are not part of the minimal ohAgent runtime fork.
 
@@ -79,6 +80,7 @@ Scheduler, TEAM_MEMORY, ambient-product, UI, and unrelated product customization
 | SDK permission behavior must fail closed | `permission_response_is_rejected_when_bridge_has_no_permission_capability` | PASS; no false permission capability is advertised. |
 | Dead MCP process must be replaced | `mcp::pool::tests::begin_connect_replaces_dead_client` | PASS. |
 | Attached harness session must report working directory | `attached_session_reports_requested_working_dir` | PASS. |
+| Fork CI must run without unavailable optional repository features | `scripts/test_fork_ci_workflow.py`, `cargo fmt --all -- --check`, and GitHub PR checks | Local contract tests pass; optional SSH setup is gated; disabled repository Issues no longer make the linked-issue check impossible; required build and quality jobs remain enabled. |
 | Container must contain matching runtime executables | Docker build plus non-root container smoke test | PASS; all three binaries found, `jcode --version` reports v0.76.0-dev, runtime root is writable. |
 | Docker Compose public path must parse | `docker compose config --quiet` inside packaging contract | PASS after repairing the seed-script indentation. |
 | Kubernetes manifest must remain parseable | PyYAML parse of `k8s/base/deployment.yaml` | PASS. |
@@ -93,6 +95,8 @@ Scheduler, TEAM_MEMORY, ambient-product, UI, and unrelated product customization
 - `cargo check -p ohagent-gateway`: passed.
 - `cargo test -p jcode-base mcp::pool::tests::begin_connect_replaces_dead_client`: passed.
 - `cargo test -p jcode-sdk -p jcode-harness-api-server`: harness 66 passed; SDK suites 10, 10, 5, and 4 passed; doctest passed.
+- `python3 -m unittest -v scripts/test_fork_ci_workflow.py`: 2 passed, covering optional SSH setup and disabled-Issues policy.
+- `cargo fmt --all -- --check` in the minimal Jcode branch: passed.
 - `bash scripts/test-jcode-sdk-packaging.sh`: passed, including `docker compose config --quiet`.
 - Final Docker image build: passed, image `ohagent:jcode-sdk-runtime`.
 - Container public contract: non-root process, all three binaries present, correct environment, persistent runtime root writable, Jcode version executable.
