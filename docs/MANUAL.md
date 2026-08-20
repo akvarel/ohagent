@@ -1085,22 +1085,11 @@ let job_id = scheduler.schedule_in(
 
 The scheduler fires after the delay and delivers the message via `PushService`.
 
-### Recurring Tasks (ohagent-cron)
+### Recurring Tasks
 
-For persistent, recurring schedules, use the `ohagent-cron` crate:
-- Cron expressions: `0 9 * * *` (daily at 9 AM)
-- Intervals: `*/30 * * * *` (every 30 minutes)
-- Skills attachment: each cron job can run a specific skill
-- SQLite storage survives restarts
-
-```rust
-use ohagent_cron::scheduler::CronScheduler;
-
-let scheduler = CronScheduler::new(db_path, push_service);
-scheduler.add_daily("telegram_12345", 9, 0, "Пришли статистику за сегодня").await?;
-```
-
----
+Recurring schedules are handled by the daemon's scheduler and skills cron loop
+(`ohagent-daemon` `start_skills_cron`), not by a separate crate. For one-shot
+reminders use the in-memory `Scheduler` from `ohagent-core`:
 
 ## ohAgent CLI (TUI Client)
 

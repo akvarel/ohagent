@@ -31,7 +31,8 @@ pub struct ScheduledJob {
 
 /// Simple in-memory scheduler for one-shot reminders.
 ///
-/// For persistent cron, use ohagent-cron crate with SQLite storage.
+/// Persistent recurring schedules are handled by the daemon's cron loop and
+/// skills cron; see ohagent-daemon (start_skills_cron) and core Scheduler.
 pub struct Scheduler {
     jobs: Arc<Mutex<Vec<ScheduledJob>>>,
     push: Option<Arc<crate::push::PushService>>,
