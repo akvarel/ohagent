@@ -56,15 +56,13 @@ plus **one orphan crate**.
   embedding/rerank logic.
 - **Do NOT** rewrite ohagent-memory's store models; keep the tested persistence contract.
 
-### 2.3 SKILLS — keep ohagent-skills; document boundary (no code change now)
+### 2.3 SKILLS — keep ohagent-skills; document boundary (done 2026-08-20)
 - ohagent-skills is the product feature; Jcode skill is a lower-level tool-invocation registry.
-- **Action:** add a comment/link in `ohagent-skills/lib.rs` + roadmap stating the boundary so a
-  future engineer doesn't "merge" them by mistake.
+- **Done:** boundary documented in `ohagent-skills/lib.rs`.
 
-### 2.4 SWARM — keep ohagent-swarm; add cross-reference (no code change now)
+### 2.4 SWARM — keep ohagent-swarm; add cross-reference (done 2026-08-20)
 - ohagent-swarm's TaskKind/Dependency model is tailored to ohAgent tools.
-- **Action:** document in `ohagent-swarm/lib.rs` that jcode-swarm-core is a sibling, not a
-  replacement; revisit only if a shared DAG engine is wanted (future, tied to Graph Engineering ADR-001).
+- **Done:** boundary documented in `ohagent-swarm/lib.rs`; revisit only for a shared DAG engine tied to Graph Engineering ADR-001.
 
 ### 2.5 CRON — (covered by 2.1) after deletion, single source = `ohagent-core::scheduler`
 
