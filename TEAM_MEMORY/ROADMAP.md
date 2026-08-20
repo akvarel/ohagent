@@ -84,7 +84,7 @@ These are the actual open work items surfaced by this audit (not a full rebuild)
 1. **Consolidate duplicate capabilities.** Memory, skills, swarm, cron exist in both
    `ohagent-*` crates and Jcode (`jcode-base` memory/skill, `jcode-swarm-core`,
    `jcode-overnight-core`, `jcode-plan`). Pick the source of truth per capability to avoid
-   divergence and double maintenance.
+   divergence and double maintenance. → see `docs/CONSOLIDATION_PLAN.md` (proposed 2026-08-20).
 2. **Desktop: one implementation.** `ohagent-desktop-mcp` vs Jcode `jcode-desktop2` overlap.
    Decide canonical path before Phase 6.
 3. **Dashboard maturity.** `ohagent-dashboard` is React but not a workspace member and has no
