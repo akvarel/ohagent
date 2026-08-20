@@ -85,6 +85,9 @@ These are the actual open work items surfaced by this audit (not a full rebuild)
    `ohagent-*` crates and Jcode (`jcode-base` memory/skill, `jcode-swarm-core`,
    `jcode-overnight-core`, `jcode-plan`). Pick the source of truth per capability to avoid
    divergence and double maintenance. → see `docs/CONSOLIDATION_PLAN.md` (proposed 2026-08-20).
+   Progress: orphan `ohagent-cron` removed; skills/swarm boundaries documented; memory
+   embedding source already unified with Jcode. Memory rerank/external enrichment deferred
+   (needs Jcode Sidecar + external services).
 2. **Desktop: one implementation.** `ohagent-desktop-mcp` vs Jcode `jcode-desktop2` overlap.
    Decide canonical path before Phase 6.
 3. **Dashboard maturity.** `ohagent-dashboard` is React but not a workspace member and has no

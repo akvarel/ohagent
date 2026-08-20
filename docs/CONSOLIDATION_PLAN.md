@@ -44,17 +44,20 @@ plus **one orphan crate**.
   3. `cargo build --workspace` + `cargo test --workspace` to confirm no breakage.
 - **Watch:** confirm no doc/script references `ohagent_cron` before deleting.
 
-### 2.2 MEMORY — upgrade ohagent-memory to reuse Jcode primitives (medium effort, high value)
-- Keep `MemoryEngine`/`store`/`rolling_summary`/`manager` as the daemon-facing API.
-- Replace/augment the retrieval + summarizer internals to call Jcode where it's strictly better:
-  - `jcode_base::memory_rerank` (reranking) — reuse instead of a hand-rolled scorer.
-  - `jcode_base::memory_external` (Graphify/vault/pgvector enrichment) — enable via the fork's
-    vault-root + pgvector wiring already present in jcode-base.
-  - `jcode_embedding` embeddings — already available; ensure ohagent uses the same vector
-    source as Jcode to avoid two embedding providers.
-- **Goal:** one retrieval pipeline (ohagent orchestration → Jcode primitives), no duplicated
-  embedding/rerank logic.
-- **Do NOT** rewrite ohagent-memory's store models; keep the tested persistence contract.
+### 2.2 MEMORY — reuse Jcode primitives (partially done; rerank/enrichment blocked)
+- **Already done:** ohagent-memory's embeddings are unified with Jcode — `embeddings.rs`
+  calls `jcode_base::embedding::embed` and `jcode_base::embedding::cosine_similarity`
+  (same local MiniLM vector source Jcode uses). No second embedding implementation exists.
+- **Blocked / deferred (not safe to wire today):**
+  - **LLM rerank** (`jcode_base::memory_rerank`) requires a Jcode `Sidecar` LLM judge
+    process, which ohAgent does not run.
+  - **External enrichment** (`jcode_base::memory_external::enrich_context`) reads Jcode's
+    global `config()` and shells out to external `graphify`/vault/pgvector services, none of
+    which are configured in the ohAgent deployment; it also returns a different
+    `MemoryEntry` type (`jcode-memory-types`).
+- **Decision:** do NOT force rerank/enrichment into the daemon hot path (context_compressor,
+  ws, openai_api) — it would spawn missing binaries and read absent global config. Revisit
+  only when ohAgent adopts the Jcode memory runtime / Sidecar infrastructure wholesale.
 
 ### 2.3 SKILLS — keep ohagent-skills; document boundary (done 2026-08-20)
 - ohagent-skills is the product feature; Jcode skill is a lower-level tool-invocation registry.
@@ -70,10 +73,11 @@ plus **one orphan crate**.
 
 ## 3. Definition of done
 
-- [ ] `ohagent-cron` removed from workspace; `cargo build --workspace` + `cargo test --workspace` green.
-- [ ] Memory retrieval uses Jcode rerank/external primitives; embedding source unified.
-- [ ] Skills + swarm boundaries documented (comment + roadmap link).
-- [ ] `TEAM_MEMORY/ROADMAP.md` §5.1 marked resolved for the four capabilities.
+- [x] `ohagent-cron` removed from workspace; `cargo build --workspace` + `cargo test --workspace` green.
+- [x] Memory embedding source unified with Jcode (already the case; verified).
+- [ ] Memory rerank / external enrichment — deferred, blocked on Jcode Sidecar + external services (see 2.2).
+- [x] Skills + swarm boundaries documented (comment + roadmap link).
+- [x] `TEAM_MEMORY/ROADMAP.md` §5.1 updated with consolidation plan reference.
 
 ## 4. Risks / notes
 
