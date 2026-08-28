@@ -1,7 +1,12 @@
 # ohAgent Model Capability Guide
 
-Comprehensive model evaluation across providers: real benchmarks, strengths, weaknesses, pricing.
-**All measurements from live API calls, July 7, 2026. No estimates unless marked ≈.**
+Comprehensive model evaluation across providers: measured capabilities, implementation status, strengths, weaknesses, and pricing.
+
+**Current operational review:** August 28, 2026. A capped live spot-check used 4,305 reported tokens across 11 requests. Conservative cost upper bound: **$0.065**, below the user-approved $1 limit. Provider catalogs were queried separately without inference charges.
+
+**Historical benchmark sections:** measurements dated July 7–8, 2026 are retained as historical evidence, not current availability or price guarantees. Prices and free-tier claims must be rechecked before procurement decisions.
+
+> Validation limitation: this session permits at most 900 seconds and disables repeated LLM benchmark calls. Therefore the August refresh is a single-run availability and correctness spot-check, not a three-run latency benchmark. Do not use its latency numbers as statistically stable rankings.
 
 ---
 
@@ -18,6 +23,67 @@ Comprehensive model evaluation across providers: real benchmarks, strengths, wea
 9. [Pipeline Architecture](#9-pipeline-architecture)
 
 ---
+
+## Current Operational Summary (August 28, 2026)
+
+### Active ohAgent routing catalog
+
+The authoritative general-model catalog is `crates/ohagent-core/src/models.toml`. Its enabled defaults currently prioritize:
+
+- `deepseek-v4-flash` for low-cost chat, coding, analysis, translation, and agentic work;
+- `deepseek-v4-pro` for medium-tier reasoning and complex agentic work;
+- `glm-5.2`, GPT-4o Mini, and Claude Haiku 4.5 as additional low-tier routes when configured;
+- LongCat-2.0 and optional LoRA variants through SiliconFlow;
+- Gemini OCR through the dedicated `GeminiOcrClient`, outside the general chat router.
+
+The general catalog's `gpt-4o-ocr` entry is not the production receipt pipeline. Receipt extraction uses `gemini-3.1-flash-lite` with `gemini-2.5-flash` fallback in `ohagent-provider-metrics`.
+
+### Live availability and short-response spot-check
+
+One short non-streaming request per model, `max_tokens=128`. Latency is observational only.
+
+| Provider | Model | Result | Latency | Output |
+|---|---|---:|---:|---|
+| Scaleway | `mistral-small-3.2-24b-instruct-2506` | HTTP 200 | 0.69s | non-empty |
+| Scaleway | `qwen3-coder-30b-a3b-instruct` | HTTP 200 | 0.76s | non-empty |
+| DeepSeek | `deepseek-v4-pro` | HTTP 200 | 2.85s | non-empty |
+| SiliconFlow | `Qwen/Qwen3-Coder-30B-A3B-Instruct` | HTTP 200 | 3.09s | non-empty |
+| DeepSeek | `deepseek-v4-flash` | HTTP 200 | 4.07s | non-empty |
+| Z.ai | `glm-5.2` | HTTP 200 | 5.17s | empty visible content after consuming 128 completion tokens |
+| SiliconFlow | `meituan-longcat/LongCat-2.0` | HTTP 200 | 6.01s | empty visible content after consuming 128 completion tokens |
+| Z.ai | `glm-5.3-flash` | HTTP 200 | 6.89s | empty visible content after consuming 128 completion tokens |
+
+Empty visible content does not prove a broken model. It indicates that the tested request shape and small token budget can be consumed by reasoning. These routes require provider-specific reasoning controls or a larger output allowance before production use. For cost-sensitive agent work, GLM-5.3 Flash remains a candidate only after this configuration is handled.
+
+### Synthetic Latvian receipt OCR spot-check
+
+A non-sensitive generated image contained two clearly separated Latvian-style receipts with known company numbers and totals.
+
+| Model | Result | Latency | Count | Key fields |
+|---|---:|---:|---:|---:|
+| `gemini-3.5-flash-lite` | HTTP 200 JSON | 1.90s | 2/2 | exact |
+| `gemini-2.5-flash` | HTTP 200 JSON | 2.83s | 2/2 | exact |
+| `gemini-3.1-flash-lite` | HTTP 200 JSON | 2.99s | 2/2 | exact |
+
+This synthetic check validates current availability, JSON behavior, Latvian diacritics, document separation, registration numbers, and totals. It does not replace the July real-receipt quality benchmark. Production remains on 3.1 Flash-Lite because changing it requires a representative real-receipt regression suite, not a single synthetic image.
+
+### Provider catalog changes
+
+Live model-list queries showed:
+
+- DeepSeek: V4 Flash, V4 Pro, and an experimental V4 Flash vision route are listed.
+- Google: 3.1 Flash-Lite remains listed; 3.5 Flash-Lite, 3.6 Flash, and 3.7 Flash are also listed.
+- Z.ai: the current list includes GLM 5 through 5.3, but the old GLM-4.6V vision family was not listed.
+- Scaleway: current IDs include Qwen3 Coder 30B, Mistral Small 3.2, Pixtral 12B, GLM-5.2, and newer Qwen models.
+- SiliconFlow: current listings include Qwen3 Coder, LongCat-2.0, DeepSeek V4 variants, GLM-5V-Turbo, and multiple Qwen VL models.
+
+Model-list presence is not a guarantee of account quota, free-tier access, stable pricing, or task quality.
+
+---
+
+## Historical Benchmarks (July 7–8, 2026)
+
+The following sections preserve the original benchmark record. Operational recommendations later in this document have been updated where the current implementation differs.
 
 ## 1. Vision / Document Understanding
 
@@ -57,7 +123,7 @@ Tested 20+ models across 4 approaches. Only 4 produce useful output.
 
 **Recommendation**: gemini-3.1-flash-lite as primary (5× faster, 95% accuracy).
 Net subtotal trivially computed from gross − VAT. Flash-latest as fallback.
-All models FREE on free tier.
+All models were reported as free-tier eligible during the July benchmark. Recheck quota and billing before use.
 
 ### Gemini Pricing (Paid Tier, USD per 1M tokens)
 
@@ -120,10 +186,9 @@ chain-of-thought, leaving zero tokens for output → empty response.
 **With `max_tokens: 10`**: Even with thinking disabled, 10 tokens is too few
 for structured responses — use ≥100 for counting, ≥1000 for bbox/description.
 
-### GLM-4.6V-flash (FREE) — DO NOT USE
+### GLM-4.6V-flash historical finding
 
-The free tier (`glm-4.6v-flash`) returns HTTP 429 on every request.
-It is permanently rate-limited and unreliable. Use `glm-4.6v-flashx` instead.
+The July account returned HTTP 429 for `glm-4.6v-flash`. On August 28, the Z.ai model-list endpoint no longer listed the GLM-4.6V vision family. Treat the old direct-model recommendation as historical and perform model discovery before attempting it.
 
 ---
 
@@ -139,11 +204,9 @@ It is permanently rate-limited and unreliable. Use `glm-4.6v-flashx` instead.
 | GLM-5.2 | Z.ai / SF | 6,799 | 7.7 | 0.17 | 0.53 | 1M ctx, agentic #1 |
 | GPT-4o-mini | OpenAI | 1,939 | 54 | 0.15 | 0.60 | Balanced speed/quality |
 
-### DeepSeek Migration ⚠️
+### Historical DeepSeek migration note
 
-**DeepSeek Chat V3 and Reasoner R1 are deprecated** (shutting down July 2026):
-- Chat V3 → V4-Flash: 48% cheaper, 17% slower
-- Reasoner R1 → V4-Pro: 3x more capable, 90% slower
+The July benchmark recorded Chat V3 and Reasoner R1 as deprecated. The August 28 live catalog confirms the intended active routes are V4 Flash and V4 Pro. Use the exact IDs from `models.toml`; do not use the old aliases for new configuration.
 
 ---
 
@@ -300,7 +363,7 @@ detection**. Bbox must be done via direct API call with structured JSON prompt.
 |---|---|---|---|---|---|
 | glm-4.6v | 3.00 | 15.00 | 128K | Multi-doc king, bbox, grounding | Slow (28s), expensive output |
 | glm-4.6v-flashx | 1.00 | 5.00 | 128K | Fast, cheap | Needs thinking=disabled |
-| glm-4.6v-flash | FREE | FREE | 128K | Free | **UNUSABLE: permanent 429** |
+| glm-4.6v-flash | FREE | FREE | 128K | Free in July listing | July account returned repeated 429; absent from August model list |
 | GLM-5V-Turbo (SF) | $1.20 | $4.00 | 205K | Latest gen, fast | Empty on structured prompts |
 
 ### Scaleway Vision Models (EU/GDPR)
@@ -359,18 +422,49 @@ The only pipeline that produced correct results.
 ### ✅ ALWAYS: Prefer dedicated OCR over VLMs for text extraction
 
 VLMs hallucinate structured output. GLM-OCR reads pixel-by-pixel and is honest.
-Google Gemini 1.5 Pro has the best vision encoder — reads Latvian diacritics.
+Dedicated OCR and the current Gemini Flash family performed better than general VLM routing for Latvian diacritics in the recorded tests.
 
-### ✅ ALWAYS: Use Google Gemini for Latvian/EU receipts when available
+### ✅ ALWAYS: Use the dedicated Gemini OCR pipeline for Latvian/EU receipts
 
-Gemini 1.5 Pro is the only model that correctly read all diacritics (š, ī, ā, ģ),
-applied discounts, and separated similar receipts. Dramatically better than any other provider.
+The current implementation sends the image directly to Gemini 3.1 Flash-Lite and falls back to Gemini 2.5 Flash, then applies mathematical validation. The August synthetic check confirmed that both current models separated two documents and extracted Latvian key fields exactly. Do not substitute GPT-4o OCR through the general model router for this production path.
 
 ---
 
 ## 9. Pipeline Architecture
 
-### Recommended Vision Pipeline
+### Current Recommended Vision Pipeline
+
+```text
+📸 Photo
+      ↓
+Step 1: GeminiOcrClient
+      │  Primary: gemini-3.1-flash-lite
+      │  Fallback: gemini-2.5-flash
+      │  Direct image → JSON array of receipts
+      ↓
+Step 2: Normalize fields and gross/net values
+      ↓
+Step 3: Mathematical and structural validator
+      │  Σitems≈subtotal, VAT≈subtotal×rate%, sub+VAT≈total
+      ↓
+Step 4: Reject or review low-scoring receipts
+```
+
+The older Count → BBox → Crop → per-receipt OCR design remains a historical fallback experiment. It is not the current Rust production path. Reintroduce it only after a representative regression suite proves direct Gemini extraction insufficient.
+
+### Current Model Selection by Task
+
+| Task | Current primary | Fallback / note |
+|---|---|---|
+| Receipt OCR (Latvian) | `gemini-3.1-flash-lite` | `gemini-2.5-flash`, then mathematical review |
+| General low-cost chat | `deepseek-v4-flash` | Catalog order and tenant preference apply |
+| Complex reasoning / agents | `deepseek-v4-pro` | Medium auto-tier limit applies |
+| Cost-sensitive experimental agent work | `glm-5.3-flash` | Configure reasoning output first; 128-token spot-check returned no visible content |
+| EU-hosted short chat/coding | Scaleway Mistral Small 3.2 / Qwen3 Coder 30B | Available in live provider catalog but not currently in `models.toml` |
+| Code generation through SiliconFlow | Qwen3 Coder 30B | Live spot-check returned non-empty output |
+| OCR through general router | Not recommended | `gpt-4o-ocr` exists in catalog but is not the receipt pipeline |
+
+### Historical Recommended Vision Pipeline
 
 ```text
 📸 Photo
@@ -405,23 +499,24 @@ Step 0: PreClassifier — "How many documents?"
   └→ cheap OCR directly (or skip if single doc)
 ```
 
-### Model Selection by Task
+### Historical Model Selection by Task (July benchmark)
 
 | Task | Primary Model | Fallback | Never Use |
 |---|---|---|---|
 | Count documents | Scaleway Mistral-small | GLM-4.6V-flashx | GLM-4.6V-flash (FREE) |
 | Describe photo | GLM-4.6V | Mistral-small | Pixtral (hallucinates) |
 | BBox detection | GLM-4.6V | — | Anyone else (no capability) |
-| Receipt OCR (Latvian) | **Google Gemini 1.5 Pro** | GLM-OCR | Mistral-small, GPT-4o-mini |
+| Receipt OCR (Latvian) | **Gemini 3.1 Flash-Lite** | Gemini 2.5 Flash | Mistral-small, GPT-4o-mini |
 | Receipt OCR (general) | GLM-OCR ($0.03/M) | Gemini | Mistral-small (hallucinates) |
 | Validation | Arbiter (math checks) | — | Blind trust in OCR |
-| Chat (general) | Scaleway Qwen3-Coder | DeepSeek V4-Flash | DeepSeek Chat V3 (deprecated) |
+| Chat (general) | DeepSeek V4-Flash | Catalog fallback order | Deprecated DeepSeek aliases |
 | Chat (budget) | DeepSeek V4-Flash | SF Qwen3-8B | — |
 | Chat (EU/GDPR) | Scaleway Mistral-small | Scaleway Qwen3-Coder | SiliconFlow (data to CN) |
-| Code generation | SF Qwen3-Coder-30B | DeepSeek V4-Flash | — |
+| Code generation | DeepSeek V4-Flash | SF/Scaleway Qwen3 Coder when explicitly configured | — |
 | Complex agents | DeepSeek V4-Pro | GLM-5.2 | DeepSeek Reasoner (deprecated) |
 
 ---
 
-*All benchmarks: July 7, 2026, from live API calls. Prices subject to change.*
-*Data sources: api.z.ai, api.scaleway.ai, api.siliconflow.com, api.deepseek.com, api.openai.com*
+*Historical benchmark runs: July 7–8, 2026. Operational spot-check and provider discovery: August 28, 2026.*
+*Prices remain provider-supplied metadata and are subject to change. Active router values live in `crates/ohagent-core/src/models.toml`.*
+*Data sources: live provider model-list and inference APIs for Google, Z.ai, Scaleway, SiliconFlow, and DeepSeek.*
