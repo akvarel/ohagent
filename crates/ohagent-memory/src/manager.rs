@@ -103,10 +103,7 @@ impl MemoryManager {
     }
 
     /// Get entries with embeddings.
-    pub fn entries_with_embeddings(
-        &self,
-        tenant_id: &str,
-    ) -> Result<Vec<(MemoryEntry, Vec<f32>)>> {
+    pub fn entries_with_embeddings(&self, tenant_id: &str) -> Result<Vec<(MemoryEntry, Vec<f32>)>> {
         match self.primary() {
             Some(p) => p.entries_with_embeddings(tenant_id),
             None => Ok(Vec::new()),

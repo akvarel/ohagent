@@ -5,24 +5,24 @@
 //! 2. **Speed Benchmark** — measures real latency + throughput per model
 //! 3. **Dynamic Router** — selects optimal provider based on price/speed/quality
 
-pub mod models;
-pub mod store;
-pub mod scraper;
-pub mod discovery;
 pub mod benchmark;
-pub mod router;
+pub mod discovery;
+pub mod gemini_ocr;
+pub mod models;
 pub mod preclassifier;
 pub mod receipt_validator;
-pub mod gemini_ocr;
+pub mod router;
+pub mod scraper;
+pub mod store;
 pub mod vision_consensus;
 
-pub use models::*;
-pub use store::MetricsStore;
-pub use scraper::PriceScraper;
+pub use benchmark::{BenchmarkConfig, SpeedBenchmark};
 pub use discovery::known_prices;
-pub use benchmark::{SpeedBenchmark, BenchmarkConfig};
-pub use router::DynamicRouter;
+pub use gemini_ocr::{GeminiOcrClient, GeminiOcrConfig};
+pub use models::*;
 pub use preclassifier::{PreClassifier, PreClassifierConfig};
 pub use receipt_validator::{validate_receipt, ReceiptData, ReceiptItem, ReceiptVerdict};
-pub use gemini_ocr::{GeminiOcrClient, GeminiOcrConfig};
+pub use router::DynamicRouter;
+pub use scraper::PriceScraper;
+pub use store::MetricsStore;
 pub use vision_consensus::{run_consensus, ConsensusResult, DisputedField};

@@ -56,7 +56,11 @@ pub fn curate(
     if all_skills.len() > config.max_skills_per_tenant {
         // Sort by quality score, keep the best
         let mut sorted = all_skills.clone();
-        sorted.sort_by(|a, b| b.quality_score.partial_cmp(&a.quality_score).unwrap_or(std::cmp::Ordering::Equal));
+        sorted.sort_by(|a, b| {
+            b.quality_score
+                .partial_cmp(&a.quality_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         for skill in sorted.iter().skip(config.max_skills_per_tenant) {
             if skill.pinned {

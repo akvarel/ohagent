@@ -120,11 +120,21 @@ impl<P: PricingProvider> BudgetTracker<P> {
 
     // ── Accessors ──
 
-    pub fn tokens_used(&self) -> u64 { self.tokens_used }
-    pub fn cost_cents_used(&self) -> u64 { self.cost_cents_used }
-    pub fn elapsed(&self) -> Duration { self.started_at.elapsed() }
-    pub fn max_tokens(&self) -> u64 { self.config.max_tokens }
-    pub fn pricing(&self) -> &P { &self.pricing }
+    pub fn tokens_used(&self) -> u64 {
+        self.tokens_used
+    }
+    pub fn cost_cents_used(&self) -> u64 {
+        self.cost_cents_used
+    }
+    pub fn elapsed(&self) -> Duration {
+        self.started_at.elapsed()
+    }
+    pub fn max_tokens(&self) -> u64 {
+        self.config.max_tokens
+    }
+    pub fn pricing(&self) -> &P {
+        &self.pricing
+    }
 
     /// Format budget as a human-readable string.
     pub fn status_line(&self) -> String {
@@ -145,10 +155,7 @@ mod tests {
 
     #[test]
     fn test_budget_tracking() {
-        let mut bt = BudgetTracker::new(
-            BudgetConfig::default(),
-            InlinePricing::new(0.14, 0.28),
-        );
+        let mut bt = BudgetTracker::new(BudgetConfig::default(), InlinePricing::new(0.14, 0.28));
         bt.record("deepseek-v4-flash", 1000, 500);
         assert_eq!(bt.tokens_used(), 1500);
         assert!(!bt.is_exceeded());
@@ -180,7 +187,11 @@ mod tests {
     #[test]
     fn test_cost_from_pricing() {
         let mut bt = BudgetTracker::new(
-            BudgetConfig { max_tokens: 1_000_000, max_cost_cents: 10_000, enforce: false },
+            BudgetConfig {
+                max_tokens: 1_000_000,
+                max_cost_cents: 10_000,
+                enforce: false,
+            },
             InlinePricing::new(0.14, 0.28),
         );
         bt.record("deepseek-v4-flash", 1_000_000, 500_000);

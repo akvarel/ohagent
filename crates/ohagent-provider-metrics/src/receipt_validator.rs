@@ -188,7 +188,11 @@ pub fn validate_receipt(data: &ReceiptData) -> ReceiptVerdict {
 
     // IBAN format
     if !data.bank_iban.is_empty() {
-        let clean: String = data.bank_iban.chars().filter(|c| !c.is_whitespace()).collect();
+        let clean: String = data
+            .bank_iban
+            .chars()
+            .filter(|c| !c.is_whitespace())
+            .collect();
         if !is_valid_iban(&clean) {
             score = score.saturating_sub(5);
             warnings.push(format!("iban: invalid format '{}'", clean));
@@ -214,7 +218,11 @@ pub fn validate_receipt(data: &ReceiptData) -> ReceiptVerdict {
     let status = if score >= 95 && issues.is_empty() {
         "perfect"
     } else if score >= 70 {
-        if fixes.is_empty() { "model_ok" } else { "regex_fixed" }
+        if fixes.is_empty() {
+            "model_ok"
+        } else {
+            "regex_fixed"
+        }
     } else {
         "failed"
     };
@@ -241,7 +249,11 @@ fn sum_items(items: &[ReceiptItem]) -> (f64, usize) {
         if is_vat_allocation_line(&item.name) {
             continue;
         }
-        let qty = if item.quantity > 0.0 { item.quantity } else { 1.0 };
+        let qty = if item.quantity > 0.0 {
+            item.quantity
+        } else {
+            1.0
+        };
         let price = if item.total_price > 0.0 {
             item.total_price
         } else if item.unit_price > 0.0 {
@@ -272,7 +284,9 @@ fn is_valid_iban(iban: &str) -> bool {
     if !chars[0].is_ascii_uppercase() || !chars[1].is_ascii_uppercase() {
         return false;
     }
-    chars.iter().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+    chars
+        .iter()
+        .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
 }
 
 #[cfg(test)]
@@ -286,7 +300,8 @@ mod tests {
             subtotal,
             vat_amount: vat,
             total,
-            raw_text_dump: "Test store Riga 01.01.2026 Item1 1 x 5.00 5.00 Summa 5.00 Summa kopā 5.00".into(),
+            raw_text_dump:
+                "Test store Riga 01.01.2026 Item1 1 x 5.00 5.00 Summa 5.00 Summa kopā 5.00".into(),
             ..Default::default()
         }
     }
@@ -295,10 +310,22 @@ mod tests {
     fn test_perfect_receipt() {
         let data = make_receipt(
             vec![
-                ReceiptItem { name: "PIZZA".into(), quantity: 1.0, unit_price: 6.90, total_price: 6.90 },
-                ReceiptItem { name: "COLA".into(), quantity: 1.0, unit_price: 2.50, total_price: 2.50 },
+                ReceiptItem {
+                    name: "PIZZA".into(),
+                    quantity: 1.0,
+                    unit_price: 6.90,
+                    total_price: 6.90,
+                },
+                ReceiptItem {
+                    name: "COLA".into(),
+                    quantity: 1.0,
+                    unit_price: 2.50,
+                    total_price: 2.50,
+                },
             ],
-            9.40, 0.0, 9.40,
+            9.40,
+            0.0,
+            9.40,
         );
         let v = validate_receipt(&data);
         assert!(v.passed, "Failed: {:?}", v.issues);
@@ -309,10 +336,15 @@ mod tests {
     #[test]
     fn test_items_sum_mismatch() {
         let data = make_receipt(
-            vec![
-                ReceiptItem { name: "Item1".into(), quantity: 1.0, unit_price: 10.0, total_price: 10.0 },
-            ],
-            5.0, 0.0, 5.0, // subtotal 5 but items sum to 10
+            vec![ReceiptItem {
+                name: "Item1".into(),
+                quantity: 1.0,
+                unit_price: 10.0,
+                total_price: 10.0,
+            }],
+            5.0,
+            0.0,
+            5.0, // subtotal 5 but items sum to 10
         );
         let v = validate_receipt(&data);
         assert!(!v.passed || v.score < 90);
@@ -324,38 +356,75 @@ mod tests {
         // "Preces attiecināta" — VAT allocation, not real items
         let data = make_receipt(
             vec![
-                ReceiptItem { name: "Preces attiecināta (K) (10%)".into(), quantity: 1.0, unit_price: 1.36, total_price: 1.36 },
-                ReceiptItem { name: "Preces attiecināta (K) (13.6%)".into(), quantity: 1.0, unit_price: 1.65, total_price: 1.65 },
+                ReceiptItem {
+                    name: "Preces attiecināta (K) (10%)".into(),
+                    quantity: 1.0,
+                    unit_price: 1.36,
+                    total_price: 1.36,
+                },
+                ReceiptItem {
+                    name: "Preces attiecināta (K) (13.6%)".into(),
+                    quantity: 1.0,
+                    unit_price: 1.65,
+                    total_price: 1.65,
+                },
             ],
-            2.01, 0.24, 2.25, // subtotal ≠ Σ items (3.01), but that's expected
+            2.01,
+            0.24,
+            2.25, // subtotal ≠ Σ items (3.01), but that's expected
         );
         let v = validate_receipt(&data);
-        assert!(v.passed, "VAT allocation lines should not cause failure: {:?}", v.issues);
+        assert!(
+            v.passed,
+            "VAT allocation lines should not cause failure: {:?}",
+            v.issues
+        );
         // Should NOT complain about items_sum
-        assert!(!v.issues.iter().any(|i| i.contains("items_sum")),
-                "VAT allocation lines should not trigger items_sum issue");
+        assert!(
+            !v.issues.iter().any(|i| i.contains("items_sum")),
+            "VAT allocation lines should not trigger items_sum issue"
+        );
     }
 
     #[test]
     fn test_total_mismatch() {
         let data = make_receipt(
-            vec![
-                ReceiptItem { name: "Item".into(), quantity: 1.0, unit_price: 50.0, total_price: 50.0 },
-            ],
-            50.0, 10.0, 70.0, // 50+10=60 ≠ 70
+            vec![ReceiptItem {
+                name: "Item".into(),
+                quantity: 1.0,
+                unit_price: 50.0,
+                total_price: 50.0,
+            }],
+            50.0,
+            10.0,
+            70.0, // 50+10=60 ≠ 70
         );
         let v = validate_receipt(&data);
-        assert!(v.score < 80, "Total €10 off should score <80, got {}", v.score);
-        assert!(v.issues.iter().any(|i| i.contains("total")),
-                "Should flag total mismatch, issues: {:?}", v.issues);
+        assert!(
+            v.score < 80,
+            "Total €10 off should score <80, got {}",
+            v.score
+        );
+        assert!(
+            v.issues.iter().any(|i| i.contains("total")),
+            "Should flag total mismatch, issues: {:?}",
+            v.issues
+        );
         assert_eq!(v.status, "model_ok"); // 75/100 = model_ok
     }
 
     #[test]
     fn test_missing_store_name() {
         let mut data = make_receipt(
-            vec![ReceiptItem { name: "Item".into(), quantity: 1.0, unit_price: 1.0, total_price: 1.0 }],
-            1.0, 0.0, 1.0,
+            vec![ReceiptItem {
+                name: "Item".into(),
+                quantity: 1.0,
+                unit_price: 1.0,
+                total_price: 1.0,
+            }],
+            1.0,
+            0.0,
+            1.0,
         );
         data.store_name = String::new();
         let v = validate_receipt(&data);

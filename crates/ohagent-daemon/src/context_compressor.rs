@@ -4,7 +4,6 @@
 //! are crossed, fires a background merge via DeepSeek Flash to keep the
 //! compressed history fresh.
 
-use std::sync::Arc;
 use chrono::Utc;
 use jcode_message_types::{ContentBlock, Message, StreamEvent};
 use jcode_provider_core::Provider;
@@ -12,9 +11,9 @@ use ohagent_core::context_estimator;
 use ohagent_memory::engine::MemoryEngine;
 use ohagent_memory::models::{RollingSummary, TopicRef};
 use ohagent_memory::rolling_summary::{
-    should_compress, build_merge_prompt, parse_merge_response,
-    merge_and_save,
+    build_merge_prompt, merge_and_save, parse_merge_response, should_compress,
 };
+use std::sync::Arc;
 use tracing::{debug, info, warn};
 
 /// Tracks rolling summary state for a single session.
@@ -140,7 +139,11 @@ impl RollingSummaryTracker {
 
         // Call Flash
         let existing = self.summary.clone();
-        match self.flash_provider.complete(&fake_messages, &[], system_prompt, None).await {
+        match self
+            .flash_provider
+            .complete(&fake_messages, &[], system_prompt, None)
+            .await
+        {
             Ok(mut stream) => {
                 use futures::StreamExt;
                 let mut response = String::new();
@@ -158,18 +161,14 @@ impl RollingSummaryTracker {
 
                 // Parse Flash response
                 let new_topics: Vec<TopicRef> = Vec::new(); // Flash may return topics, parse them later
-                let (compressed, merged_topics) = parse_merge_response(
-                    &response,
-                    &existing,
-                    new_messages.len(),
-                    new_topics,
-                )
-                .ok_or_else(|| {
-                    format!(
-                        "Flash returned unparseable merge response: {}",
-                        &response[..response.len().min(200)]
-                    )
-                })?;
+                let (compressed, merged_topics) =
+                    parse_merge_response(&response, &existing, new_messages.len(), new_topics)
+                        .ok_or_else(|| {
+                            format!(
+                                "Flash returned unparseable merge response: {}",
+                                &response[..response.len().min(200)]
+                            )
+                        })?;
 
                 let new_token_count = new_texts.iter().map(|t| t.len() as u64).sum::<u64>() / 4;
                 let new_idx = all_messages.len();
@@ -227,7 +226,9 @@ pub struct RollingSummaryStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ohagent_memory::rolling_summary::{COMPRESSION_TOKEN_THRESHOLD, COMPRESSION_ITERATION_THRESHOLD};
+    use ohagent_memory::rolling_summary::{
+        COMPRESSION_ITERATION_THRESHOLD, COMPRESSION_TOKEN_THRESHOLD,
+    };
 
     #[test]
     fn test_threshold_constants() {

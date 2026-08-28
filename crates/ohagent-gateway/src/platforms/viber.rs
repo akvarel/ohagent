@@ -45,8 +45,8 @@ pub struct ViberAdapter {
 
 impl ViberAdapter {
     pub fn from_env() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        let auth_token = std::env::var("VIBER_AUTH_TOKEN")
-            .map_err(|_| "VIBER_AUTH_TOKEN not set")?;
+        let auth_token =
+            std::env::var("VIBER_AUTH_TOKEN").map_err(|_| "VIBER_AUTH_TOKEN not set")?;
         let webhook_url = std::env::var("VIBER_WEBHOOK_URL").ok();
 
         if webhook_url.is_none() {
@@ -102,10 +102,12 @@ impl ViberAdapter {
             .context("Viber set_webhook parse failed")?;
 
         if result.status != 0 {
-            return Err(format!("Viber webhook registration failed: {} (status {})",
+            return Err(format!(
+                "Viber webhook registration failed: {} (status {})",
                 result.status_message.unwrap_or_default(),
                 result.status,
-            ).into());
+            )
+            .into());
         }
 
         info!(
@@ -123,31 +125,34 @@ impl ViberAdapter {
     /// - `message` — text messages from users
     /// - `subscribed` — user subscribed to bot
     /// - `conversation_started` — user started conversation
-    pub async fn handle_webhook(
-        &self,
-        body: &str,
-    ) -> Result<(u16, String), String> {
-        let parsed: ViberCallback = serde_json::from_str(body)
-            .map_err(|e| format!("Viber callback parse: {e}"))?;
+    pub async fn handle_webhook(&self, body: &str) -> Result<(u16, String), String> {
+        let parsed: ViberCallback =
+            serde_json::from_str(body).map_err(|e| format!("Viber callback parse: {e}"))?;
 
         match parsed.event.as_str() {
             "webhook" => {
                 // Webhook validation — Viber sends this once to verify
                 info!("Viber webhook validation received");
-                return Ok((200, serde_json::json!({
-                    "status": 0,
-                    "status_message": "ok",
-                    "event_types": ["message", "subscribed", "conversation_started"],
-                }).to_string()));
+                return Ok((
+                    200,
+                    serde_json::json!({
+                        "status": 0,
+                        "status_message": "ok",
+                        "event_types": ["message", "subscribed", "conversation_started"],
+                    })
+                    .to_string(),
+                ));
             }
 
             "conversation_started" => {
                 // User started a conversation (e.g. clicked "Send Message")
-                let user_id = parsed.user
+                let user_id = parsed
+                    .user
                     .as_ref()
                     .map(|u| u.id.as_str())
                     .unwrap_or("unknown");
-                let subscriber = parsed.subscriber
+                let subscriber = parsed
+                    .subscriber
                     .as_ref()
                     .map(|s| s.id.as_str())
                     .unwrap_or(user_id);
@@ -170,7 +175,10 @@ impl ViberAdapter {
                     };
 
                     if let Some(response) = dispatcher.handle_message(incoming).await {
-                        if let Err(e) = self.send_viber_text(subscriber, &response.text, response.markdown).await {
+                        if let Err(e) = self
+                            .send_viber_text(subscriber, &response.text, response.markdown)
+                            .await
+                        {
                             error!(error = %e, "Failed to send Viber welcome");
                         }
                     }
@@ -180,11 +188,13 @@ impl ViberAdapter {
             }
 
             "subscribed" => {
-                let user_id = parsed.user
+                let user_id = parsed
+                    .user
                     .as_ref()
                     .map(|u| u.id.as_str())
                     .unwrap_or("unknown");
-                let subscriber = parsed.subscriber
+                let subscriber = parsed
+                    .subscriber
                     .as_ref()
                     .map(|s| s.id.as_str())
                     .unwrap_or(user_id);
@@ -209,11 +219,13 @@ impl ViberAdapter {
                         }
                     };
 
-                    let user_id = parsed.user
+                    let user_id = parsed
+                        .user
                         .as_ref()
                         .map(|u| u.id.as_str())
                         .unwrap_or("unknown");
-                    let subscriber = parsed.subscriber
+                    let subscriber = parsed
+                        .subscriber
                         .as_ref()
                         .map(|s| s.id.as_str())
                         .unwrap_or(user_id);
@@ -237,7 +249,10 @@ impl ViberAdapter {
                     };
 
                     if let Some(response) = dispatcher.handle_message(incoming).await {
-                        if let Err(e) = self.send_viber_text(subscriber, &response.text, response.markdown).await {
+                        if let Err(e) = self
+                            .send_viber_text(subscriber, &response.text, response.markdown)
+                            .await
+                        {
                             error!(error = %e, "Failed to send Viber reply");
                         }
                     }
@@ -266,7 +281,7 @@ impl ViberAdapter {
         if _markdown {
             // Bold: **text** → [b]text[/b]
             formatted_text = formatted_text
-                .replace("**", "[b]")  // This is simplistic; real parsing would be better
+                .replace("**", "[b]") // This is simplistic; real parsing would be better
                 .replace("**", "[/b]");
             // Italic: *text* → [i]text[/i] (avoiding double-replace issues)
         }
@@ -424,7 +439,10 @@ mod tests {
 
         let parsed: ViberCallback = serde_json::from_str(body).unwrap();
         assert_eq!(parsed.event, "message");
-        assert_eq!(parsed.message.as_ref().unwrap().text.as_deref(), Some("Hello from Viber!"));
+        assert_eq!(
+            parsed.message.as_ref().unwrap().text.as_deref(),
+            Some("Hello from Viber!")
+        );
         assert_eq!(parsed.user.as_ref().unwrap().id, "abc123");
     }
 

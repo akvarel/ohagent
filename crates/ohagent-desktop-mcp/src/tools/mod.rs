@@ -46,10 +46,8 @@ impl ToolRegistry {
             description: description.to_string(),
             input_schema,
         };
-        self.tools.insert(
-            name.to_string(),
-            RegisteredTool { def, handler },
-        );
+        self.tools
+            .insert(name.to_string(), RegisteredTool { def, handler });
         self.order.push(name.to_string());
     }
 

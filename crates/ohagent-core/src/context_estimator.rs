@@ -55,11 +55,7 @@ pub fn estimate_conversation_tokens(messages: &[Message], system_prompt: &str) -
 
 /// Check if a conversation fits in a model's context window.
 /// Returns true if it fits (with 20% safety margin).
-pub fn fits_context_window(
-    messages: &[Message],
-    system_prompt: &str,
-    context_window: u32,
-) -> bool {
+pub fn fits_context_window(messages: &[Message], system_prompt: &str, context_window: u32) -> bool {
     let estimated = estimate_conversation_tokens(messages, system_prompt);
     let safe_window = (context_window as f64 * 0.80) as u32; // 20% safety margin
     estimated <= safe_window
@@ -137,7 +133,7 @@ mod tests {
             ("gpt-4o", 128_000),
             ("deepseek-v4-flash", 1_000_000),
             ("tiny-model", 4_000), // 40 * 7 words * 1.3 ≈ 364 tokens; with system ≈ 367. Usable: 3200. Fits.
-            ("nano-model", 200),  // 200 * 0.8 = 160 tokens. won't fit.
+            ("nano-model", 200),   // 200 * 0.8 = 160 tokens. won't fit.
         ];
         let fitting = filter_by_context(&candidates, &msgs, "system prompt here");
         assert!(fitting.contains(&"deepseek-v4-flash"));

@@ -84,7 +84,10 @@ pub fn keyboard_press(args: Value) -> Result<Vec<ContentBlock>, String> {
         return Err("'keys' array is empty".to_string());
     }
 
-    let parsed: Vec<enigo::Key> = keys.iter().map(|k| parse_key(k)).collect::<Result<_, _>>()?;
+    let parsed: Vec<enigo::Key> = keys
+        .iter()
+        .map(|k| parse_key(k))
+        .collect::<Result<_, _>>()?;
 
     let mut enigo = mk_enigo()?;
 

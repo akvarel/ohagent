@@ -25,13 +25,7 @@ pub fn screenshot(args: Value) -> Result<Vec<ContentBlock>, String> {
         let img = image::load_from_memory(&png_bytes)
             .map_err(|e| format!("Failed to decode PNG: {e}"))?;
         let rgba = img.to_rgba8();
-        let cropped = image::imageops::crop_imm(
-            &rgba,
-            x as u32,
-            y as u32,
-            w as u32,
-            h as u32,
-        );
+        let cropped = image::imageops::crop_imm(&rgba, x as u32, y as u32, w as u32, h as u32);
         let mut buf = Cursor::new(Vec::new());
         cropped
             .to_image()

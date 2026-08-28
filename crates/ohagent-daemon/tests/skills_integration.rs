@@ -8,8 +8,8 @@ use uuid::Uuid;
 
 use ohagent_memory::engine::MemoryEngine;
 use ohagent_memory::models::{ConversationSummary, MemoryConfig, MemoryEntry, MemorySource};
-use ohagent_skills::curator;
 use ohagent_skills::creator;
+use ohagent_skills::curator;
 use ohagent_skills::evaluator;
 use ohagent_skills::models::{Skill, SkillConfig, SkillOrigin, SkillStatus};
 use ohagent_skills::registry::SkillRegistry;
@@ -93,9 +93,11 @@ fn test_full_skills_lifecycle() {
 
     // 3. Propose skills from conversation patterns
     let config = SkillConfig::default();
-    let proposed = creator::propose_skills(&reg, &mem, tenant, &config)
-        .expect("propose skills");
-    assert!(proposed > 0, "Expected at least 1 proposed skill, got {proposed}");
+    let proposed = creator::propose_skills(&reg, &mem, tenant, &config).expect("propose skills");
+    assert!(
+        proposed > 0,
+        "Expected at least 1 proposed skill, got {proposed}"
+    );
 
     // 4. Verify skills were created with Proposed status
     let all = reg.list(tenant, None, 50).expect("list skills");
@@ -107,30 +109,28 @@ fn test_full_skills_lifecycle() {
     // 5. Simulate usage: promote first skill by recording successes
     if let Some(skill) = all.first() {
         for i in 0..10 {
-            evaluator::record_success(
-                &reg,
-                &skill.id,
-                &format!("session-{i}"),
-                tenant,
-                Some(1.5),
-            )
-            .unwrap_or_else(|e| panic!("record success {i}: {e}"));
+            evaluator::record_success(&reg, &skill.id, &format!("session-{i}"), tenant, Some(1.5))
+                .unwrap_or_else(|e| panic!("record success {i}: {e}"));
         }
     }
 
     // 6. Run periodic evaluation — should promote well-used skills
-    let eval_report = evaluator::periodic_evaluation(&reg, tenant, &config)
-        .expect("periodic evaluation");
+    let eval_report =
+        evaluator::periodic_evaluation(&reg, tenant, &config).expect("periodic evaluation");
     assert!(
         eval_report.promoted + eval_report.active > 0,
         "Expected some evaluation activity, got promoted={}, active={}",
-        eval_report.promoted, eval_report.active
+        eval_report.promoted,
+        eval_report.active
     );
 
     // Check that at least one skill is now Active
     let all_after = reg.list(tenant, None, 50).expect("list all");
     let has_active = all_after.iter().any(|s| s.status == SkillStatus::Active);
-    assert!(has_active, "At least one skill should have been promoted to Active");
+    assert!(
+        has_active,
+        "At least one skill should have been promoted to Active"
+    );
 
     // 7. Run curation — should not delete active skills
     let curate_report = curator::curate(&reg, tenant, &config).expect("curate");
@@ -164,7 +164,10 @@ fn test_full_skills_lifecycle() {
     reg.save(&old_skill).expect("save old skill");
 
     let prune_report = curator::curate(&reg, tenant, &config).expect("curate after old");
-    assert!(prune_report.pruned > 0, "Old retired skill should be pruned");
+    assert!(
+        prune_report.pruned > 0,
+        "Old retired skill should be pruned"
+    );
 
     // Cleanup
     mem.clear_tenant(tenant).ok();
@@ -178,8 +181,7 @@ fn test_no_skills_from_empty_memory() {
     let tenant = "empty-tenant";
     let config = SkillConfig::default();
 
-    let proposed = creator::propose_skills(&reg, &mem, tenant, &config)
-        .expect("propose");
+    let proposed = creator::propose_skills(&reg, &mem, tenant, &config).expect("propose");
     assert_eq!(proposed, 0, "Empty memory should produce no skills");
 
     mem.clear_tenant(tenant).ok();
@@ -192,8 +194,7 @@ fn test_evaluation_no_skills() {
     let tenant = "no-skills";
     let config = SkillConfig::default();
 
-    let report = evaluator::periodic_evaluation(&reg, tenant, &config)
-        .expect("evaluate empty");
+    let report = evaluator::periodic_evaluation(&reg, tenant, &config).expect("evaluate empty");
     assert_eq!(report.active, 0);
     assert_eq!(report.promoted, 0);
 }

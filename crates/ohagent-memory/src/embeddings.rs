@@ -43,7 +43,9 @@ pub fn embed_text(text: &str) -> Result<Vec<f32>> {
         return Ok(vec![0.0f32; 384]);
     }
     if !jcode_base::embedding::is_model_available() {
-        return Err("Jcode embedding model not available. Run Jcode once to download ONNX model.".into());
+        return Err(
+            "Jcode embedding model not available. Run Jcode once to download ONNX model.".into(),
+        );
     }
     let vec = jcode_base::embedding::embed(text)?;
     Ok(vec)
@@ -70,7 +72,11 @@ pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
         let dot: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
         let norm_a: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
         let norm_b: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
-        if norm_a == 0.0 || norm_b == 0.0 { 0.0 } else { dot / (norm_a * norm_b) }
+        if norm_a == 0.0 || norm_b == 0.0 {
+            0.0
+        } else {
+            dot / (norm_a * norm_b)
+        }
     }
 }
 

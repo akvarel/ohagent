@@ -30,8 +30,12 @@ impl AggregatorStore {
             CREATE INDEX IF NOT EXISTS idx_usage_key ON usage_records(api_key_id, timestamp);
             CREATE INDEX IF NOT EXISTS idx_usage_customer ON usage_records(customer_id, timestamp);"
         ).map_err(|e| format!("DB schema: {e}"))?;
-        Ok(Self { db: Arc::new(Mutex::new(conn)) })
+        Ok(Self {
+            db: Arc::new(Mutex::new(conn)),
+        })
     }
 
-    pub fn db(&self) -> Arc<Mutex<Connection>> { Arc::clone(&self.db) }
+    pub fn db(&self) -> Arc<Mutex<Connection>> {
+        Arc::clone(&self.db)
+    }
 }

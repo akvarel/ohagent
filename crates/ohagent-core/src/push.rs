@@ -105,10 +105,7 @@ impl PushService {
 
     /// Send a push notification to a raw chat_id (platform-level).
     pub async fn send_raw(&self, chat_id: &str, message: &str) -> PushResult {
-        let url = format!(
-            "https://api.telegram.org/bot{}/sendMessage",
-            self.bot_token
-        );
+        let url = format!("https://api.telegram.org/bot{}/sendMessage", self.bot_token);
 
         let params = serde_json::json!({
             "chat_id": chat_id,

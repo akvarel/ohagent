@@ -16,12 +16,12 @@
 //! }
 //! ```
 
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use reqwest::Client;
 use serde::Deserialize;
 use serde_json::Value;
 
-use crate::receipt_validator::{ReceiptData, ReceiptItem, ReceiptVerdict, validate_receipt};
+use crate::receipt_validator::{validate_receipt, ReceiptData, ReceiptItem, ReceiptVerdict};
 
 /// Configuration for the Gemini OCR client.
 #[derive(Clone)]
@@ -110,10 +110,13 @@ impl GeminiOcrClient {
         for model in [&self.config.primary_model, &self.config.fallback_model] {
             match self.call_gemini(model, &base64_image, mime_type).await {
                 Ok(receipts) if !receipts.is_empty() => {
-                    let validated: Vec<_> = receipts.into_iter().map(|rd| {
-                        let verdict = validate_receipt(&rd);
-                        (rd, verdict)
-                    }).collect();
+                    let validated: Vec<_> = receipts
+                        .into_iter()
+                        .map(|rd| {
+                            let verdict = validate_receipt(&rd);
+                            (rd, verdict)
+                        })
+                        .collect();
                     return Ok(validated);
                 }
                 Ok(_) => {
@@ -163,7 +166,8 @@ Return as JSON array. No markdown, just JSON.";
             self.config.api_key
         );
 
-        let resp = self.client
+        let resp = self
+            .client
             .post(&url)
             .header("Content-Type", "application/json")
             .json(&body)
@@ -177,11 +181,14 @@ Return as JSON array. No markdown, just JSON.";
             return Err(format!("HTTP {status}: {body}"));
         }
 
-        let gemini_resp: GeminiResponse = resp.json()
+        let gemini_resp: GeminiResponse = resp
+            .json()
             .await
             .map_err(|e| format!("JSON parse error: {e}"))?;
 
-        let text = gemini_resp.candidates.first()
+        let text = gemini_resp
+            .candidates
+            .first()
             .and_then(|c| c.content.parts.first())
             .map(|p| p.text.clone())
             .unwrap_or_default();
@@ -206,30 +213,50 @@ Return as JSON array. No markdown, just JSON.";
 /// Normalize Gemini API response to our standard ReceiptData schema.
 fn normalize_gemini_receipt(raw: Value) -> ReceiptData {
     let store = str_val(&raw, "store_name")
-        .or_else(|| str_val(&raw, "merchant_name")).unwrap_or_default();
+        .or_else(|| str_val(&raw, "merchant_name"))
+        .unwrap_or_default();
     let addr = str_val(&raw, "address")
-        .or_else(|| str_val(&raw, "merchant_address")).unwrap_or_default();
+        .or_else(|| str_val(&raw, "merchant_address"))
+        .unwrap_or_default();
     let reg = str_val(&raw, "reg_nr")
-        .or_else(|| str_val(&raw, "company_reg_nr")).unwrap_or_default();
+        .or_else(|| str_val(&raw, "company_reg_nr"))
+        .unwrap_or_default();
     let vat = str_val(&raw, "vat_nr")
-        .or_else(|| str_val(&raw, "company_vat_nr")).unwrap_or_default();
+        .or_else(|| str_val(&raw, "company_vat_nr"))
+        .unwrap_or_default();
     let date = str_val(&raw, "date").unwrap_or_default();
     let time = str_val(&raw, "time").unwrap_or_default();
     let rcp_num = str_val(&raw, "receipt_number")
-        .or_else(|| str_val(&raw, "order_number")).unwrap_or_default();
+        .or_else(|| str_val(&raw, "order_number"))
+        .unwrap_or_default();
 
-    let items: Vec<ReceiptItem> = raw.get("items")
+    let items: Vec<ReceiptItem> = raw
+        .get("items")
         .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().map(|it| {
-            let mut qty = num_val(it, "quantity", 1.0);
-            let unit = num_val(it, "unit_price", 0.0);
-            let mut it_total = num_val(it, "total_price", 0.0);
-            if qty == 0.0 { qty = 1.0; }
-            if it_total == 0.0 && unit > 0.0 { it_total = qty * unit; }
-            let name = str_val(it, "name")
-                .or_else(|| str_val(it, "description")).unwrap_or_default();
-            ReceiptItem { name, quantity: qty, unit_price: unit, total_price: it_total }
-        }).collect())
+        .map(|arr| {
+            arr.iter()
+                .map(|it| {
+                    let mut qty = num_val(it, "quantity", 1.0);
+                    let unit = num_val(it, "unit_price", 0.0);
+                    let mut it_total = num_val(it, "total_price", 0.0);
+                    if qty == 0.0 {
+                        qty = 1.0;
+                    }
+                    if it_total == 0.0 && unit > 0.0 {
+                        it_total = qty * unit;
+                    }
+                    let name = str_val(it, "name")
+                        .or_else(|| str_val(it, "description"))
+                        .unwrap_or_default();
+                    ReceiptItem {
+                        name,
+                        quantity: qty,
+                        unit_price: unit,
+                        total_price: it_total,
+                    }
+                })
+                .collect()
+        })
         .unwrap_or_default();
 
     let mut sub = num_val(&raw, "subtotal", 0.0);
@@ -241,44 +268,80 @@ fn normalize_gemini_receipt(raw: Value) -> ReceiptData {
     if sub == 0.0 || total == 0.0 {
         if let Some(vd) = raw.get("vat_details").and_then(|v| v.as_array()) {
             if let Some(vd0) = vd.first().and_then(|v| v.as_object()) {
-                if sub == 0.0 { sub = vd0.get("net_amount").and_then(|v| v.as_f64()).unwrap_or(0.0); }
-                if vat_amt == 0.0 { vat_amt = vd0.get("vat_amount").and_then(|v| v.as_f64()).unwrap_or(0.0); }
-                if total == 0.0 { total = vd0.get("gross_amount").and_then(|v| v.as_f64()).unwrap_or(0.0); }
+                if sub == 0.0 {
+                    sub = vd0
+                        .get("net_amount")
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.0);
+                }
+                if vat_amt == 0.0 {
+                    vat_amt = vd0
+                        .get("vat_amount")
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.0);
+                }
+                if total == 0.0 {
+                    total = vd0
+                        .get("gross_amount")
+                        .and_then(|v| v.as_f64())
+                        .unwrap_or(0.0);
+                }
             }
         }
     }
 
     // Compute missing values
-    if total == 0.0 && sub > 0.0 { total = sub + vat_amt; }
-    if sub == 0.0 && total > 0.0 && vat_amt > 0.0 { sub = total - vat_amt; }
+    if total == 0.0 && sub > 0.0 {
+        total = sub + vat_amt;
+    }
+    if sub == 0.0 && total > 0.0 && vat_amt > 0.0 {
+        sub = total - vat_amt;
+    }
 
     // Auto-correct gross vs net item prices
-    let pos_sum: f64 = items.iter().filter(|it| it.total_price > 0.0).map(|it| it.total_price).sum();
-    if pos_sum > 0.0 && sub > 0.0 && (pos_sum - (sub + vat_amt)).abs() <= (sub + vat_amt).max(0.15) * 0.02 {
+    let pos_sum: f64 = items
+        .iter()
+        .filter(|it| it.total_price > 0.0)
+        .map(|it| it.total_price)
+        .sum();
+    if pos_sum > 0.0
+        && sub > 0.0
+        && (pos_sum - (sub + vat_amt)).abs() <= (sub + vat_amt).max(0.15) * 0.02
+    {
         // Items are gross (with VAT). Convert to net.
         let ratio = sub / pos_sum;
         let _ = ratio; // items is borrowed immutably — would need to fix in field
     }
 
-    let pay = num_val(&raw, "payment_amount", 0.0)
-        .max(num_val(&raw, "amount_paid", 0.0));
+    let pay = num_val(&raw, "payment_amount", 0.0).max(num_val(&raw, "amount_paid", 0.0));
     let change = num_val(&raw, "change", 0.0);
     let method = str_val(&raw, "payment_method").unwrap_or_default();
     let currency = str_val(&raw, "currency").unwrap_or_else(|| "EUR".into());
 
     // Build raw_text_dump
     let mut raw_parts = Vec::new();
-    if !store.is_empty() { raw_parts.push(store.clone()); }
-    if !addr.is_empty() { raw_parts.push(addr.clone()); }
-    if !reg.is_empty() { raw_parts.push(format!("Reg.nr. {reg}")); }
-    if !vat.is_empty() { raw_parts.push(format!("PVN {vat}")); }
+    if !store.is_empty() {
+        raw_parts.push(store.clone());
+    }
+    if !addr.is_empty() {
+        raw_parts.push(addr.clone());
+    }
+    if !reg.is_empty() {
+        raw_parts.push(format!("Reg.nr. {reg}"));
+    }
+    if !vat.is_empty() {
+        raw_parts.push(format!("PVN {vat}"));
+    }
     if !date.is_empty() {
         let ds = format!("{date} {time}").trim().to_string();
         raw_parts.push(ds);
     }
     for it in &items {
         if !it.name.is_empty() {
-            raw_parts.push(format!("{} {} x {} {}", it.name, it.quantity, it.unit_price, it.total_price));
+            raw_parts.push(format!(
+                "{} {} x {} {}",
+                it.name, it.quantity, it.unit_price, it.total_price
+            ));
         }
     }
     raw_parts.push(format!("Summa {sub} PVN {vat_amt} Summa kopā {total}"));
@@ -309,16 +372,22 @@ fn normalize_gemini_receipt(raw: Value) -> ReceiptData {
 }
 
 fn str_val(v: &Value, key: &str) -> Option<String> {
-    v.get(key).and_then(|v| v.as_str()).filter(|s| !s.is_empty()).map(|s| s.to_string())
+    v.get(key)
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
 }
 
 fn num_val(v: &Value, key: &str, default: f64) -> f64 {
     v.get(key)
         .and_then(|v| {
-            if v.is_number() { v.as_f64() }
-            else if let Some(s) = v.as_str() {
+            if v.is_number() {
+                v.as_f64()
+            } else if let Some(s) = v.as_str() {
                 s.replace(',', ".").replace(' ', "").parse::<f64>().ok()
-            } else { None }
+            } else {
+                None
+            }
         })
         .unwrap_or(default)
 }

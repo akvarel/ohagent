@@ -82,10 +82,10 @@ pub fn search(
                 1.0
             };
             let importance = entry.importance;
-            let combined_score =
-                (1.0 - config.recency_weight - config.importance_weight) * semantic_score
-                    + config.recency_weight * recency_score
-                    + config.importance_weight * importance;
+            let combined_score = (1.0 - config.recency_weight - config.importance_weight)
+                * semantic_score
+                + config.recency_weight * recency_score
+                + config.importance_weight * importance;
 
             SearchResult {
                 entry,
@@ -97,7 +97,11 @@ pub fn search(
         .collect();
 
     // Sort by combined score descending
-    results.sort_by(|a, b| b.combined_score.partial_cmp(&a.combined_score).unwrap_or(std::cmp::Ordering::Equal));
+    results.sort_by(|a, b| {
+        b.combined_score
+            .partial_cmp(&a.combined_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     results.truncate(config.max_retrieval_results);
 
     debug!(results = results.len(), "Final retrieval results");
@@ -133,12 +137,17 @@ fn text_search(
                 entry,
                 semantic_score: 0.5, // nominal text-match score
                 recency_score,
-                combined_score: 0.5 * (1.0 - config.recency_weight) + config.recency_weight * recency_score,
+                combined_score: 0.5 * (1.0 - config.recency_weight)
+                    + config.recency_weight * recency_score,
             }
         })
         .collect();
 
-    results.sort_by(|a, b| b.combined_score.partial_cmp(&a.combined_score).unwrap_or(std::cmp::Ordering::Equal));
+    results.sort_by(|a, b| {
+        b.combined_score
+            .partial_cmp(&a.combined_score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     results.truncate(config.max_retrieval_results);
 
     debug!(

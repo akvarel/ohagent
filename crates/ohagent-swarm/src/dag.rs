@@ -161,9 +161,7 @@ impl TaskGraph {
             .filter(|(id, _)| self.is_runnable(id))
             .map(|(id, _)| *id)
             .collect();
-        ids.sort_by_key(|id| {
-            self.nodes.get(id).map(|n| n.priority).unwrap_or(u32::MAX)
-        });
+        ids.sort_by_key(|id| self.nodes.get(id).map(|n| n.priority).unwrap_or(u32::MAX));
         ids
     }
 
@@ -179,9 +177,7 @@ impl TaskGraph {
 
     /// Check if the graph has any failed nodes.
     pub fn has_failures(&self) -> bool {
-        self.nodes
-            .values()
-            .any(|n| n.state == TaskState::Failed)
+        self.nodes.values().any(|n| n.state == TaskState::Failed)
     }
 
     /// Get results from all completed nodes, mapping label → result.

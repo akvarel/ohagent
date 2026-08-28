@@ -106,31 +106,21 @@ impl<P: PricingProvider> ReasoningRouter<P> {
         let decision = self.controller.step();
 
         match decision {
-            CmcDecision::Stop { answer, confidence } => {
-                ReasoningAction::Stop {
-                    answer: Some(answer),
-                    confidence,
-                    reason: "ema_gate".into(),
-                }
-            }
-            CmcDecision::Exhausted { answer } => {
-                ReasoningAction::Stop {
-                    answer,
-                    confidence: 0.0,
-                    reason: "all_exhausted".into(),
-                }
-            }
-            CmcDecision::Widen { count } => {
-                ReasoningAction::Widen { count }
-            }
-            CmcDecision::Abandon { indices } => {
-                ReasoningAction::Abandon { indices }
-            }
+            CmcDecision::Stop { answer, confidence } => ReasoningAction::Stop {
+                answer: Some(answer),
+                confidence,
+                reason: "ema_gate".into(),
+            },
+            CmcDecision::Exhausted { answer } => ReasoningAction::Stop {
+                answer,
+                confidence: 0.0,
+                reason: "all_exhausted".into(),
+            },
+            CmcDecision::Widen { count } => ReasoningAction::Widen { count },
+            CmcDecision::Abandon { indices } => ReasoningAction::Abandon { indices },
             CmcDecision::Continue => {
                 let alloc = self.controller.probe_allocation();
-                ReasoningAction::Probe {
-                    allocations: alloc,
-                }
+                ReasoningAction::Probe { allocations: alloc }
             }
         }
     }
@@ -144,7 +134,8 @@ impl<P: PricingProvider> ReasoningRouter<P> {
                 step.finished,
                 step.confidence,
             );
-            self.budget.record(&step.model, step.tokens / 2, step.tokens / 2);
+            self.budget
+                .record(&step.model, step.tokens / 2, step.tokens / 2);
             self.controller.add_budget(step.tokens);
         }
         self.controller.advance_step();
@@ -208,13 +199,9 @@ pub enum ReasoningAction {
         reason: String,
     },
     /// Spawn new branches.
-    Widen {
-        count: usize,
-    },
+    Widen { count: usize },
     /// Abandon specific branches.
-    Abandon {
-        indices: Vec<usize>,
-    },
+    Abandon { indices: Vec<usize> },
 }
 
 #[cfg(test)]
@@ -242,23 +229,32 @@ mod tests {
         }]);
 
         let action = router.decide();
-        assert!(matches!(action, ReasoningAction::Probe { .. } | ReasoningAction::Stop { .. }));
+        assert!(matches!(
+            action,
+            ReasoningAction::Probe { .. } | ReasoningAction::Stop { .. }
+        ));
     }
 
     #[test]
     fn test_budget_sync() {
         let config = CmcConfig::thorough();
-        let mut budget = BudgetTracker::new(BudgetConfig {
-            max_tokens: 10,
-            max_cost_cents: 1000,
-            enforce: true,
-        }, inline_pricing());
+        let mut budget = BudgetTracker::new(
+            BudgetConfig {
+                max_tokens: 10,
+                max_cost_cents: 1000,
+                enforce: true,
+            },
+            inline_pricing(),
+        );
         budget.record("deepseek-chat", 8, 2); // 10 tokens used
 
         let mut router = ReasoningRouter::new(config, budget);
         let initial_beta = router.controller().beta();
         router.sync_beta();
         let new_beta = router.controller().beta();
-        assert!(new_beta < initial_beta, "Beta should decrease when budget is low");
+        assert!(
+            new_beta < initial_beta,
+            "Beta should decrease when budget is low"
+        );
     }
 }

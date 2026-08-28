@@ -30,13 +30,28 @@ pub enum MarkupTier {
 
 impl MarkupTier {
     pub fn markup(&self) -> f64 {
-        match self { MarkupTier::Free => 0.0, MarkupTier::Starter => 1.20, MarkupTier::Pro => 1.30, MarkupTier::Enterprise => 1.15 }
+        match self {
+            MarkupTier::Free => 0.0,
+            MarkupTier::Starter => 1.20,
+            MarkupTier::Pro => 1.30,
+            MarkupTier::Enterprise => 1.15,
+        }
     }
     pub fn daily_token_limit(&self) -> u64 {
-        match self { MarkupTier::Free => 1000, MarkupTier::Starter => 100_000, MarkupTier::Pro => 1_000_000, MarkupTier::Enterprise => 0 }
+        match self {
+            MarkupTier::Free => 1000,
+            MarkupTier::Starter => 100_000,
+            MarkupTier::Pro => 1_000_000,
+            MarkupTier::Enterprise => 0,
+        }
     }
     pub fn monthly_cost_eur(&self) -> f64 {
-        match self { MarkupTier::Free => 0.0, MarkupTier::Starter => 19.0, MarkupTier::Pro => 99.0, MarkupTier::Enterprise => 499.0 }
+        match self {
+            MarkupTier::Free => 0.0,
+            MarkupTier::Starter => 19.0,
+            MarkupTier::Pro => 99.0,
+            MarkupTier::Enterprise => 499.0,
+        }
     }
 }
 
@@ -45,13 +60,19 @@ pub struct ApiKeyManager {
 }
 
 impl ApiKeyManager {
-    pub fn new(db: Arc<Mutex<rusqlite::Connection>>) -> Self { Self { db } }
+    pub fn new(db: Arc<Mutex<rusqlite::Connection>>) -> Self {
+        Self { db }
+    }
 
-    pub fn generate(&self, customer_id: &str, tier: MarkupTier) -> Result<(String, String), String> {
+    pub fn generate(
+        &self,
+        customer_id: &str,
+        tier: MarkupTier,
+    ) -> Result<(String, String), String> {
         let id = uuid::Uuid::new_v4().to_string();
         let raw = format!("ohag-{}", uuid::Uuid::new_v4().to_string().replace('-', ""));
         let prefix = raw[..12].to_string();
-        use sha2::{Sha256, Digest};
+        use sha2::{Digest, Sha256};
         let hash = hex::encode(Sha256::digest(raw.as_bytes()));
         let db = self.db.lock().map_err(|e| format!("Lock: {e}"))?;
         db.execute(
@@ -62,29 +83,48 @@ impl ApiKeyManager {
     }
 
     pub fn validate(&self, key: &str) -> Result<ApiKey, String> {
-        if !key.starts_with("ohag-") { return Err("Invalid key format".into()); }
-        use sha2::{Sha256, Digest};
+        if !key.starts_with("ohag-") {
+            return Err("Invalid key format".into());
+        }
+        use sha2::{Digest, Sha256};
         let hash = hex::encode(Sha256::digest(key.as_bytes()));
         let db = self.db.lock().map_err(|e| format!("Lock: {e}"))?;
         let mut stmt = db.prepare("SELECT id,prefix,key_hash,customer_id,tier,monthly_token_limit,active,created_at,last_used_at FROM api_keys WHERE key_hash=?1 AND active=1")
             .map_err(|e| format!("prep: {e}"))?;
-        let result = stmt.query_row(params![hash], |row| {
-            let ts: String = row.get(4)?;
-            Ok(ApiKey {
-                id: row.get(0)?, prefix: row.get(1)?, key_hash: row.get(2)?, customer_id: row.get(3)?,
-                tier: serde_json::from_str(&ts).unwrap_or(MarkupTier::Free),
-                monthly_token_limit: row.get(5)?, active: row.get(6)?,
-                created_at: DateTime::parse_from_rfc3339(&row.get::<_,String>(7)?).unwrap().with_timezone(&Utc),
-                last_used_at: row.get::<_,Option<String>>(8)?.and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|d| d.with_timezone(&Utc))),
+        let result = stmt
+            .query_row(params![hash], |row| {
+                let ts: String = row.get(4)?;
+                Ok(ApiKey {
+                    id: row.get(0)?,
+                    prefix: row.get(1)?,
+                    key_hash: row.get(2)?,
+                    customer_id: row.get(3)?,
+                    tier: serde_json::from_str(&ts).unwrap_or(MarkupTier::Free),
+                    monthly_token_limit: row.get(5)?,
+                    active: row.get(6)?,
+                    created_at: DateTime::parse_from_rfc3339(&row.get::<_, String>(7)?)
+                        .unwrap()
+                        .with_timezone(&Utc),
+                    last_used_at: row.get::<_, Option<String>>(8)?.and_then(|s| {
+                        DateTime::parse_from_rfc3339(&s)
+                            .ok()
+                            .map(|d| d.with_timezone(&Utc))
+                    }),
+                })
             })
-        }).map_err(|_| "Invalid or inactive API key".to_string())?;
-        db.execute("UPDATE api_keys SET last_used_at=?1 WHERE id=?2", params![Utc::now().to_rfc3339(), result.id]).ok();
+            .map_err(|_| "Invalid or inactive API key".to_string())?;
+        db.execute(
+            "UPDATE api_keys SET last_used_at=?1 WHERE id=?2",
+            params![Utc::now().to_rfc3339(), result.id],
+        )
+        .ok();
         Ok(result)
     }
 
     pub fn revoke(&self, key_id: &str) -> Result<(), String> {
         let db = self.db.lock().map_err(|e| format!("Lock: {e}"))?;
-        db.execute("UPDATE api_keys SET active=0 WHERE id=?1", params![key_id]).map_err(|e| format!("revoke: {e}"))?;
+        db.execute("UPDATE api_keys SET active=0 WHERE id=?1", params![key_id])
+            .map_err(|e| format!("revoke: {e}"))?;
         Ok(())
     }
 }

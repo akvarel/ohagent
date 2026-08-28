@@ -10,7 +10,9 @@ use tracing::info;
 
 use crate::embeddings::embed_entry;
 use crate::manager::MemoryManager;
-use crate::models::{ConversationSummary, MemoryConfig, MemoryEntry, MemoryNudge, RollingSummary, SearchResult};
+use crate::models::{
+    ConversationSummary, MemoryConfig, MemoryEntry, MemoryNudge, RollingSummary, SearchResult,
+};
 use crate::nudge;
 use crate::retrieval;
 use crate::rolling_summary;
@@ -40,7 +42,11 @@ impl MemoryEngine {
             db_path = %config.db_path,
             "Memory engine initialized"
         );
-        Ok(Self { manager: MemoryManager::new(), store, config })
+        Ok(Self {
+            manager: MemoryManager::new(),
+            store,
+            config,
+        })
     }
 
     /// Register an additional memory provider (e.g. Dragonfly, PostgreSQL).
@@ -86,11 +92,7 @@ impl MemoryEngine {
     // ── Retrieval ──
 
     /// Search for relevant memories using semantic + temporal scoring.
-    pub fn search(
-        &self,
-        tenant_id: &str,
-        query: &str,
-    ) -> Result<Vec<SearchResult>> {
+    pub fn search(&self, tenant_id: &str, query: &str) -> Result<Vec<SearchResult>> {
         retrieval::search(&self.store, tenant_id, query, &self.config)
     }
 
@@ -102,10 +104,7 @@ impl MemoryEngine {
     // ── Conversation Summaries ──
 
     /// Summarize a conversation and store it.
-    pub fn summarize(
-        &self,
-        summary: ConversationSummary,
-    ) -> Result<MemoryEntry> {
+    pub fn summarize(&self, summary: ConversationSummary) -> Result<MemoryEntry> {
         let entry = summarizer::summarize_conversation(&self.store, &summary)?;
 
         // Re-read with embedding (skip if config says so)
@@ -132,11 +131,7 @@ impl MemoryEngine {
     // ── Rolling Summaries ──
 
     /// Load or create a rolling summary for a session.
-    pub fn get_rolling_summary(
-        &self,
-        tenant_id: &str,
-        session_id: &str,
-    ) -> Result<RollingSummary> {
+    pub fn get_rolling_summary(&self, tenant_id: &str, session_id: &str) -> Result<RollingSummary> {
         rolling_summary::load_or_create(&self.store, tenant_id, session_id)
     }
 
@@ -164,10 +159,7 @@ impl MemoryEngine {
     // ── Nudges ──
 
     /// Generate proactive memory nudges for a tenant.
-    pub fn generate_nudges(
-        &self,
-        tenant_id: &str,
-    ) -> Result<Vec<MemoryNudge>> {
+    pub fn generate_nudges(&self, tenant_id: &str) -> Result<Vec<MemoryNudge>> {
         nudge::generate_nudges(&self.store, tenant_id, &self.config)
     }
 

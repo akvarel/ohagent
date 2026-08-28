@@ -58,7 +58,9 @@ fn main() {
         // Write response
         if let Some(resp) = response {
             let json = serde_json::to_string(&resp).unwrap_or_else(|e| {
-                format!(r#"{{"jsonrpc":"2.0","id":null,"error":{{"code":-32700,"message":"{e}"}}}}"#)
+                format!(
+                    r#"{{"jsonrpc":"2.0","id":null,"error":{{"code":-32700,"message":"{e}"}}}}"#
+                )
             });
             println!("{json}");
             let _ = stdout.flush();
@@ -88,18 +90,21 @@ fn handle_request(line: &str, registry: &ToolRegistry) -> Option<Response> {
         "initialize" => Some(Response {
             jsonrpc: "2.0",
             id,
-            result: Some(serde_json::to_value(InitializeResult {
-                protocol_version: "2024-11-05",
-                capabilities: ServerCapabilities {
-                    tools: ToolsCapability {
-                        list_changed: false,
+            result: Some(
+                serde_json::to_value(InitializeResult {
+                    protocol_version: "2024-11-05",
+                    capabilities: ServerCapabilities {
+                        tools: ToolsCapability {
+                            list_changed: false,
+                        },
                     },
-                },
-                server_info: ServerInfo {
-                    name: "ohagent-desktop-mcp",
-                    version: env!("CARGO_PKG_VERSION"),
-                },
-            }).unwrap()),
+                    server_info: ServerInfo {
+                        name: "ohagent-desktop-mcp",
+                        version: env!("CARGO_PKG_VERSION"),
+                    },
+                })
+                .unwrap(),
+            ),
             error: None,
         }),
 
@@ -119,9 +124,11 @@ fn handle_request(line: &str, registry: &ToolRegistry) -> Option<Response> {
         }
 
         "tools/call" => {
-            let params: ToolCallParams = match req.params.as_ref().and_then(|p| {
-                serde_json::from_value(p.clone()).ok()
-            }) {
+            let params: ToolCallParams = match req
+                .params
+                .as_ref()
+                .and_then(|p| serde_json::from_value(p.clone()).ok())
+            {
                 Some(p) => p,
                 None => {
                     return Some(Response {
@@ -154,9 +161,7 @@ fn handle_request(line: &str, registry: &ToolRegistry) -> Option<Response> {
                     id,
                     result: Some(
                         serde_json::to_value(ToolCallResult {
-                            content: vec![ContentBlock::Text {
-                                text: msg.clone(),
-                            }],
+                            content: vec![ContentBlock::Text { text: msg.clone() }],
                             is_error: true,
                         })
                         .unwrap(),

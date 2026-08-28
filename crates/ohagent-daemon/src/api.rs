@@ -13,8 +13,6 @@
 //! - GET  /api/memory           — query memories
 //! - GET  /api/memory/:id       — memory detail
 
-use std::collections::HashMap;
-use std::sync::Arc;
 use axum::{
     extract::{Path, Query, State},
     middleware,
@@ -22,19 +20,21 @@ use axum::{
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::sync::Arc;
 
 use ohagent_core::jcode_bridge::JcodeBridge;
-use ohagent_core::model_router::ModelRouter;
-use ohagent_core::usage_tracker::UsageTracker;
 use ohagent_core::message_log::MessageLog;
-use ohagent_core::session_store::SessionStore;
+use ohagent_core::model_router::ModelRouter;
 use ohagent_core::push::PushService;
+use ohagent_core::session_store::SessionStore;
+use ohagent_core::usage_tracker::UsageTracker;
 use ohagent_core::vault::VaultClient;
 use ohagent_memory::engine::MemoryEngine;
+use ohagent_plugins::PluginManager;
 use ohagent_skills::evaluator;
 use ohagent_skills::models::SkillStatus;
 use ohagent_skills::registry::SkillRegistry;
-use ohagent_plugins::PluginManager;
 use std::sync::Mutex as StdMutex;
 
 use crate::auth::{self, AuthState};
@@ -89,9 +89,18 @@ pub fn router(state: ApiState) -> Router {
         .route("/v1/models", get(crate::openai_api::list_models_handler))
         .route("/v1/models/prefs", get(crate::openai_api::get_model_prefs))
         .route("/v1/models/prefs", post(crate::openai_api::set_model_pref))
-        .route("/v1/models/status", get(crate::openai_api::model_status_handler))
-        .route("/v1/models/toggle", post(crate::openai_api::toggle_model_handler))
-        .route("/v1/chat/completions", post(crate::openai_api::chat_completions_handler))
+        .route(
+            "/v1/models/status",
+            get(crate::openai_api::model_status_handler),
+        )
+        .route(
+            "/v1/models/toggle",
+            post(crate::openai_api::toggle_model_handler),
+        )
+        .route(
+            "/v1/chat/completions",
+            post(crate::openai_api::chat_completions_handler),
+        )
         // WebSocket real-time streaming (instead of SSE polling)
         .route("/v1/ws/chat", get(crate::ws::ws_chat_handler))
         .route("/api/status", get(status_handler))
@@ -108,10 +117,19 @@ pub fn router(state: ApiState) -> Router {
         .route("/api/skills/{id}/record", post(record_skill_usage))
         .route("/api/memory", get(query_memory))
         .route("/api/memory/{id}", get(get_memory))
-        .route("/api/plugins/audit", get(crate::plugin_api::plugin_audit_handler))
-        .route("/api/plugins/audit", delete(crate::plugin_api::plugin_audit_clear_handler))
+        .route(
+            "/api/plugins/audit",
+            get(crate::plugin_api::plugin_audit_handler),
+        )
+        .route(
+            "/api/plugins/audit",
+            delete(crate::plugin_api::plugin_audit_clear_handler),
+        )
         .route("/api/sessions", get(list_sessions_handler))
-        .route("/api/sessions/{tenant_id}/{session_hash}", delete(delete_session_handler))
+        .route(
+            "/api/sessions/{tenant_id}/{session_hash}",
+            delete(delete_session_handler),
+        )
         .route("/api/push", post(push_handler))
         .route("/api/remind", post(remind_handler))
         .route("/api/reminders", get(list_reminders_handler))
@@ -211,14 +229,12 @@ async fn list_skills(
     };
 
     let tenant_id = params.tenant_id.unwrap_or_else(|| "default".into());
-    let status_filter = params.status.and_then(|s| {
-        match s.as_str() {
-            "proposed" => Some(SkillStatus::Proposed),
-            "active" => Some(SkillStatus::Active),
-            "disabled" => Some(SkillStatus::Disabled),
-            "retired" => Some(SkillStatus::Retired),
-            _ => None,
-        }
+    let status_filter = params.status.and_then(|s| match s.as_str() {
+        "proposed" => Some(SkillStatus::Proposed),
+        "active" => Some(SkillStatus::Active),
+        "disabled" => Some(SkillStatus::Disabled),
+        "retired" => Some(SkillStatus::Retired),
+        _ => None,
     });
 
     let list = match skills.list(&tenant_id, status_filter.as_ref(), 50) {
@@ -268,7 +284,10 @@ async fn get_skill(
     State(state): State<ApiState>,
     Path(id): Path<String>,
 ) -> Result<Json<SkillDetail>, axum::http::StatusCode> {
-    let skills = state.skills.as_ref().ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
+    let skills = state
+        .skills
+        .as_ref()
+        .ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
     let skill = skills
         .get(&id)
         .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?
@@ -306,7 +325,10 @@ async fn record_skill_usage(
     Path(id): Path<String>,
     Json(body): Json<RecordUsageBody>,
 ) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
-    let skills = state.skills.as_ref().ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
+    let skills = state
+        .skills
+        .as_ref()
+        .ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
     let tenant_id = body.tenant_id.unwrap_or_else(|| "default".into());
     let success = body.success.unwrap_or(true);
     let session_id = "api";
@@ -362,9 +384,13 @@ async fn query_memory(
     let tenant_id = params.tenant_id.unwrap_or_else(|| "default".into());
 
     let entries = if params.q.is_empty() {
-        memory.list(&tenant_id, None, params.limit).unwrap_or_default()
+        memory
+            .list(&tenant_id, None, params.limit)
+            .unwrap_or_default()
     } else {
-        memory.search(&tenant_id, &params.q).unwrap_or_default()
+        memory
+            .search(&tenant_id, &params.q)
+            .unwrap_or_default()
             .into_iter()
             .map(|r| r.entry)
             .collect()
@@ -392,7 +418,10 @@ async fn get_memory(
     State(state): State<ApiState>,
     Path(id): Path<String>,
 ) -> Result<Json<MemorySummary>, axum::http::StatusCode> {
-    let memory = state.memory.as_ref().ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
+    let memory = state
+        .memory
+        .as_ref()
+        .ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
     let entry = memory
         .get(&id)
         .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?
@@ -431,22 +460,34 @@ async fn get_keys(State(state): State<ApiState>) -> Json<Vec<KeyInfo>> {
     let config = read_keys_config(&state.keys_path).unwrap_or_default();
     // List known key names from model catalog env vars + standard ones
     let known_keys = vec![
-        "DEEPSEEK_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY",
-        "OPENROUTER_API_KEY", "TELEGRAM_BOT_TOKEN",
-        "GOOGLE_API_KEY", "SF_API_KEY", "ZAI_API_KEY", "SCW_SECRET_KEY",
-        "GROQ_API_KEY", "SCW_PROJECT_ID",
+        "DEEPSEEK_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "OPENROUTER_API_KEY",
+        "TELEGRAM_BOT_TOKEN",
+        "GOOGLE_API_KEY",
+        "SF_API_KEY",
+        "ZAI_API_KEY",
+        "SCW_SECRET_KEY",
+        "GROQ_API_KEY",
+        "SCW_PROJECT_ID",
     ];
 
     let result: Vec<KeyInfo> = known_keys
         .into_iter()
         .map(|k| {
-            let val = config.keys.get(k).cloned()
+            let val = config
+                .keys
+                .get(k)
+                .cloned()
                 .or_else(|| std::env::var(k).ok());
             let is_set = val.is_some();
-            let masked = val.as_ref()
-                .map(|v| mask_key(v))
-                .unwrap_or_default();
-            KeyInfo { key: k.to_string(), masked, is_set }
+            let masked = val.as_ref().map(|v| mask_key(v)).unwrap_or_default();
+            KeyInfo {
+                key: k.to_string(),
+                masked,
+                is_set,
+            }
         })
         .collect();
 
@@ -496,7 +537,7 @@ fn mask_key(key: &str) -> String {
     if key.len() <= 8 {
         return "••••".to_string();
     }
-    format!("{}••••{}", &key[..4], &key[key.len()-4..])
+    format!("{}••••{}", &key[..4], &key[key.len() - 4..])
 }
 
 // ── Usage ──
@@ -510,7 +551,10 @@ async fn usage_stats(
     State(state): State<ApiState>,
     Query(params): Query<UsageQuery>,
 ) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
-    let usage = state.usage.as_ref().ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
+    let usage = state
+        .usage
+        .as_ref()
+        .ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
     let tenant = params.tenant_id.unwrap_or_else(|| "default".into());
 
     let stats = usage
@@ -524,7 +568,10 @@ async fn usage_recent(
     State(state): State<ApiState>,
     Query(params): Query<UsageQuery>,
 ) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
-    let usage = state.usage.as_ref().ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
+    let usage = state
+        .usage
+        .as_ref()
+        .ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
     let tenant = params.tenant_id.unwrap_or_else(|| "default".into());
 
     let records = usage
@@ -560,12 +607,17 @@ async fn set_logging_prefs(
     Path(tenant_id): Path<String>,
     Json(body): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
-    let enabled = body.get("enabled").and_then(|v| v.as_bool()).unwrap_or(true);
+    let enabled = body
+        .get("enabled")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
     match &state.message_log {
         Some(log) => {
             log.set_enabled(&tenant_id, enabled)
                 .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
-            Ok(Json(serde_json::json!({"ok": true, "tenant_id": tenant_id, "enabled": enabled})))
+            Ok(Json(
+                serde_json::json!({"ok": true, "tenant_id": tenant_id, "enabled": enabled}),
+            ))
         }
         None => Err(axum::http::StatusCode::SERVICE_UNAVAILABLE),
     }
@@ -615,17 +667,25 @@ struct SessionInfo {
 async fn list_sessions_handler(
     State(state): State<ApiState>,
 ) -> Result<Json<Vec<SessionInfo>>, axum::http::StatusCode> {
-    let store = state.session_store.as_ref().ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
-    let sessions = store.list_active().map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+    let store = state
+        .session_store
+        .as_ref()
+        .ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
+    let sessions = store
+        .list_active()
+        .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
     Ok(Json(
-        sessions.into_iter().map(|s| SessionInfo {
-            tenant_id: s.tenant_id,
-            session_hash: s.session_hash,
-            last_activity: s.last_activity.to_rfc3339(),
-            message_count: s.message_count,
-            total_tokens: s.total_tokens,
-            project_dir: s.project_dir,
-        }).collect()
+        sessions
+            .into_iter()
+            .map(|s| SessionInfo {
+                tenant_id: s.tenant_id,
+                session_hash: s.session_hash,
+                last_activity: s.last_activity.to_rfc3339(),
+                message_count: s.message_count,
+                total_tokens: s.total_tokens,
+                project_dir: s.project_dir,
+            })
+            .collect(),
     ))
 }
 
@@ -633,10 +693,16 @@ async fn delete_session_handler(
     State(state): State<ApiState>,
     Path((tenant_id, session_hash)): Path<(String, String)>,
 ) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
-    let store = state.session_store.as_ref().ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
-    store.delete_session(&tenant_id, &session_hash)
+    let store = state
+        .session_store
+        .as_ref()
+        .ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
+    store
+        .delete_session(&tenant_id, &session_hash)
         .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
-    Ok(Json(serde_json::json!({"ok": true, "tenant_id": tenant_id, "session_hash": session_hash})))
+    Ok(Json(
+        serde_json::json!({"ok": true, "tenant_id": tenant_id, "session_hash": session_hash}),
+    ))
 }
 
 // ── Push notifications ──
@@ -651,7 +717,10 @@ async fn push_handler(
     State(state): State<ApiState>,
     Json(body): Json<PushRequest>,
 ) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
-    let push = state.push.as_ref().ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
+    let push = state
+        .push
+        .as_ref()
+        .ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
     let result = push.send(&body.tenant_id, &body.message).await;
     Ok(Json(serde_json::json!({
         "success": result.success,
@@ -678,12 +747,17 @@ async fn remind_handler(
     State(state): State<ApiState>,
     Json(body): Json<RemindRequest>,
 ) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
-    let scheduler = state.scheduler.as_ref().ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
+    let scheduler = state
+        .scheduler
+        .as_ref()
+        .ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
 
     if let Some(delay_secs) = body.delay_secs {
         let delay = std::time::Duration::from_secs(delay_secs);
         let id = scheduler.schedule_in(&body.tenant_id, delay, &body.message);
-        Ok(Json(serde_json::json!({"id": id, "fire_in_secs": delay_secs})))
+        Ok(Json(
+            serde_json::json!({"id": id, "fire_in_secs": delay_secs}),
+        ))
     } else if let Some(ref at_str) = body.at_time {
         // Parse "HH:MM" or ISO8601
         let now = chrono::Utc::now();
@@ -732,15 +806,21 @@ async fn remind_handler(
 async fn list_reminders_handler(
     State(state): State<ApiState>,
 ) -> Result<Json<serde_json::Value>, axum::http::StatusCode> {
-    let scheduler = state.scheduler.as_ref().ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
+    let scheduler = state
+        .scheduler
+        .as_ref()
+        .ok_or(axum::http::StatusCode::SERVICE_UNAVAILABLE)?;
     let jobs = scheduler.list_jobs();
-    let items: Vec<serde_json::Value> = jobs.iter().map(|j| {
-        serde_json::json!({
-            "id": j.id,
-            "tenant_id": j.tenant_id,
-            "message": j.message,
-            "fire_at": j.fire_at.to_rfc3339(),
+    let items: Vec<serde_json::Value> = jobs
+        .iter()
+        .map(|j| {
+            serde_json::json!({
+                "id": j.id,
+                "tenant_id": j.tenant_id,
+                "message": j.message,
+                "fire_at": j.fire_at.to_rfc3339(),
+            })
         })
-    }).collect();
+        .collect();
     Ok(Json(serde_json::json!({"reminders": items})))
 }

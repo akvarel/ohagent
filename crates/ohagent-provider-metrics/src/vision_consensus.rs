@@ -11,8 +11,8 @@
 //!   - If only 1/2 or 0/2 agree → flag for review
 //!   - If all disagree → re-extract with best model
 
-use std::collections::HashMap;
 use crate::receipt_validator::ReceiptData;
+use std::collections::HashMap;
 
 /// Result of a consensus run across multiple OCR models.
 #[derive(Debug)]
@@ -50,10 +50,14 @@ pub fn run_consensus(
     if results.is_empty() {
         // Should never happen
         return ConsensusResult {
-            consensus_reached: false, model_count: 0,
-            unanimous_fields: 0, majority_fields: 0, disputed_fields: 0,
+            consensus_reached: false,
+            model_count: 0,
+            unanimous_fields: 0,
+            majority_fields: 0,
+            disputed_fields: 0,
             best: ReceiptData::default(),
-            per_model: vec![], disputes: vec![],
+            per_model: vec![],
+            disputes: vec![],
         };
     }
 
@@ -61,10 +65,14 @@ pub fn run_consensus(
         // Single model — no consensus needed
         let (name, data) = results.into_iter().next().unwrap();
         return ConsensusResult {
-            consensus_reached: true, model_count: 1,
-            unanimous_fields: 0, majority_fields: 0, disputed_fields: 0,
+            consensus_reached: true,
+            model_count: 1,
+            unanimous_fields: 0,
+            majority_fields: 0,
+            disputed_fields: 0,
             best: data,
-            per_model: vec![(name, ReceiptData::default())], disputes: vec![],
+            per_model: vec![(name, ReceiptData::default())],
+            disputes: vec![],
         };
     }
 
@@ -73,8 +81,14 @@ pub fn run_consensus(
 
     // Collect values per field across all models
     let fields_to_check = [
-        "store_name", "reg_nr", "vat_nr", "date", "total",
-        "subtotal", "vat_amount", "payment_amount",
+        "store_name",
+        "reg_nr",
+        "vat_nr",
+        "date",
+        "total",
+        "subtotal",
+        "vat_amount",
+        "payment_amount",
     ];
 
     let mut field_values: HashMap<&str, Vec<(&str, String)>> = HashMap::new();
@@ -82,7 +96,8 @@ pub fn run_consensus(
         for field in &fields_to_check {
             let val = extract_field(data, field);
             if !val.is_empty() && val != "0" && val != "0.0" && val != "0.00" {
-                field_values.entry(field)
+                field_values
+                    .entry(field)
                     .or_default()
                     .push((model_name.as_str(), val));
             }
@@ -110,7 +125,8 @@ pub fn run_consensus(
         }
 
         let max_count = counts.values().max().copied().unwrap_or(0);
-        let _best_val = counts.iter()
+        let _best_val = counts
+            .iter()
             .max_by_key(|(_, &c)| c)
             .map(|(&v, _)| v.to_string())
             .unwrap_or_default();
@@ -139,7 +155,10 @@ pub fn run_consensus(
         majority_fields: majority,
         disputed_fields: disputed,
         best,
-        per_model: results.iter().map(|(n, d)| (n.clone(), d.clone())).collect(),
+        per_model: results
+            .iter()
+            .map(|(n, d)| (n.clone(), d.clone()))
+            .collect(),
         disputes: dispute_list,
     }
 }
@@ -216,8 +235,14 @@ mod tests {
     fn test_partial_disagreement() {
         let results = vec![
             ("gemini".into(), make_receipt("Kurs", 12.89, "40003494995")),
-            ("glm-ocr".into(), make_receipt("Kursi", 12.89, "40003494995")),
-            ("mistral".into(), make_receipt("BISTRO", 12.89, "40003494995")),
+            (
+                "glm-ocr".into(),
+                make_receipt("Kursi", 12.89, "40003494995"),
+            ),
+            (
+                "mistral".into(),
+                make_receipt("BISTRO", 12.89, "40003494995"),
+            ),
         ];
         let c = run_consensus(results);
         // 2/3 agree on "40003494995", but 1/3 on store name
@@ -227,9 +252,7 @@ mod tests {
 
     #[test]
     fn test_single_model() {
-        let results = vec![
-            ("gemini".into(), make_receipt("Kurs", 12.89, "40003494995")),
-        ];
+        let results = vec![("gemini".into(), make_receipt("Kurs", 12.89, "40003494995"))];
         let c = run_consensus(results);
         assert!(c.consensus_reached);
         assert_eq!(c.model_count, 1);

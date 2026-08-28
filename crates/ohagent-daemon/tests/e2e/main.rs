@@ -155,8 +155,7 @@ fn body_contains(w: &mut OhAgentWorld, expected: String) {
 
 #[then(regex = "^the response body contains '([^']+)' array$")]
 fn body_contains_array(w: &mut OhAgentWorld, _key: String) {
-    let val: serde_json::Value =
-        serde_json::from_str(&w.body).expect("Body is not valid JSON");
+    let val: serde_json::Value = serde_json::from_str(&w.body).expect("Body is not valid JSON");
     // Check that the body is a JSON array (top-level or within an object)
     if let Some(data) = val.get("data") {
         assert!(data.is_array(), "data is not an array: {data}");
@@ -167,19 +166,14 @@ fn body_contains_array(w: &mut OhAgentWorld, _key: String) {
 
 #[then("the response body is a JSON array")]
 fn body_is_array(w: &mut OhAgentWorld) {
-    let val: serde_json::Value =
-        serde_json::from_str(&w.body).expect("Body is not valid JSON");
+    let val: serde_json::Value = serde_json::from_str(&w.body).expect("Body is not valid JSON");
     assert!(val.is_array(), "Body is not a JSON array: {val}");
 }
 
 #[then(regex = r#"^the response body is a JSON object with "([^"]+)": "([^"]*)"$"#)]
 fn body_object_with_key_value(w: &mut OhAgentWorld, key: String, expected_val: String) {
-    let val: serde_json::Value =
-        serde_json::from_str(&w.body).expect("Body is not valid JSON");
-    let actual = val
-        .get(&key)
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
+    let val: serde_json::Value = serde_json::from_str(&w.body).expect("Body is not valid JSON");
+    let actual = val.get(&key).and_then(|v| v.as_str()).unwrap_or("");
     assert_eq!(
         actual, expected_val,
         "Expected {key}: {expected_val}, got: {actual}. Body: {}",
@@ -199,8 +193,7 @@ fn check_content_type(w: &mut OhAgentWorld, expected: String) {
 
 #[then("the response content is not empty")]
 fn content_not_empty(w: &mut OhAgentWorld) {
-    let val: serde_json::Value =
-        serde_json::from_str(&w.body).expect("Body is not valid JSON");
+    let val: serde_json::Value = serde_json::from_str(&w.body).expect("Body is not valid JSON");
     let choices = val
         .get("choices")
         .and_then(|c| c.as_array())

@@ -28,7 +28,7 @@ pub struct LoggedMessage {
     pub id: String,
     pub tenant_id: String,
     pub session_hash: String,
-    pub role: String,        // "user" for prompts, "assistant" for responses
+    pub role: String, // "user" for prompts, "assistant" for responses
     pub turn_seq: u32,
     pub content_json: String, // decompressed JSON
     pub token_estimate: u32,
@@ -63,7 +63,7 @@ impl MessageLog {
             CREATE TABLE IF NOT EXISTS tenant_logging_prefs (
                 tenant_id   TEXT PRIMARY KEY,
                 enabled     INTEGER NOT NULL DEFAULT 1
-            );"
+            );",
         )?;
         Ok(Self {
             db: Mutex::new(conn),
@@ -73,7 +73,9 @@ impl MessageLog {
 
     /// Whether logging is enabled for a tenant.
     pub fn is_enabled_for(&self, tenant_id: &str) -> bool {
-        if !*self.enabled.lock().unwrap() { return false; }
+        if !*self.enabled.lock().unwrap() {
+            return false;
+        }
         let db = self.db.lock().unwrap();
         db.query_row(
             "SELECT enabled FROM tenant_logging_prefs WHERE tenant_id = ?1",
@@ -160,12 +162,7 @@ impl MessageLog {
     }
 
     /// List message log entries for a tenant (paginated, most recent first).
-    pub fn list(
-        &self,
-        tenant_id: &str,
-        limit: u32,
-        offset: u32,
-    ) -> Result<Vec<LoggedMessage>> {
+    pub fn list(&self, tenant_id: &str, limit: u32, offset: u32) -> Result<Vec<LoggedMessage>> {
         let db = self.db.lock().unwrap();
         let mut stmt = db.prepare(
             "SELECT id, tenant_id, session_hash, role, turn_seq,
@@ -292,12 +289,30 @@ mod tests {
     fn test_multiple_turns() {
         let log = MessageLog::open(":memory:").unwrap();
 
-        log.log_messages("t1", "s1", "user", 1,
-            &[serde_json::json!({"role":"user","content":"q1"})]).unwrap();
-        log.log_messages("t1", "s1", "assistant", 1,
-            &[serde_json::json!({"role":"assistant","content":"a1"})]).unwrap();
-        log.log_messages("t1", "s1", "user", 2,
-            &[serde_json::json!({"role":"user","content":"q2"})]).unwrap();
+        log.log_messages(
+            "t1",
+            "s1",
+            "user",
+            1,
+            &[serde_json::json!({"role":"user","content":"q1"})],
+        )
+        .unwrap();
+        log.log_messages(
+            "t1",
+            "s1",
+            "assistant",
+            1,
+            &[serde_json::json!({"role":"assistant","content":"a1"})],
+        )
+        .unwrap();
+        log.log_messages(
+            "t1",
+            "s1",
+            "user",
+            2,
+            &[serde_json::json!({"role":"user","content":"q2"})],
+        )
+        .unwrap();
 
         let entries = log.list("t1", 10, 0).unwrap();
         assert_eq!(entries.len(), 3);
@@ -317,8 +332,15 @@ mod tests {
     fn test_archive_flow() {
         let log = MessageLog::open(":memory:").unwrap();
 
-        let id = log.log_messages("t1", "s1", "user", 1,
-            &[serde_json::json!({"role":"user","content":"old"})]).unwrap();
+        let id = log
+            .log_messages(
+                "t1",
+                "s1",
+                "user",
+                1,
+                &[serde_json::json!({"role":"user","content":"old"})],
+            )
+            .unwrap();
 
         // Entries older than 0 days should be ready
         let ready = log.ready_for_archive(0).unwrap();

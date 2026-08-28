@@ -13,7 +13,9 @@ use axum::{
 };
 use serde::Deserialize;
 
-use ohagent_gateway::platforms::{slack::SlackAdapter, viber::ViberAdapter, whatsapp::WhatsAppAdapter};
+use ohagent_gateway::platforms::{
+    slack::SlackAdapter, viber::ViberAdapter, whatsapp::WhatsAppAdapter,
+};
 
 /// Shared state for webhook handlers.
 #[derive(Clone)]
@@ -42,7 +44,9 @@ pub async fn wa_verify(
 ) -> Response {
     let adapter = match &state.whatsapp {
         Some(a) => a,
-        None => return (StatusCode::SERVICE_UNAVAILABLE, "WhatsApp not configured").into_response(),
+        None => {
+            return (StatusCode::SERVICE_UNAVAILABLE, "WhatsApp not configured").into_response()
+        }
     };
 
     let mode = q.mode.as_deref().unwrap_or("");
@@ -56,13 +60,12 @@ pub async fn wa_verify(
 }
 
 /// POST /webhooks/whatsapp — incoming message.
-pub async fn wa_webhook(
-    State(state): State<WebhookState>,
-    body: String,
-) -> Response {
+pub async fn wa_webhook(State(state): State<WebhookState>, body: String) -> Response {
     let adapter = match &state.whatsapp {
         Some(a) => a,
-        None => return (StatusCode::SERVICE_UNAVAILABLE, "WhatsApp not configured").into_response(),
+        None => {
+            return (StatusCode::SERVICE_UNAVAILABLE, "WhatsApp not configured").into_response()
+        }
     };
 
     match adapter.handle_webhook(&body).await {
@@ -94,12 +97,10 @@ pub async fn slack_webhook(
         .get("X-Slack-Request-Timestamp")
         .and_then(|v| v.to_str().ok());
 
-    match adapter
-        .handle_webhook(&body, signature, timestamp)
-        .await
-    {
-        Ok((status, body)) => (StatusCode::from_u16(status).unwrap_or(StatusCode::OK), body)
-            .into_response(),
+    match adapter.handle_webhook(&body, signature, timestamp).await {
+        Ok((status, body)) => {
+            (StatusCode::from_u16(status).unwrap_or(StatusCode::OK), body).into_response()
+        }
         Err(e) => {
             tracing::error!(error = %e, "Slack webhook error");
             (StatusCode::INTERNAL_SERVER_ERROR, e).into_response()
@@ -110,18 +111,16 @@ pub async fn slack_webhook(
 // ── Viber webhook ──
 
 /// POST /webhooks/viber — Viber callbacks.
-pub async fn viber_webhook(
-    State(state): State<WebhookState>,
-    body: String,
-) -> Response {
+pub async fn viber_webhook(State(state): State<WebhookState>, body: String) -> Response {
     let adapter = match &state.viber {
         Some(a) => a,
         None => return (StatusCode::SERVICE_UNAVAILABLE, "Viber not configured").into_response(),
     };
 
     match adapter.handle_webhook(&body).await {
-        Ok((status, body)) => (StatusCode::from_u16(status).unwrap_or(StatusCode::OK), body)
-            .into_response(),
+        Ok((status, body)) => {
+            (StatusCode::from_u16(status).unwrap_or(StatusCode::OK), body).into_response()
+        }
         Err(e) => {
             tracing::error!(error = %e, "Viber webhook error");
             (StatusCode::INTERNAL_SERVER_ERROR, e).into_response()

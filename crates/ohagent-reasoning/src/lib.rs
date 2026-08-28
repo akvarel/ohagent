@@ -27,6 +27,6 @@ pub mod replay;
 pub mod router;
 
 pub use budget::BudgetTracker;
-pub use cmc::{CmcController, CmcDecision, CmcConfig, BranchState, PoolStats};
+pub use cmc::{BranchState, CmcConfig, CmcController, CmcDecision, PoolStats};
 pub use replay::{ReplayEnv, ReplayTrace, TraceStep};
 pub use router::ReasoningRouter;

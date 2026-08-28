@@ -22,10 +22,19 @@ pub fn check_command_safety(command: &str, _working_dir: &str) -> Result<(), Str
 
     // ── Block kubectl mutations ──
     let kubectl_danger = [
-        "kubectl apply", "kubectl create", "kubectl delete", "kubectl patch",
-        "kubectl edit", "kubectl replace", "kubectl scale", "kubectl rollout",
-        "kubectl annotate", "kubectl label",
-        "kubectl set env", "kubectl set image", "kubectl set resources",
+        "kubectl apply",
+        "kubectl create",
+        "kubectl delete",
+        "kubectl patch",
+        "kubectl edit",
+        "kubectl replace",
+        "kubectl scale",
+        "kubectl rollout",
+        "kubectl annotate",
+        "kubectl label",
+        "kubectl set env",
+        "kubectl set image",
+        "kubectl set resources",
     ];
     if lower.contains("kubectl") {
         for pattern in &kubectl_danger {
@@ -37,13 +46,18 @@ pub fn check_command_safety(command: &str, _working_dir: &str) -> Result<(), Str
             }
         }
         // Allow read-only kubectl: get, describe, logs, top, auth can-i
-        let allowed = ["kubectl get", "kubectl describe", "kubectl logs",
-                       "kubectl top", "kubectl auth can-i", "kubectl api-resources",
-                       "kubectl explain", "kubectl version"];
+        let allowed = [
+            "kubectl get",
+            "kubectl describe",
+            "kubectl logs",
+            "kubectl top",
+            "kubectl auth can-i",
+            "kubectl api-resources",
+            "kubectl explain",
+            "kubectl version",
+        ];
         if !allowed.iter().any(|a| lower.contains(a)) {
-            return Err(
-                "BLOCKED: kubectl commands are restricted to read-only operations".into()
-            );
+            return Err("BLOCKED: kubectl commands are restricted to read-only operations".into());
         }
     }
 
@@ -59,10 +73,20 @@ pub fn check_command_safety(command: &str, _working_dir: &str) -> Result<(), Str
 
     // ── Block env var mutation through export/set/setenv ──
     let protected_envs = [
-        "DEEPSEEK_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY",
-        "TELEGRAM_BOT_TOKEN", "GOOGLE_API_KEY", "GEMINI_API_KEY",
-        "SF_API_KEY", "ZAI_API_KEY", "SCW_SECRET_KEY", "SCW_PROJECT_ID",
-        "GROQ_API_KEY", "VAULT_TOKEN", "VAULT_ADDR", "OHAGENT_ADMIN_USER_ID",
+        "DEEPSEEK_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "TELEGRAM_BOT_TOKEN",
+        "GOOGLE_API_KEY",
+        "GEMINI_API_KEY",
+        "SF_API_KEY",
+        "ZAI_API_KEY",
+        "SCW_SECRET_KEY",
+        "SCW_PROJECT_ID",
+        "GROQ_API_KEY",
+        "VAULT_TOKEN",
+        "VAULT_ADDR",
+        "OHAGENT_ADMIN_USER_ID",
         "KUBECONFIG",
     ];
     if lower.contains("export ") || lower.contains("setenv ") || lower.starts_with("set ") {
@@ -87,17 +111,26 @@ pub fn check_command_safety(command: &str, _working_dir: &str) -> Result<(), Str
         "/usr/local/bin/ohagent-daemon",
     ];
     for path in &protected_paths {
-        if lower.contains(path) && (lower.contains(">") || lower.contains("write") || lower.contains("rm ") || lower.contains("mv ") || lower.contains("cp ")) {
-            return Err(format!(
-                "BLOCKED: cannot modify protected path {}",
-                path
-            ));
+        if lower.contains(path)
+            && (lower.contains(">")
+                || lower.contains("write")
+                || lower.contains("rm ")
+                || lower.contains("mv ")
+                || lower.contains("cp "))
+        {
+            return Err(format!("BLOCKED: cannot modify protected path {}", path));
         }
     }
 
     // ── Block helm mutations ──
-    let helm_danger = ["helm install", "helm upgrade", "helm uninstall", "helm delete",
-                       "helm rollback", "helm template"];
+    let helm_danger = [
+        "helm install",
+        "helm upgrade",
+        "helm uninstall",
+        "helm delete",
+        "helm rollback",
+        "helm template",
+    ];
     if lower.contains("helm ") {
         for pattern in &helm_danger {
             if lower.contains(pattern) {
@@ -110,10 +143,23 @@ pub fn check_command_safety(command: &str, _working_dir: &str) -> Result<(), Str
     }
 
     // ── Block docker mutations ──
-    let docker_danger = ["docker run", "docker build", "docker push", "docker rm",
-                         "docker rmi", "docker tag", "docker exec", "docker stop",
-                         "docker kill", "docker compose"];
-    if lower.contains("docker ") && !lower.contains("docker ps") && !lower.contains("docker images") && !lower.contains("docker logs") {
+    let docker_danger = [
+        "docker run",
+        "docker build",
+        "docker push",
+        "docker rm",
+        "docker rmi",
+        "docker tag",
+        "docker exec",
+        "docker stop",
+        "docker kill",
+        "docker compose",
+    ];
+    if lower.contains("docker ")
+        && !lower.contains("docker ps")
+        && !lower.contains("docker images")
+        && !lower.contains("docker logs")
+    {
         for pattern in &docker_danger {
             if lower.contains(pattern) {
                 return Err(format!(
@@ -125,10 +171,14 @@ pub fn check_command_safety(command: &str, _working_dir: &str) -> Result<(), Str
     }
 
     // ── Block K8s auth file modification ──
-    if lower.contains("kubeconfig") || lower.contains(".kube/config")
-        || lower.contains("~/.kube") {
-        if lower.contains("write") || lower.contains("echo ") || lower.contains(">")
-            || lower.contains("cat >") || lower.contains("tee ") || lower.contains("rm ") {
+    if lower.contains("kubeconfig") || lower.contains(".kube/config") || lower.contains("~/.kube") {
+        if lower.contains("write")
+            || lower.contains("echo ")
+            || lower.contains(">")
+            || lower.contains("cat >")
+            || lower.contains("tee ")
+            || lower.contains("rm ")
+        {
             return Err("BLOCKED: cannot modify kubeconfig".into());
         }
     }
@@ -183,9 +233,13 @@ fn is_mutation(command: &str, tool: &str) -> bool {
     let after = command.split(tool).nth(1).unwrap_or("");
     let after = after.trim();
     // Block start, stop, restart, disable, mask, enable, edit
-    let mutation_verbs = ["start ", "stop ", "restart ", "disable ", "mask ", "enable ", "edit "];
+    let mutation_verbs = [
+        "start ", "stop ", "restart ", "disable ", "mask ", "enable ", "edit ",
+    ];
     mutation_verbs.iter().any(|v| after.starts_with(v))
-        || !["status ", "list-units ", "is-active ", "show "].iter().any(|v| after.starts_with(v))
+        || !["status ", "list-units ", "is-active ", "show "]
+            .iter()
+            .any(|v| after.starts_with(v))
 }
 
 #[cfg(test)]
@@ -205,7 +259,9 @@ mod tests {
         assert!(check_command_safety("kubectl delete pod x", "/tmp").is_err());
         assert!(check_command_safety("kubectl patch deploy x", "/tmp").is_err());
         assert!(check_command_safety("kubectl delete configmap ohagent-config", "/tmp").is_err());
-        assert!(check_command_safety("kubectl set env deploy/ohagent-daemon FOO=bar", "/tmp").is_err());
+        assert!(
+            check_command_safety("kubectl set env deploy/ohagent-daemon FOO=bar", "/tmp").is_err()
+        );
         assert!(check_command_safety("kubectl create secret generic x", "/tmp").is_err());
     }
 
@@ -218,9 +274,13 @@ mod tests {
 
     #[test]
     fn test_protected_paths() {
-        assert!(check_command_safety("echo hack > /home/jcode/.ohagent/keys.toml", "/tmp").is_err());
+        assert!(
+            check_command_safety("echo hack > /home/jcode/.ohagent/keys.toml", "/tmp").is_err()
+        );
         assert!(check_command_safety("rm -rf /home/jcode/.ohagent", "/tmp").is_err());
-        assert!(check_command_safety("cp /tmp/x /etc/kubernetes/manifests/pwn.yaml", "/tmp").is_err());
+        assert!(
+            check_command_safety("cp /tmp/x /etc/kubernetes/manifests/pwn.yaml", "/tmp").is_err()
+        );
     }
 
     #[test]
@@ -228,7 +288,7 @@ mod tests {
         assert!(check_command_safety("helm install x", "/tmp").is_err());
         assert!(check_command_safety("docker run alpine", "/tmp").is_err());
         assert!(check_command_safety("docker build .", "/tmp").is_err());
-        assert!(check_command_safety("docker ps", "/tmp").is_ok());  // read-only allowed
+        assert!(check_command_safety("docker ps", "/tmp").is_ok()); // read-only allowed
     }
 
     #[test]
@@ -245,7 +305,7 @@ mod tests {
     fn test_systemctl_blocked() {
         assert!(check_command_safety("systemctl stop ohagent-daemon", "/tmp").is_err());
         assert!(check_command_safety("systemctl restart foo", "/tmp").is_err());
-        assert!(check_command_safety("systemctl status foo", "/tmp").is_ok());  // read allowed
+        assert!(check_command_safety("systemctl status foo", "/tmp").is_ok()); // read allowed
     }
 
     #[test]

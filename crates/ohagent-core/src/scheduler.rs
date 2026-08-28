@@ -49,12 +49,7 @@ impl Scheduler {
     /// Schedule a one-shot reminder.
     ///
     /// `delay` is relative to now. Returns the job ID.
-    pub fn schedule_in(
-        &self,
-        tenant_id: &str,
-        delay: Duration,
-        message: &str,
-    ) -> String {
+    pub fn schedule_in(&self, tenant_id: &str, delay: Duration, message: &str) -> String {
         let id = uuid::Uuid::new_v4().to_string();
         let fire_at = chrono::Utc::now() + chrono::Duration::from_std(delay).unwrap();
 
