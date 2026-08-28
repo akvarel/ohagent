@@ -1,24 +1,20 @@
 # ohAgent ↔ Jcode — Capability Consolidation Plan
 
-> **Date:** 2026-08-20
-> **Status:** Proposed plan (needs approval before code changes)
-> **Scope:** memory, skills, swarm, cron — capabilities that exist BOTH in `ohagent-*` crates
-> and in the Jcode SDK submodule. Resolves roadmap §5.1.
+> **Date:** 2026-08-28
+> **Status:** Implemented and reconciled with the Jcode v0.81.1 runtime boundary
+> **Scope:** memory, skills, swarm, cron, and orchestration capabilities that exist in `ohagent-*` crates
+> and in the pinned Jcode SDK submodule.
 
-## 0. Ground truth (audited 2026-08-20)
+## 0. Ground truth (re-audited 2026-08-28)
 
 | Capability | ohAgent impl | Jcode impl | Actually wired in daemon? |
 |---|---|---|---|
 | Memory | `ohagent-memory` (2185 LOC) | `jcode-base` memory (memory.rs, memory_graph, memory_external/pgvector, memory_rerank, memory_agent) | ✅ **ohagent-memory** (MemoryEngine in daemon/api/ws/context_compressor) |
 | Skills | `ohagent-skills` (1626 LOC) | `jcode-base` skill (skill.rs, skill/invocation.rs) | ✅ **ohagent-skills** (SkillRegistry + cron in daemon) |
-| Swarm | `ohagent-swarm` (680 LOC) | `jcode-swarm-core` (853 LOC) | ✅ **ohagent-swarm** (SwarmOrchestrator in core/tools.rs) |
+| Swarm | `ohagent-swarm` product orchestration | Jcode swarm runtime plus durable orchestration watchdog | ✅ Both, with separate ownership: ohAgent owns product DAG semantics; Jcode owns runtime workers, background delivery, and durable recovery. |
 | Cron | `ohagent-cron` (390 LOC) | `jcode-overnight-core`, `jcode-plan` | ⚠️ **Neither** — real cron = `ohagent-core::scheduler::Scheduler` (+ skills-cron in daemon). `ohagent-cron` crate is **orphaned** (workspace member only, no crate depends on it). |
 
-**Key finding:** ohAgent is NOT actually consuming the Jcode memory/skill/swarm/cron
-implementations — the daemon runs its own `ohagent-*` versions. The Jcode crates are pulled in
-for other purposes (`jcode-base` embeddings, providers, SDK, harness). So this is **not** a
-runtime conflict; it's a **maintenance-divergence risk** (two implementations to keep in sync)
-plus **one orphan crate**.
+**Key finding:** ohAgent keeps product memory, skill lifecycle, gateway scheduling, and product-level swarm semantics. Jcode owns the SDK session runtime, built-in tool execution, background tasks, runtime swarm workers, and durable orchestration recovery. These are complementary boundaries, not competing implementations. The remaining risk is version drift between the parent repository and its pinned Jcode submodule.
 
 ---
 
@@ -28,7 +24,7 @@ plus **one orphan crate**.
 |---|---|---|
 | **Memory** | Keep **ohagent-memory** as the running store; **consume Jcode memory primitives** for the advanced bits | ohagent-memory is wired and tested; Jcode adds pgvector-external + graph + rerank not yet in ohagent. Best value: upgrade ohagent-memory to *call* Jcode's embedding/rerank/external-retrieval instead of re-implementing. |
 | **Skills** | **ohagent-skills** (keep) | It is the Phase-4 deliverable (creator/evaluator/curator/security_audit) with cron loop; Jcode skill is a different shape (tool invocation). No migration. |
-| **Swarm** | **ohagent-swarm** (keep) | Wired into core/tools.rs with ohAgent TaskKind/Dependency semantics; jcode-swarm-core is close in LOC but different API. No migration now. |
+| **Swarm and recovery** | Keep **ohagent-swarm** for product DAG semantics; use **Jcode runtime swarm and watchdog** for execution recovery | The public SDK boundary launches Jcode-owned sessions and tools. Durable background/run-plan reconciliation must remain beside the runtime state it observes. |
 | **Cron** | **Delete `ohagent-cron`; use `ohagent-core::scheduler`** | `ohagent-cron` is orphaned dead code (5 tests, no consumers). Real cron already lives in `ohagent-core::scheduler::Scheduler` + skills-cron in daemon. Removing it removes the divergence. |
 
 ---
@@ -63,9 +59,11 @@ plus **one orphan crate**.
 - ohagent-skills is the product feature; Jcode skill is a lower-level tool-invocation registry.
 - **Done:** boundary documented in `ohagent-skills/lib.rs`.
 
-### 2.4 SWARM — keep ohagent-swarm; add cross-reference (done 2026-08-20)
-- ohagent-swarm's TaskKind/Dependency model is tailored to ohAgent tools.
-- **Done:** boundary documented in `ohagent-swarm/lib.rs`; revisit only for a shared DAG engine tied to Graph Engineering ADR-001.
+### 2.4 SWARM AND WATCHDOG — split product orchestration from runtime recovery (done 2026-08-28)
+- `ohagent-swarm` remains the source of truth for product-specific `TaskKind` and dependency semantics.
+- Jcode owns runtime swarm workers, background tasks, delivery, retry, and durable watchdog reconciliation.
+- ohAgent does not duplicate the watchdog registry or reconcile Jcode process state itself.
+- The boundary and operational checks are documented in `ORCHESTRATION_WATCHDOG.md`.
 
 ### 2.5 CRON — (covered by 2.1) after deletion, single source = `ohagent-core::scheduler`
 
@@ -76,7 +74,8 @@ plus **one orphan crate**.
 - [x] `ohagent-cron` removed from workspace; `cargo build --workspace` + `cargo test --workspace` green.
 - [x] Memory embedding source unified with Jcode (already the case; verified).
 - [ ] Memory rerank / external enrichment — deferred, blocked on Jcode Sidecar + external services (see 2.2).
-- [x] Skills + swarm boundaries documented (comment + roadmap link).
+- [x] Skills and product-swarm boundaries documented.
+- [x] Durable runtime recovery assigned to the Jcode orchestration watchdog and integrated through the pinned submodule.
 - [x] `TEAM_MEMORY/ROADMAP.md` §5.1 updated with consolidation plan reference.
 
 ## 4. Risks / notes
@@ -84,6 +83,5 @@ plus **one orphan crate**.
 - **Memory upgrade** touches the hottest path (context_compressor, ws, openai_api all use
   MemoryEngine) — do it behind the existing `MemoryConfig` feature flag and validate with the
   16 memory tests + daemon integration.
-- Jcode v0.78.1 carries upstream test debt (auth/provider/config + tool gate) unrelated to this
-  work; do not let those mask a real regression. Confirm ohagent crate tests pass independently.
+- The maintained Jcode fork is based on v0.81.1. Upstream or fork updates must be validated independently from ohAgent so inherited engine failures do not mask product regressions.
 - No destructive data migration: memory store models stay identical.

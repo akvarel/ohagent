@@ -2,7 +2,7 @@
 
 ## Status
 
-This document defines the target runtime boundary between ohAgent and Jcode. The implementation lives on `feature/jcode-sdk-runtime-boundary` and replaces direct imports from private Jcode application internals with the public `jcode-sdk` client and an external Jcode runtime process.
+This document defines the active runtime boundary between ohAgent and Jcode. The implementation is carried by `feature/jcode-sdk-runtime-boundary` and replaces direct imports from private Jcode application internals with the public `jcode-sdk` client and an external Jcode runtime process. The embedded fork is currently based on upstream Jcode v0.81.1 and includes the durable orchestration-watchdog integration described in `ORCHESTRATION_WATCHDOG.md`.
 
 ## Why this boundary exists
 
@@ -89,7 +89,7 @@ Runtime state is persistent while the bridge's in-memory session index is not au
 
 ## Permissions policy
 
-The v0.76.0 harness schema contains permission request and response types, but the bridge does not currently produce permission prompts and does not advertise the `permissions` capability. ohAgent must not pretend the capability exists and must not wait for a prompt that cannot arrive.
+The v0.81.1 harness schema contains permission request and response types, but the bridge does not currently produce permission prompts and does not advertise the `permissions` capability. ohAgent must not pretend the capability exists and must not wait for a prompt that cannot arrive.
 
 Current policy:
 
@@ -106,16 +106,19 @@ The SDK does not expose private MCP pool control. Jcode discovers MCP configurat
 
 The private fork retains a generic reconnect fix that replaces dead pooled MCP processes instead of returning stale handles. No ohAgent-specific product behavior is added to Jcode.
 
-## Minimal private Jcode fork
+## Maintained Jcode fork
 
-The ohAgent-compatible fork is based directly on upstream Jcode v0.76.0 and carries only generic fixes required by the product boundary:
+The ohAgent-compatible fork is based on upstream Jcode v0.81.1. It carries generic platform fixes and capabilities required by the product boundary:
 
 1. reconnect a pooled MCP server after its child process dies;
 2. preserve and report the effective working directory on SDK session attach/create;
-3. regression tests documenting both behaviors and the unsupported permission response contract;
-4. fork-compatible CI that treats `DEPLOY_KEY` as optional when the dependency graph has no SSH-only sources and skips the linked-issue policy only when repository Issues are disabled.
+3. preserve OpenAI-compatible provider profiles used by DeepSeek and similar routes;
+4. expose the public headless session and interrupt APIs used by the SDK boundary;
+5. retain external memory enrichment hooks and configurable vault integration;
+6. provide durable orchestration-watchdog reconciliation for background and swarm work;
+7. keep fork-compatible CI and quality guardrails.
 
-Scheduler, TEAM_MEMORY, ambient-product, and unrelated UI customizations are not required by ohAgent and must not be carried in this minimal branch. The CI compatibility does not skip build, test, formatting, quality, or release jobs.
+The fork remains engine-focused. ohAgent tenancy, gateway policy, product memory, skills, and deployment ownership stay in the parent repository. Every submodule advance must reference a commit already pushed to the Jcode fork before the parent gitlink is committed.
 
 ## Packaging
 
@@ -150,7 +153,7 @@ Docker Compose uses a fixed `compose` runtime domain. Kubernetes uses the immuta
 
 ## Acceptance requirements
 
-The implementation is complete only when the following are observed:
+The SDK runtime boundary and watchdog are complete when the following are observed:
 
 - private Jcode internals are absent from the gateway session path;
 - same-tenant sessions reuse one runtime;

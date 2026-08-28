@@ -1,5 +1,9 @@
 # Orchestration Watchdog Architecture
 
+## Status
+
+Implemented in the maintained Jcode fork based on upstream v0.81.1. ohAgent consumes it through the pinned `jcode` submodule and public SDK runtime boundary. The watchdog does not add a second ohAgent scheduler or database.
+
 ## Placement decision
 
 The watchdog belongs primarily in the Jcode fork, with only a thin ohAgent integration boundary.
@@ -27,6 +31,17 @@ Evidence:
 - ohAgent continues to own tenancy, gateway delivery, and private Jcode runtime placement.
 - The parent repository advances the Jcode submodule pointer only. No duplicate watchdog database or scheduler is added to ohAgent.
 - `JCODE_ORCHESTRATION_WATCHDOG_INTERVAL_SECS` can tune reconciliation frequency inside each tenant-private Jcode runtime. The default is 30 seconds.
+- Docker images continue to package both `/usr/local/bin/jcode` and `/usr/local/bin/jcode-harness-api-bridge` from the same pinned submodule revision.
+
+## Operational verification
+
+For every submodule update that contains watchdog changes:
+
+1. push the Jcode commit before committing the parent gitlink;
+2. run Jcode formatting, code-size and test-size budgets, focused watchdog tests, and compilation for `jcode-base`, `jcode-app-core`, and the harness API server;
+3. run ohAgent formatting and the focused SDK runtime, tenant-isolation, scheduler, packaging, and workspace tests;
+4. verify the Docker build still contains matching Jcode CLI and API bridge binaries;
+5. merge the parent change only after the submodule commit is reachable from the fork.
 
 ## Migration and compatibility
 
