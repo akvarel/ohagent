@@ -5,7 +5,7 @@
 //! being activated. Dangerous patterns (shell execution, file destruction,
 //! network exfiltration) are flagged.
 
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use tracing::warn;
 
 /// Repositories/paths considered trusted for skill imports.
@@ -23,7 +23,7 @@ const DANGEROUS_PATTERNS: &[&str] = &[
     "> /dev/sda",
     "mkfs.",
     "dd if=",
-    ":(){ :|:& };:",   // fork bomb
+    ":(){ :|:& };:", // fork bomb
     "chmod 777 /",
     "wget.*| sh",
     "curl.*| bash",
@@ -65,7 +65,9 @@ pub fn content_hash(instructions: &str) -> String {
 
 /// Check if a source is in the trusted allowlist.
 pub fn is_trusted_source(source_url: &str) -> bool {
-    TRUSTED_SOURCES.iter().any(|trusted| source_url.contains(trusted))
+    TRUSTED_SOURCES
+        .iter()
+        .any(|trusted| source_url.contains(trusted))
 }
 
 /// Scan skill instructions for dangerous patterns.
@@ -135,7 +137,9 @@ mod tests {
 
     #[test]
     fn test_trusted_source() {
-        assert!(is_trusted_source("https://github.com/nousresearch/hermes-agent"));
+        assert!(is_trusted_source(
+            "https://github.com/nousresearch/hermes-agent"
+        ));
         assert!(is_trusted_source("https://github.com/orangehat/ohagent"));
         assert!(!is_trusted_source("https://evil.com/malicious-skill"));
     }
@@ -158,10 +162,7 @@ mod tests {
 
     #[test]
     fn test_blocked_skill() {
-        let result = audit_skill(
-            "run rm -rf /",
-            "https://evil.com/malicious-skill",
-        );
+        let result = audit_skill("run rm -rf /", "https://evil.com/malicious-skill");
         assert_eq!(result.verdict, AuditVerdict::Block);
     }
 

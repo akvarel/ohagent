@@ -50,8 +50,7 @@ pub fn generate_nudges(
     let relevant: Vec<&SearchResult> = results
         .iter()
         .filter(|r| {
-            !recent_session_ids.contains(&r.entry.session_id.as_str())
-                && r.combined_score > 0.5
+            !recent_session_ids.contains(&r.entry.session_id.as_str()) && r.combined_score > 0.5
         })
         .collect();
 
@@ -62,7 +61,10 @@ pub fn generate_nudges(
     let nudge = MemoryNudge {
         content: build_nudge_text(&relevant),
         source_entries: relevant.iter().map(|r| r.entry.clone()).collect(),
-        confidence: relevant.iter().map(|r| r.combined_score).fold(0.0f32, f32::max),
+        confidence: relevant
+            .iter()
+            .map(|r| r.combined_score)
+            .fold(0.0f32, f32::max),
         urgent: relevant.iter().any(|r| r.entry.importance > 0.8),
     };
 
@@ -81,7 +83,12 @@ fn build_nudge_text(results: &[&SearchResult]) -> String {
     if results.len() == 1 {
         return format!(
             "🔔 Memory: \"{}\" (may be relevant)",
-            results[0].entry.content.chars().take(200).collect::<String>(),
+            results[0]
+                .entry
+                .content
+                .chars()
+                .take(200)
+                .collect::<String>(),
         );
     }
 

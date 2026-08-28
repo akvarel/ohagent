@@ -31,7 +31,8 @@ pub struct ScheduledJob {
 
 /// Simple in-memory scheduler for one-shot reminders.
 ///
-/// For persistent cron, use ohagent-cron crate with SQLite storage.
+/// Persistent recurring schedules are handled by the daemon's cron loop and
+/// skills cron; see ohagent-daemon (start_skills_cron) and core Scheduler.
 pub struct Scheduler {
     jobs: Arc<Mutex<Vec<ScheduledJob>>>,
     push: Option<Arc<crate::push::PushService>>,
@@ -48,12 +49,7 @@ impl Scheduler {
     /// Schedule a one-shot reminder.
     ///
     /// `delay` is relative to now. Returns the job ID.
-    pub fn schedule_in(
-        &self,
-        tenant_id: &str,
-        delay: Duration,
-        message: &str,
-    ) -> String {
+    pub fn schedule_in(&self, tenant_id: &str, delay: Duration, message: &str) -> String {
         let id = uuid::Uuid::new_v4().to_string();
         let fire_at = chrono::Utc::now() + chrono::Duration::from_std(delay).unwrap();
 

@@ -70,7 +70,12 @@ impl PricingRegistry {
         let mut off_peak = HashMap::new();
 
         for entry in entries {
-            if entry.id.contains("image") || entry.id.contains("video") || entry.id.contains("dall-e") || entry.id.contains("kling") || entry.id.contains("flux") {
+            if entry.id.contains("image")
+                || entry.id.contains("video")
+                || entry.id.contains("dall-e")
+                || entry.id.contains("kling")
+                || entry.id.contains("flux")
+            {
                 continue;
             }
 
@@ -86,23 +91,38 @@ impl PricingRegistry {
                 }
                 (None, None) => {
                     warn!(model = %entry.id, "No pricing — using 0.0");
-                    prices.insert(entry.id.clone(), ModelPrice { input: 0.0, output: 0.0 });
+                    prices.insert(
+                        entry.id.clone(),
+                        ModelPrice {
+                            input: 0.0,
+                            output: 0.0,
+                        },
+                    );
                 }
             }
 
             // Register off-peak window
-            if let (Some(discount), Some(ref start), Some(ref end)) =
-                (entry.off_peak_discount, &entry.off_peak_start_utc, &entry.off_peak_end_utc)
-            {
+            if let (Some(discount), Some(ref start), Some(ref end)) = (
+                entry.off_peak_discount,
+                &entry.off_peak_start_utc,
+                &entry.off_peak_end_utc,
+            ) {
                 if let (Ok(sh), Ok(sm), Ok(eh), Ok(em)) = (
-                    start[..2].parse::<u32>(), start[3..].parse::<u32>(),
-                    end[..2].parse::<u32>(), end[3..].parse::<u32>(),
+                    start[..2].parse::<u32>(),
+                    start[3..].parse::<u32>(),
+                    end[..2].parse::<u32>(),
+                    end[3..].parse::<u32>(),
                 ) {
-                    off_peak.insert(entry.id.clone(), OffPeakWindow {
-                        discount,
-                        start_h: sh, start_m: sm,
-                        end_h: eh, end_m: em,
-                    });
+                    off_peak.insert(
+                        entry.id.clone(),
+                        OffPeakWindow {
+                            discount,
+                            start_h: sh,
+                            start_m: sm,
+                            end_h: eh,
+                            end_m: em,
+                        },
+                    );
                     info!(
                         model = %entry.id, discount, start, end,
                         "Off-peak pricing registered"
@@ -167,7 +187,8 @@ impl PricingRegistry {
     }
 
     pub fn update(&mut self, model_id: &str, input: f64, output: f64) {
-        self.prices.insert(model_id.to_string(), ModelPrice { input, output });
+        self.prices
+            .insert(model_id.to_string(), ModelPrice { input, output });
         self.last_sync = chrono::Utc::now();
         info!(%model_id, input, output, "Price updated via API");
     }
@@ -176,11 +197,21 @@ impl PricingRegistry {
         *self = Self::from_catalog(entries);
     }
 
-    pub fn len(&self) -> usize { self.prices.len() }
-    pub fn is_empty(&self) -> bool { self.prices.is_empty() }
-    pub fn last_sync(&self) -> chrono::DateTime<chrono::Utc> { self.last_sync }
-    pub fn source(&self) -> &str { &self.source }
-    pub fn all_prices(&self) -> HashMap<String, ModelPrice> { self.prices.clone() }
+    pub fn len(&self) -> usize {
+        self.prices.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.prices.is_empty()
+    }
+    pub fn last_sync(&self) -> chrono::DateTime<chrono::Utc> {
+        self.last_sync
+    }
+    pub fn source(&self) -> &str {
+        &self.source
+    }
+    pub fn all_prices(&self) -> HashMap<String, ModelPrice> {
+        self.prices.clone()
+    }
 }
 
 impl PricingProvider for PricingRegistry {
@@ -197,34 +228,60 @@ mod tests {
     fn sample() -> Vec<ModelEntry> {
         vec![
             ModelEntry {
-                id: "deepseek-v4-flash".into(), provider: "deepseek".into(),
-                api_key_env: "K".into(), display: "DS".into(),
-                capabilities: vec!["coding".into()], cost_tier: "low".into(),
-                context: 1_000_000, input_price: Some(0.14), output_price: Some(0.28),
+                id: "deepseek-v4-flash".into(),
+                provider: "deepseek".into(),
+                api_key_env: "K".into(),
+                display: "DS".into(),
+                capabilities: vec!["coding".into()],
+                cost_tier: "low".into(),
+                context: 1_000_000,
+                input_price: Some(0.14),
+                output_price: Some(0.28),
                 off_peak_discount: Some(0.5),
                 off_peak_start_utc: Some("16:30".into()),
                 off_peak_end_utc: Some("00:30".into()),
                 enabled: true,
-                serverless: None, serverless_lora: None, fine_tuning: None,
-                embeddings: None, rerankers: None, vision: None,
-                json_mode: None, structured_outputs: None, tools: None,
-                fim_completion: None, chat_prefix: None,
-                base_model: None, lora_id: None,
+                serverless: None,
+                serverless_lora: None,
+                fine_tuning: None,
+                embeddings: None,
+                rerankers: None,
+                vision: None,
+                json_mode: None,
+                structured_outputs: None,
+                tools: None,
+                fim_completion: None,
+                chat_prefix: None,
+                base_model: None,
+                lora_id: None,
             },
             ModelEntry {
-                id: "dall-e-3".into(), provider: "openai-image".into(),
-                api_key_env: "K".into(), display: "DALL-E".into(),
-                capabilities: vec!["image_gen".into()], cost_tier: "medium".into(),
-                context: 0, input_price: None, output_price: None,
+                id: "dall-e-3".into(),
+                provider: "openai-image".into(),
+                api_key_env: "K".into(),
+                display: "DALL-E".into(),
+                capabilities: vec!["image_gen".into()],
+                cost_tier: "medium".into(),
+                context: 0,
+                input_price: None,
+                output_price: None,
                 off_peak_discount: None,
                 off_peak_start_utc: None,
                 off_peak_end_utc: None,
                 enabled: true,
-                serverless: None, serverless_lora: None, fine_tuning: None,
-                embeddings: None, rerankers: None, vision: None,
-                json_mode: None, structured_outputs: None, tools: None,
-                fim_completion: None, chat_prefix: None,
-                base_model: None, lora_id: None,
+                serverless: None,
+                serverless_lora: None,
+                fine_tuning: None,
+                embeddings: None,
+                rerankers: None,
+                vision: None,
+                json_mode: None,
+                structured_outputs: None,
+                tools: None,
+                fim_completion: None,
+                chat_prefix: None,
+                base_model: None,
+                lora_id: None,
             },
         ]
     }

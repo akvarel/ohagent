@@ -68,10 +68,16 @@ pub struct PluginError {
 
 impl PluginError {
     pub fn new(message: impl Into<String>) -> Self {
-        Self { message: message.into(), fatal: false }
+        Self {
+            message: message.into(),
+            fatal: false,
+        }
     }
     pub fn fatal(message: impl Into<String>) -> Self {
-        Self { message: message.into(), fatal: true }
+        Self {
+            message: message.into(),
+            fatal: true,
+        }
     }
 }
 
@@ -93,11 +99,15 @@ pub trait MessagePlugin: Send + Sync {
     fn name(&self) -> &str;
 
     /// Plugin version as (major, minor).
-    fn version(&self) -> (u32, u32) { (1, 0) }
+    fn version(&self) -> (u32, u32) {
+        (1, 0)
+    }
 
     /// Initialize the plugin. Called once at load time.
     /// Can be used to compile regexes, connect to local services, etc.
-    fn init(&mut self) -> Result<(), PluginError> { Ok(()) }
+    fn init(&mut self) -> Result<(), PluginError> {
+        Ok(())
+    }
 
     /// Transform a message before it reaches the LLM.
     ///

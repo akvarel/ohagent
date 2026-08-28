@@ -75,10 +75,7 @@ pub fn build_merge_prompt(
 }
 
 /// Check whether compression should fire.
-pub fn should_compress(
-    tokens_since_last: u64,
-    iterations_since_last: u32,
-) -> bool {
+pub fn should_compress(tokens_since_last: u64, iterations_since_last: u32) -> bool {
     tokens_since_last >= COMPRESSION_TOKEN_THRESHOLD
         || iterations_since_last >= COMPRESSION_ITERATION_THRESHOLD
 }

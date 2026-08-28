@@ -10,15 +10,8 @@
 //! - ohagent_sessions_active — active session count
 //! - ohagent_webhook_requests_total — webhook requests by platform
 
-use axum::{
-    extract::Request,
-    middleware::Next,
-    response::Response,
-    Extension,
-};
-use prometheus::{
-    register_counter_vec, register_gauge, CounterVec, Encoder, Gauge, TextEncoder,
-};
+use axum::{extract::Request, middleware::Next, response::Response, Extension};
+use prometheus::{register_counter_vec, register_gauge, CounterVec, Encoder, Gauge, TextEncoder};
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -54,10 +47,8 @@ impl Metrics {
             &["provider", "type"] // type: prompt or completion
         )?;
 
-        let sessions_active = register_gauge!(
-            "ohagent_sessions_active",
-            "Currently active Jcode sessions"
-        )?;
+        let sessions_active =
+            register_gauge!("ohagent_sessions_active", "Currently active Jcode sessions")?;
 
         let webhook_requests = register_counter_vec!(
             "ohagent_webhook_requests_total",

@@ -102,7 +102,12 @@ impl ReplayEnv {
             if path.extension().map_or(false, |e| e == "json") {
                 let content = std::fs::read_to_string(&path)?;
                 let trace: ReplayTrace = serde_json::from_str(&content)?;
-                self.total_tokens += trace.branches.iter().flatten().map(|s| s.tokens).sum::<u64>();
+                self.total_tokens += trace
+                    .branches
+                    .iter()
+                    .flatten()
+                    .map(|s| s.tokens)
+                    .sum::<u64>();
                 self.traces.push(trace);
                 count += 1;
             }
@@ -118,7 +123,10 @@ impl ReplayEnv {
     }
 
     /// Save a trace to the store.
-    pub fn save_trace(&self, trace: &ReplayTrace) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    pub fn save_trace(
+        &self,
+        trace: &ReplayTrace,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         std::fs::create_dir_all(&self.store_path)?;
         let path = self.store_path.join(format!("{}.json", trace.query_id));
         let json = serde_json::to_string_pretty(trace)?;
@@ -152,10 +160,7 @@ impl ReplayEnv {
     ///
     /// Returns (accuracy, total_tokens_used, beta_sweep_results).
     /// This is the core of the offline optimization loop — zero LLM calls.
-    pub fn evaluate(
-        &self,
-        config: &CmcConfig,
-    ) -> EvalResult {
+    pub fn evaluate(&self, config: &CmcConfig) -> EvalResult {
         let mut total_correct = 0;
         let mut total_tokens = 0u64;
         let mut evaluated = 0usize;
@@ -184,10 +189,7 @@ impl ReplayEnv {
     }
 
     /// Sweep β from 0.0 to 1.0 and return accuracy-vs-tokens curve.
-    pub fn sweep_beta(
-        &self,
-        steps: usize,
-    ) -> Vec<(f64, f64, u64)> {
+    pub fn sweep_beta(&self, steps: usize) -> Vec<(f64, f64, u64)> {
         let mut results = Vec::new();
         for i in 0..=steps {
             let beta = i as f64 / steps as f64;
@@ -199,11 +201,7 @@ impl ReplayEnv {
     }
 
     /// Sweep β and find the optimal operating point (best accuracy/token trade-off).
-    pub fn find_optimal_beta(
-        &self,
-        min_accuracy: f64,
-        steps: usize,
-    ) -> Option<(f64, f64, u64)> {
+    pub fn find_optimal_beta(&self, min_accuracy: f64, steps: usize) -> Option<(f64, f64, u64)> {
         let sweep = self.sweep_beta(steps);
         sweep
             .into_iter()
@@ -221,7 +219,10 @@ impl ReplayEnv {
             .iter()
             .map(|steps| {
                 let last = steps.last();
-                (last.and_then(|s| s.answer.clone()), last.map_or(false, |s| s.is_final))
+                (
+                    last.and_then(|s| s.answer.clone()),
+                    last.map_or(false, |s| s.is_final),
+                )
             })
             .collect();
         ctrl.init(initial);
@@ -366,13 +367,19 @@ mod tests {
     fn make_test_trace(id: &str, answer: &str, expected: &str, branch_count: usize) -> ReplayTrace {
         let mut branches = Vec::new();
         for b in 0..branch_count {
-            let steps = vec![
-                TraceStep {
-                    branch_index: b, step_number: 0,
-                    answer: Some(if b < branch_count / 2 { answer.to_string() } else { "wrong".to_string() }),
-                    is_final: true, confidence: 0.9, tokens: 100, response: "ok".into(),
-                },
-            ];
+            let steps = vec![TraceStep {
+                branch_index: b,
+                step_number: 0,
+                answer: Some(if b < branch_count / 2 {
+                    answer.to_string()
+                } else {
+                    "wrong".to_string()
+                }),
+                is_final: true,
+                confidence: 0.9,
+                tokens: 100,
+                response: "ok".into(),
+            }];
             branches.push(steps);
         }
         ReplayTrace {

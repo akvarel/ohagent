@@ -32,11 +32,7 @@ pub struct LoggingProvider {
 }
 
 impl LoggingProvider {
-    pub fn new(
-        inner: Arc<dyn Provider>,
-        message_log: Arc<MessageLog>,
-        tenant_id: String,
-    ) -> Self {
+    pub fn new(inner: Arc<dyn Provider>, message_log: Arc<MessageLog>, tenant_id: String) -> Self {
         Self {
             inner,
             message_log,
@@ -93,13 +89,9 @@ impl Provider for LoggingProvider {
 
             // Log the prompt (stores delta automatically)
             let sh = Self::session_hash(&self.tenant_id, messages);
-            let _ = self.message_log.log_messages(
-                &self.tenant_id,
-                &sh,
-                "user",
-                turn,
-                &msgs_json,
-            );
+            let _ = self
+                .message_log
+                .log_messages(&self.tenant_id, &sh, "user", turn, &msgs_json);
 
             // Call inner provider
             let inner_stream = self
@@ -156,7 +148,13 @@ impl Provider for LoggingProvider {
             .await
         } else {
             self.inner
-                .complete_split(messages, tools, system_static, system_dynamic, resume_session_id)
+                .complete_split(
+                    messages,
+                    tools,
+                    system_static,
+                    system_dynamic,
+                    resume_session_id,
+                )
                 .await
         }
     }

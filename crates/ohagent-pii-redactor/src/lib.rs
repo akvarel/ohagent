@@ -40,15 +40,21 @@ const LICENSE_SECRET: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/license_
 fn validate_license(tenant_id: &str) -> Result<(), PluginError> {
     let license = match std::env::var("OHAGENT_PII_LICENSE") {
         Ok(l) => l,
-        Err(_) => return Err(PluginError::fatal(
-            "OHAGENT_PII_LICENSE not set. Get a license: https://ohagent.dev/licenses"
-        )),
+        Err(_) => {
+            return Err(PluginError::fatal(
+                "OHAGENT_PII_LICENSE not set. Get a license: https://ohagent.dev/licenses",
+            ))
+        }
     };
 
     // Format: TENANT-<base64(tenant_id:expiry:hmac)>
     let payload = match license.strip_prefix("TENANT-") {
         Some(p) => p,
-        None => return Err(PluginError::fatal("Invalid license format — must start with TENANT-")),
+        None => {
+            return Err(PluginError::fatal(
+                "Invalid license format — must start with TENANT-",
+            ))
+        }
     };
 
     use base64::Engine;
@@ -75,7 +81,8 @@ fn validate_license(tenant_id: &str) -> Result<(), PluginError> {
     }
 
     // Verify expiry
-    let expiry: u64 = expiry_str.parse()
+    let expiry: u64 = expiry_str
+        .parse()
         .map_err(|_| PluginError::fatal("Invalid license: bad expiry timestamp"))?;
     let now = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -118,40 +125,83 @@ struct RedactionPattern {
 impl PiiRedactorPlugin {
     pub fn new() -> Self {
         let patterns = vec![
-            pattern("api_key_openai",      r"sk-(?:proj-|org-)?[A-Za-z0-9]{20,}[^\s]*"),
+            pattern(
+                "api_key_openai",
+                r"sk-(?:proj-|org-)?[A-Za-z0-9]{20,}[^\s]*",
+            ),
             pattern("api_key_openai_proj", r"sk-proj-[A-Za-z0-9_-]{32,}"),
-            pattern("api_key_anthropic",   r"sk-ant-[a-z]{3,5}\d{2}-[A-Za-z0-9_-]{32,}"),
-            pattern("api_key_slack",       r"xox[bpras]-[0-9]{9,12}-[0-9]{9,12}-[A-Za-z0-9]{24,32}"),
-            pattern("api_key_github",      r"gh[pousr]_[A-Za-z0-9]{36,40}"),
+            pattern(
+                "api_key_anthropic",
+                r"sk-ant-[a-z]{3,5}\d{2}-[A-Za-z0-9_-]{32,}",
+            ),
+            pattern(
+                "api_key_slack",
+                r"xox[bpras]-[0-9]{9,12}-[0-9]{9,12}-[A-Za-z0-9]{24,32}",
+            ),
+            pattern("api_key_github", r"gh[pousr]_[A-Za-z0-9]{36,40}"),
             pattern("api_key_huggingface", r"hf_[A-Za-z0-9]{34}"),
-            pattern("jwt_token",           r"eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}"),
-            pattern("aws_access_key",      r"AKIA[0-9A-Z]{16}"),
-            pattern("aws_secret_key",      r"ASIA[0-9A-Z]{16}"),
-            pattern("aws_session_token",   r"IQoJb3JpZ2luX2Vj[A-Za-z0-9/+=]{200,}"),
-            pattern("private_key_pem",     r"-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----[A-Za-z0-9+/=\s\n\r]+-----END (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----"),
-            pattern("ssh_private_key",     r"-----BEGIN OPENSSH PRIVATE KEY-----[A-Za-z0-9+/=\s\n\r]+-----END OPENSSH PRIVATE KEY-----"),
-            pattern("conn_string",         r"(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|rediss)://[^\s]+:[^\s@]+@[^\s]+"),
-            pattern("email",               r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"),
-            pattern("phone_international", r"\+[1-9]\d{1,3}[-.\s]?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9}"),
-            pattern("ssn",                 r"\b\d{3}-\d{2}-\d{4}\b"),
-            pattern("credit_card",         r"\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\b"),
-            pattern("iban",                r"\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b"),
-            pattern("ip_v4",               r"\b(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b"),
-            pattern("ip_v6",               r"\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b"),
-            pattern("secret_assignment",   r#"(?i)(?:password|passwd|pwd|secret|api[_-]?key|apikey|token|auth[_-]?token|access[_-]?key)\s*[:=]\s*["']?([^\s"']{8,})"#),
+            pattern(
+                "jwt_token",
+                r"eyJ[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}\.[a-zA-Z0-9_-]{10,}",
+            ),
+            pattern("aws_access_key", r"AKIA[0-9A-Z]{16}"),
+            pattern("aws_secret_key", r"ASIA[0-9A-Z]{16}"),
+            pattern("aws_session_token", r"IQoJb3JpZ2luX2Vj[A-Za-z0-9/+=]{200,}"),
+            pattern(
+                "private_key_pem",
+                r"-----BEGIN (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----[A-Za-z0-9+/=\s\n\r]+-----END (?:RSA |EC |DSA |OPENSSH )?PRIVATE KEY-----",
+            ),
+            pattern(
+                "ssh_private_key",
+                r"-----BEGIN OPENSSH PRIVATE KEY-----[A-Za-z0-9+/=\s\n\r]+-----END OPENSSH PRIVATE KEY-----",
+            ),
+            pattern(
+                "conn_string",
+                r"(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|redis|rediss)://[^\s]+:[^\s@]+@[^\s]+",
+            ),
+            pattern("email", r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"),
+            pattern(
+                "phone_international",
+                r"\+[1-9]\d{1,3}[-.\s]?\(?\d{1,4}\)?[-.\s]?\d{1,4}[-.\s]?\d{1,9}",
+            ),
+            pattern("ssn", r"\b\d{3}-\d{2}-\d{4}\b"),
+            pattern(
+                "credit_card",
+                r"\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|6(?:011|5[0-9]{2})[0-9]{12})\b",
+            ),
+            pattern("iban", r"\b[A-Z]{2}\d{2}[A-Z0-9]{11,30}\b"),
+            pattern(
+                "ip_v4",
+                r"\b(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b",
+            ),
+            pattern("ip_v6", r"\b(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}\b"),
+            pattern(
+                "secret_assignment",
+                r#"(?i)(?:password|passwd|pwd|secret|api[_-]?key|apikey|token|auth[_-]?token|access[_-]?key)\s*[:=]\s*["']?([^\s"']{8,})"#,
+            ),
         ];
 
-        Self { patterns, license_validated: false }
+        Self {
+            patterns,
+            license_validated: false,
+        }
     }
 }
 
 fn pattern(name: &'static str, re: &str) -> RedactionPattern {
-    RedactionPattern { name, regex: Regex::new(re).expect(&format!("Invalid regex for {name}")) }
+    RedactionPattern {
+        name,
+        regex: Regex::new(re).expect(&format!("Invalid regex for {name}")),
+    }
 }
 
 impl MessagePlugin for PiiRedactorPlugin {
-    fn name(&self) -> &str { "ohagent-pii-redactor" }
-    fn version(&self) -> (u32, u32) { (1, 0) }
+    fn name(&self) -> &str {
+        "ohagent-pii-redactor"
+    }
+    fn version(&self) -> (u32, u32) {
+        (1, 0)
+    }
 
     fn init(&mut self) -> Result<(), PluginError> {
         // Validate license in production builds
@@ -174,7 +224,8 @@ impl MessagePlugin for PiiRedactorPlugin {
         let mut redactions = 0u32;
 
         for pat in &self.patterns {
-            let hits: Vec<(usize, usize)> = pat.regex
+            let hits: Vec<(usize, usize)> = pat
+                .regex
                 .find_iter(&message.text)
                 .map(|m| (m.start(), m.end()))
                 .collect();
@@ -193,7 +244,12 @@ impl MessagePlugin for PiiRedactorPlugin {
         }
 
         if redactions > 0 {
-            tracing::info!(original_len, final_len = message.text.len(), redactions, "PII redacted");
+            tracing::info!(
+                original_len,
+                final_len = message.text.len(),
+                redactions,
+                "PII redacted"
+            );
         }
         Ok(())
     }
@@ -202,7 +258,9 @@ impl MessagePlugin for PiiRedactorPlugin {
 // ── FFI exports ──
 
 #[no_mangle]
-pub extern "C" fn plugin_api_version() -> u32 { CURRENT_PLUGIN_API_VERSION }
+pub extern "C" fn plugin_api_version() -> u32 {
+    CURRENT_PLUGIN_API_VERSION
+}
 
 #[no_mangle]
 pub extern "C" fn create_plugin() -> PluginBox {

@@ -92,12 +92,30 @@ struct SkillPattern {
 /// In production, this would use the LLM for richer extraction.
 fn extract_patterns(memories: &[ohagent_memory::models::MemoryEntry]) -> Vec<SkillPattern> {
     // Collect all task keywords from memories
-    let mut task_keywords: std::collections::HashMap<String, Vec<&str>> = std::collections::HashMap::new();
+    let mut task_keywords: std::collections::HashMap<String, Vec<&str>> =
+        std::collections::HashMap::new();
 
     let task_verbs = [
-        "deploy", "build", "test", "fix", "add", "remove", "update", "create",
-        "configure", "install", "setup", "run", "debug", "optimize", "refactor",
-        "migrate", "backup", "restore", "monitor", "scale",
+        "deploy",
+        "build",
+        "test",
+        "fix",
+        "add",
+        "remove",
+        "update",
+        "create",
+        "configure",
+        "install",
+        "setup",
+        "run",
+        "debug",
+        "optimize",
+        "refactor",
+        "migrate",
+        "backup",
+        "restore",
+        "monitor",
+        "scale",
     ];
 
     for mem in memories {
@@ -106,10 +124,8 @@ fn extract_patterns(memories: &[ohagent_memory::models::MemoryEntry]) -> Vec<Ski
             if content_lower.contains(verb) {
                 // Find the noun phrase after the verb
                 if let Some(idx) = content_lower.find(verb) {
-                    let after: String = content_lower[idx + verb.len()..]
-                        .chars()
-                        .take(60)
-                        .collect();
+                    let after: String =
+                        content_lower[idx + verb.len()..].chars().take(60).collect();
                     let _phrase = format!("{verb} {}", after.trim());
                     task_keywords
                         .entry(verb.to_string())
@@ -129,10 +145,7 @@ fn extract_patterns(memories: &[ohagent_memory::models::MemoryEntry]) -> Vec<Ski
 
         let name = slugify(&format!("{verb}-task"));
         let description = format!("Automatically handle tasks related to: {verb}");
-        let triggers = vec![
-            format!("{verb}"),
-            format!("can you {verb}"),
-        ];
+        let triggers = vec![format!("{verb}"), format!("can you {verb}")];
         let instructions = build_instructions(verb, examples);
         let tags = vec![verb.clone(), "auto-generated".into()];
 
@@ -186,9 +199,7 @@ fn slugify(s: &str) -> String {
 ///
 /// This can be used instead of the simple keyword extraction above
 /// for higher-quality skill generation.
-pub fn build_skill_generation_prompt(
-    summaries: &[ConversationSummary],
-) -> String {
+pub fn build_skill_generation_prompt(summaries: &[ConversationSummary]) -> String {
     let mut context = String::from(
         "You are a skill extraction system. Based on the following conversation summaries, \
          identify recurring task patterns that could become reusable skills.\n\n\

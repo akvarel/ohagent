@@ -61,43 +61,43 @@ services:
         TOKEN="dev-root-token"
         VAULT="http://vault:8200"
         python3 -c "
-import sys, re, subprocess, json
-with open('/seed/keys.toml') as f:
-    content = f.read()
-# Parse TOML keys section
-in_keys = False
-for line in content.split('\n'):
-    line = line.strip()
-    if line.startswith('[keys]'):
-        in_keys = True
-        continue
-    if line.startswith('[') and in_keys:
+        import sys, re, subprocess, json
+        with open('/seed/keys.toml') as f:
+            content = f.read()
+        # Parse TOML keys section
         in_keys = False
-    if not in_keys or '=' not in line or line.startswith('#'):
-        continue
-    key, val = line.split('=', 1)
-    key = key.strip()
-    val = val.strip().strip('\"')
-    if not val:
-        continue
-    # Map to Vault path
-    vault_path = f'secret/ohagent/providers/{key.lower().replace(\"_\",\"-\")}/api-key'
-    if key == 'SCW_SECRET_KEY':
-        vault_path = 'secret/ohagent/providers/scaleway/secret-key'
-    elif key == 'TELEGRAM_BOT_TOKEN':
-        vault_path = 'secret/ohagent/telegram/bot-token'
-    elif key == 'HETZNER_API_TOKEN':
-        vault_path = 'secret/ohagent/providers/hetzner/api-token'
-    cmd = ['curl', '-s', '-X', 'POST', f'{VAULT}/v1/{vault_path}',
-           '-H', f'X-Vault-Token: {TOKEN}',
-           '-H', 'Content-Type: application/json',
-           '-d', json.dumps({'data': {'api-key': val}})]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode == 0:
-        print(f'  ✅ {vault_path}')
-    else:
-        print(f'  ❌ {vault_path}: {result.stderr}')
-"
+        for line in content.split('\n'):
+            line = line.strip()
+            if line.startswith('[keys]'):
+                in_keys = True
+                continue
+            if line.startswith('[') and in_keys:
+                in_keys = False
+            if not in_keys or '=' not in line or line.startswith('#'):
+                continue
+            key, val = line.split('=', 1)
+            key = key.strip()
+            val = val.strip().strip('\"')
+            if not val:
+                continue
+            # Map to Vault path
+            vault_path = f'secret/ohagent/providers/{key.lower().replace(\"_\",\"-\")}/api-key'
+            if key == 'SCW_SECRET_KEY':
+                vault_path = 'secret/ohagent/providers/scaleway/secret-key'
+            elif key == 'TELEGRAM_BOT_TOKEN':
+                vault_path = 'secret/ohagent/telegram/bot-token'
+            elif key == 'HETZNER_API_TOKEN':
+                vault_path = 'secret/ohagent/providers/hetzner/api-token'
+            cmd = ['curl', '-s', '-X', 'POST', f'{VAULT}/v1/{vault_path}',
+                   '-H', f'X-Vault-Token: {TOKEN}',
+                   '-H', 'Content-Type: application/json',
+                   '-d', json.dumps({'data': {'api-key': val}})]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode == 0:
+                print(f'  ✅ {vault_path}')
+            else:
+                print(f'  ❌ {vault_path}: {result.stderr}')
+        "
         echo "==> Vault seeding complete"
     networks:
       - ohagent-net
@@ -135,6 +135,10 @@ for line in content.split('\n'):
       VAULT_KV_PATH: secret
       # Auth
       OHAGENT_API_KEY: ${OHAGENT_API_KEY:-dev-key-change-me}
+      # Jcode public SDK runtime. The compose suffix keeps this runtime domain
+      # separate from host and Kubernetes installations sharing the volume.
+      OHAGENT_JCODE_BINARY: /usr/local/bin/jcode
+      OHAGENT_JCODE_RUNTIME_ROOT: /home/jcode/.ohagent/j/compose
       # Logging
       RUST_LOG: ${RUST_LOG:-info}
     volumes:

@@ -109,7 +109,11 @@ impl S3Archive {
         // Serialize to NDJSON + gzip
         let date = chrono::Utc::now().format("%Y-%m-%d").to_string();
         let local_path = format!("/tmp/ohagent-archive-{}.json.gz", date);
-        let s3_key = format!("ohagent-logs/{}/{}", date, local_path.split('/').last().unwrap());
+        let s3_key = format!(
+            "ohagent-logs/{}/{}",
+            date,
+            local_path.split('/').last().unwrap()
+        );
 
         {
             let file = std::fs::File::create(&local_path)
@@ -132,9 +136,7 @@ impl S3Archive {
             gz.finish()?;
         }
 
-        let file_size = std::fs::metadata(&local_path)
-            .map(|m| m.len())
-            .unwrap_or(0);
+        let file_size = std::fs::metadata(&local_path).map(|m| m.len()).unwrap_or(0);
 
         // Upload via awscli
         let s3_uri = format!("s3://{}/{}", self.config.bucket, s3_key);
@@ -148,21 +150,21 @@ impl S3Archive {
 
         let output = Command::new("aws")
             .args([
-                "s3", "cp",
+                "s3",
+                "cp",
                 &local_path,
                 &s3_uri,
-                "--storage-class", &self.config.storage_class,
-                "--region", &self.config.region,
+                "--storage-class",
+                &self.config.storage_class,
+                "--region",
+                &self.config.region,
             ])
             .output()
             .context("Failed to run `aws s3 cp`. Is awscli installed?")?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            return Err(anyhow::anyhow!(
-                "aws s3 cp failed: {}",
-                stderr
-            ));
+            return Err(anyhow::anyhow!("aws s3 cp failed: {}", stderr));
         }
 
         // Mark as archived in DB

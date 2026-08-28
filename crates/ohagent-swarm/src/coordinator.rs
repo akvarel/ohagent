@@ -309,7 +309,13 @@ mod tests {
             label: label.into(),
             kind,
             prompt: format!("echo 'hello from {label}'"),
-            depends_on: deps.iter().map(|&nid| Dependency { node_id: nid, artifact_key: None }).collect(),
+            depends_on: deps
+                .iter()
+                .map(|&nid| Dependency {
+                    node_id: nid,
+                    artifact_key: None,
+                })
+                .collect(),
             priority: 0,
             state: TaskState::Pending,
             result: None,

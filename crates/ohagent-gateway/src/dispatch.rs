@@ -3,8 +3,8 @@
 //! Handles the full lifecycle: receive → check pairing → get/create session →
 //! send "thinking" → process → send response.
 
-use std::sync::{Arc, Mutex};
 use std::fs;
+use std::sync::{Arc, Mutex};
 use tracing::{error, info, warn};
 
 use crate::adapter::{FileAttachment, IncomingMessage, OutgoingMessage};
@@ -18,9 +18,9 @@ use ohagent_core::session_store::SessionStore;
 use ohagent_core::usage_tracker::UsageTracker;
 use ohagent_memory::engine::MemoryEngine;
 use ohagent_memory::models::MemoryEntry;
-use ohagent_skills::registry::SkillRegistry;
 use ohagent_plugins::PluginManager;
 use ohagent_provider_metrics::{GeminiOcrClient, GeminiOcrConfig};
+use ohagent_skills::registry::SkillRegistry;
 use std::sync::Mutex as StdMutex;
 
 /// Encode a file attachment to (media_type, base64_data) tuple suitable for Jcode.
@@ -55,6 +55,18 @@ fn guess_mime_from_path(path: &str) -> String {
     .to_string()
 }
 
+fn sdk_response_message(msg: &IncomingMessage, response_text: String) -> Option<OutgoingMessage> {
+    if response_text.is_empty() {
+        return None;
+    }
+    Some(OutgoingMessage {
+        chat_id: msg.chat_id.clone(),
+        text: response_text,
+        markdown: true,
+        inline_keyboard: None,
+    })
+}
+
 /// The central dispatcher that every platform adapter calls into.
 pub struct Dispatcher {
     session_manager: Arc<SessionManager>,
@@ -71,10 +83,7 @@ pub struct Dispatcher {
 }
 
 impl Dispatcher {
-    pub fn new(
-        session_manager: Arc<SessionManager>,
-        pairing_manager: Arc<PairingManager>,
-    ) -> Self {
+    pub fn new(session_manager: Arc<SessionManager>, pairing_manager: Arc<PairingManager>) -> Self {
         Self {
             session_manager,
             pairing_manager,
@@ -147,10 +156,7 @@ impl Dispatcher {
     /// Handle an incoming message from any platform.
     ///
     /// Returns the response to send back, or None if no response is expected.
-    pub async fn handle_message(
-        &self,
-        msg: IncomingMessage,
-    ) -> Option<OutgoingMessage> {
+    pub async fn handle_message(&self, msg: IncomingMessage) -> Option<OutgoingMessage> {
         let i18n = I18n::new(msg.lang);
 
         // ── Intercept: /ocr with photo → Gemini OCR pipeline ──
@@ -165,25 +171,38 @@ impl Dispatcher {
                                 Ok(results) => {
                                     let total = results.len();
                                     let passed = results.iter().filter(|(_, v)| v.passed).count();
-                                    let mut text = format!("📊 *Extracted {total} receipts* ({passed} passed)\n");
+                                    let mut text = format!(
+                                        "📊 *Extracted {total} receipts* ({passed} passed)\n"
+                                    );
                                     for (i, (_receipt, verdict)) in results.iter().enumerate() {
                                         let icon = if verdict.passed { "✅" } else { "❌" };
                                         text.push_str(&format!(
                                             "\n{icon} #{} *{}* — {}/100\n   Total: €{:.2}",
-                                            i + 1, verdict.store_name, verdict.score, verdict.total
+                                            i + 1,
+                                            verdict.store_name,
+                                            verdict.score,
+                                            verdict.total
                                         ));
                                         if !verdict.issues.is_empty() {
-                                            text.push_str(&format!("\n   ⚠️  {}", verdict.issues.join("; ")));
+                                            text.push_str(&format!(
+                                                "\n   ⚠️  {}",
+                                                verdict.issues.join("; ")
+                                            ));
                                         }
                                     }
-                                    return Some(OutgoingMessage { chat_id: msg.chat_id.clone(), text, markdown: true, inline_keyboard: None });
+                                    return Some(OutgoingMessage {
+                                        chat_id: msg.chat_id.clone(),
+                                        text,
+                                        markdown: true,
+                                        inline_keyboard: None,
+                                    });
                                 }
                                 Err(e) => {
                                     return Some(OutgoingMessage {
                                         chat_id: msg.chat_id.clone(),
                                         text: format!("OCR failed: {e}"),
                                         markdown: false,
-                inline_keyboard: None,
+                                        inline_keyboard: None,
                                     });
                                 }
                             }
@@ -193,7 +212,7 @@ impl Dispatcher {
                                 chat_id: msg.chat_id.clone(),
                                 text: format!("Failed to read photo: {e}"),
                                 markdown: false,
-                inline_keyboard: None,
+                                inline_keyboard: None,
                             });
                         }
                     }
@@ -202,7 +221,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "OCR is not configured. Set GOOGLE_API_KEY.".into(),
                         markdown: false,
-                inline_keyboard: None,
+                        inline_keyboard: None,
                     });
                 }
             }
@@ -238,7 +257,7 @@ impl Dispatcher {
                     chat_id: msg.chat_id.clone(),
                     text: i18n.tf("error", &[("error", &e.to_string())]),
                     markdown: false,
-                inline_keyboard: None,
+                    inline_keyboard: None,
                 });
             }
         };
@@ -292,7 +311,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Message blocked by security policy.".into(),
                         markdown: false,
-                inline_keyboard: None,
+                        inline_keyboard: None,
                     });
                 }
                 Err(e) => {
@@ -304,14 +323,8 @@ impl Dispatcher {
             msg.text.clone()
         };
 
-        // Send message: route through tool-augmented path when:
-        // a) no attachments, and b) bridge has registered tools
-        let send_result = if images.is_empty() {
-            session.send_message_with_tools(&msg_text).await
-        } else {
-            session.send_message_with_images(&msg.text, images).await
-                .map(|_| String::new())
-        };
+        // Send through the Jcode SDK session path. Jcode owns built-in tool execution.
+        let send_result = session.send_message_with_images(&msg_text, images).await;
 
         match send_result {
             Ok(response_text) => {
@@ -320,9 +333,28 @@ impl Dispatcher {
                     tracing::debug!(
                         session_key = %session_key,
                         response_len = response_text.len(),
-                        "Tool-augmented response"
+                        "SDK response"
                     );
-                    // TODO: return response to user when streaming is wired
+
+                    // Record usage (rough tok estimate: ~4 chars/tok)
+                    if let Some(ref usage) = self.usage {
+                        let estimated_input_tokens = (msg.text.len() as u32 / 4).max(1);
+                        let model_id = "auto"; // model routed by bridge
+                        let model_display = "Auto-selected";
+                        let caps = vec!["general_chat".to_string()];
+                        let _ = usage.record(
+                            &msg.tenant_id,
+                            &session.session_id,
+                            model_id,
+                            model_display,
+                            &caps,
+                            estimated_input_tokens,
+                            estimated_input_tokens / 2, // rough output estimate
+                            0,                          // duration unknown
+                        );
+                    }
+
+                    return sdk_response_message(&msg, response_text);
                 }
 
                 // Record usage (rough tok estimate: ~4 chars/tok)
@@ -339,7 +371,7 @@ impl Dispatcher {
                         &caps,
                         estimated_input_tokens,
                         estimated_input_tokens / 2, // rough output estimate
-                        0, // duration unknown
+                        0,                          // duration unknown
                     );
                 }
 
@@ -355,7 +387,7 @@ impl Dispatcher {
                     chat_id: msg.chat_id.clone(),
                     text: i18n.tf("error", &[("error", &e.to_string())]),
                     markdown: false,
-                inline_keyboard: None,
+                    inline_keyboard: None,
                 })
             }
         }
@@ -373,34 +405,27 @@ impl Dispatcher {
         let i18n = I18n::new(msg.lang);
 
         match command {
-            "start" => {
-                Some(OutgoingMessage {
-                    chat_id: msg.chat_id.clone(),
-                    text: i18n.t("greeting"),
-                    markdown: false,
+            "start" => Some(OutgoingMessage {
+                chat_id: msg.chat_id.clone(),
+                text: i18n.t("greeting"),
+                markdown: false,
                 inline_keyboard: None,
-                })
-            }
+            }),
 
-            "pair" => {
-                match self.pairing_manager.generate_code(&msg.user_id) {
-                    Ok(code) => Some(OutgoingMessage {
-                        chat_id: msg.chat_id.clone(),
-                        text: i18n.tf("pairing_code_sent", &[
-                            ("code", &code),
-                            ("minutes", "10"),
-                        ]),
-                        markdown: true,
-                        inline_keyboard: None,
-                    }),
-                    Err(e) => Some(OutgoingMessage {
-                        chat_id: msg.chat_id.clone(),
-                        text: e,
-                        markdown: false,
-                        inline_keyboard: None,
-                    }),
-                }
-            }
+            "pair" => match self.pairing_manager.generate_code(&msg.user_id) {
+                Ok(code) => Some(OutgoingMessage {
+                    chat_id: msg.chat_id.clone(),
+                    text: i18n.tf("pairing_code_sent", &[("code", &code), ("minutes", "10")]),
+                    markdown: true,
+                    inline_keyboard: None,
+                }),
+                Err(e) => Some(OutgoingMessage {
+                    chat_id: msg.chat_id.clone(),
+                    text: e,
+                    markdown: false,
+                    inline_keyboard: None,
+                }),
+            },
 
             "confirm" => {
                 let code = args.trim();
@@ -409,7 +434,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Usage: /confirm <CODE>".into(),
                         markdown: false,
-                inline_keyboard: None,
+                        inline_keyboard: None,
                     });
                 }
                 match self.pairing_manager.confirm_code(
@@ -427,26 +452,24 @@ impl Dispatcher {
                             chat_id: msg.chat_id.clone(),
                             text: i18n.t("pairing_success"),
                             markdown: false,
-                inline_keyboard: None,
+                            inline_keyboard: None,
                         })
                     }
                     Err(e) => Some(OutgoingMessage {
                         chat_id: msg.chat_id.clone(),
                         text: e,
                         markdown: false,
-                inline_keyboard: None,
+                        inline_keyboard: None,
                     }),
                 }
             }
 
-            "help" => {
-                Some(OutgoingMessage {
-                    chat_id: msg.chat_id.clone(),
-                    text: i18n.t("help"),
-                    markdown: true,
+            "help" => Some(OutgoingMessage {
+                chat_id: msg.chat_id.clone(),
+                text: i18n.t("help"),
+                markdown: true,
                 inline_keyboard: None,
-                })
-            }
+            }),
 
             "new" => {
                 let session_key = format!("{}:{}", msg.platform, msg.chat_id);
@@ -459,7 +482,7 @@ impl Dispatcher {
                     chat_id: msg.chat_id.clone(),
                     text: i18n.t("new_session"),
                     markdown: false,
-                inline_keyboard: None,
+                    inline_keyboard: None,
                 })
             }
 
@@ -477,14 +500,14 @@ impl Dispatcher {
                     chat_id: msg.chat_id.clone(),
                     text: new_i18n.t("lang_changed"),
                     markdown: false,
-                inline_keyboard: None,
+                    inline_keyboard: None,
                 })
             }
 
             "stop" => {
                 let session_key = format!("{}:{}", msg.platform, msg.chat_id);
                 if let Some(session) = self.session_manager.get(&session_key) {
-                    session.interrupt().await;
+                    let _ = session.interrupt().await;
                     info!(
                         session_key = %session_key,
                         "Agent task interrupted"
@@ -494,7 +517,7 @@ impl Dispatcher {
                     chat_id: msg.chat_id.clone(),
                     text: i18n.t("task_stopped"),
                     markdown: false,
-                inline_keyboard: None,
+                    inline_keyboard: None,
                 })
             }
 
@@ -502,8 +525,7 @@ impl Dispatcher {
                 match &self.router {
                     Some(router) => {
                         let args_trim = args.trim();
-                        let parts: Vec<&str> =
-                            args_trim.split_whitespace().collect();
+                        let parts: Vec<&str> = args_trim.split_whitespace().collect();
                         let tenant = &msg.tenant_id;
 
                         match parts.first().copied() {
@@ -527,17 +549,15 @@ impl Dispatcher {
                                 match r.set_pref(tenant, cap, model_id) {
                                     Ok(()) => Some(OutgoingMessage {
                                         chat_id: msg.chat_id.clone(),
-                                        text: format!(
-                                            "*Preference saved:* `{cap}` → `{model_id}`",
-                                        ),
+                                        text: format!("*Preference saved:* `{cap}` → `{model_id}`",),
                                         markdown: true,
-                inline_keyboard: None,
+                                        inline_keyboard: None,
                                     }),
                                     Err(e) => Some(OutgoingMessage {
                                         chat_id: msg.chat_id.clone(),
                                         text: format!("Error: {e}"),
                                         markdown: false,
-                inline_keyboard: None,
+                                        inline_keyboard: None,
                                     }),
                                 }
                             }
@@ -549,24 +569,21 @@ impl Dispatcher {
                                 match r.clear_pref(tenant, cap) {
                                     Ok(()) => {
                                         let msg_text = match cap {
-                                            Some(c) => format!(
-                                                "*Cleared* preference for `{c}`"
-                                            ),
-                                            None => "*Cleared* all your model preferences."
-                                                .into(),
+                                            Some(c) => format!("*Cleared* preference for `{c}`"),
+                                            None => "*Cleared* all your model preferences.".into(),
                                         };
                                         Some(OutgoingMessage {
                                             chat_id: msg.chat_id.clone(),
                                             text: msg_text,
                                             markdown: true,
-                inline_keyboard: None,
+                                            inline_keyboard: None,
                                         })
                                     }
                                     Err(e) => Some(OutgoingMessage {
                                         chat_id: msg.chat_id.clone(),
                                         text: format!("Error: {e}"),
                                         markdown: false,
-                inline_keyboard: None,
+                                        inline_keyboard: None,
                                     }),
                                 }
                             }
@@ -577,15 +594,25 @@ impl Dispatcher {
                                 let available: Vec<String> = models
                                     .iter()
                                     .filter(|m| std::env::var(&m.api_key_env).is_ok())
-                                    .map(|m| format!("• *{}* ({}) — {}", m.display, m.cost_tier, m.capabilities.join(", ")))
+                                    .map(|m| {
+                                        format!(
+                                            "• *{}* ({}) — {}",
+                                            m.display,
+                                            m.cost_tier,
+                                            m.capabilities.join(", ")
+                                        )
+                                    })
                                     .collect();
 
                                 let prefs = r.list_prefs(tenant);
                                 drop(r);
 
                                 let mut text = "*Model Router Status*\n\n".to_string();
-                                text.push_str(&format!("{} models loaded, {} available\n",
-                                    models.len(), available.len()));
+                                text.push_str(&format!(
+                                    "{} models loaded, {} available\n",
+                                    models.len(),
+                                    available.len()
+                                ));
 
                                 // Show user's preferences
                                 if !prefs.is_empty() {
@@ -599,18 +626,22 @@ impl Dispatcher {
                                     text.push_str("To clear all: /model clear\n");
                                 } else {
                                     text.push_str("\n*No personal preferences set.*\n");
-                                    text.push_str("Set with: /model set <capability> <model_name>\n");
+                                    text.push_str(
+                                        "Set with: /model set <capability> <model_name>\n",
+                                    );
                                 }
 
                                 text.push_str("\n*Available models:*\n");
                                 text.push_str(&available.join("\n"));
-                                text.push_str("\n\nModels are auto-selected based on your task type.");
+                                text.push_str(
+                                    "\n\nModels are auto-selected based on your task type.",
+                                );
 
                                 Some(OutgoingMessage {
                                     chat_id: msg.chat_id.clone(),
                                     text,
                                     markdown: true,
-                inline_keyboard: None,
+                                    inline_keyboard: None,
                                 })
                             }
 
@@ -623,7 +654,7 @@ impl Dispatcher {
                                        /model list — list preferences"
                                     .into(),
                                 markdown: false,
-                inline_keyboard: None,
+                                inline_keyboard: None,
                             }),
                         }
                     }
@@ -631,7 +662,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Model router is not configured. Using default provider.".into(),
                         markdown: false,
-                inline_keyboard: None,
+                        inline_keyboard: None,
                     }),
                 }
             }
@@ -639,47 +670,43 @@ impl Dispatcher {
             "skills" => {
                 // List active skills for this tenant
                 match &self.skills {
-                    Some(skills) => {
-                        match skills.list(&msg.tenant_id, None, 20) {
-                            Ok(list) if list.is_empty() => {
-                                Some(OutgoingMessage {
-                                    chat_id: msg.chat_id.clone(),
-                                    text: i18n.t("skills_none"),
-                                    markdown: false,
-                inline_keyboard: None,
-                                })
+                    Some(skills) => match skills.list(&msg.tenant_id, None, 20) {
+                        Ok(list) if list.is_empty() => Some(OutgoingMessage {
+                            chat_id: msg.chat_id.clone(),
+                            text: i18n.t("skills_none"),
+                            markdown: false,
+                            inline_keyboard: None,
+                        }),
+                        Ok(list) => {
+                            let mut text = i18n.t("skills_header");
+                            for s in &list {
+                                text.push_str(&format!(
+                                    "\n• *{}* (v{}) — {} — {:.0}%",
+                                    s.name,
+                                    s.version,
+                                    s.status,
+                                    s.quality_score * 100.0,
+                                ));
                             }
-                            Ok(list) => {
-                                let mut text = i18n.t("skills_header");
-                                for s in &list {
-                                    text.push_str(&format!(
-                                        "\n• *{}* (v{}) — {} — {:.0}%",
-                                        s.name,
-                                        s.version,
-                                        s.status,
-                                        s.quality_score * 100.0,
-                                    ));
-                                }
-                                Some(OutgoingMessage {
-                                    chat_id: msg.chat_id.clone(),
-                                    text,
-                                    markdown: true,
-                inline_keyboard: None,
-                                })
-                            }
-                            Err(e) => Some(OutgoingMessage {
+                            Some(OutgoingMessage {
                                 chat_id: msg.chat_id.clone(),
-                                text: i18n.tf("error", &[("error", &e.to_string())]),
-                                markdown: false,
-                inline_keyboard: None,
-                            }),
+                                text,
+                                markdown: true,
+                                inline_keyboard: None,
+                            })
                         }
-                    }
+                        Err(e) => Some(OutgoingMessage {
+                            chat_id: msg.chat_id.clone(),
+                            text: i18n.tf("error", &[("error", &e.to_string())]),
+                            markdown: false,
+                            inline_keyboard: None,
+                        }),
+                    },
                     None => Some(OutgoingMessage {
                         chat_id: msg.chat_id.clone(),
                         text: i18n.t("skills_unavailable"),
                         markdown: false,
-                inline_keyboard: None,
+                        inline_keyboard: None,
                     }),
                 }
             }
@@ -691,58 +718,56 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Usage: /skill <name>".into(),
                         markdown: false,
-                inline_keyboard: None,
+                        inline_keyboard: None,
                     });
                 }
                 match &self.skills {
-                    Some(skills) => {
-                        match skills.find_by_name(&msg.tenant_id, skill_name) {
-                            Ok(Some(s)) => {
-                                let triggers = s.triggers.join(", ");
-                                let tags = s.tags.join(", ");
-                                let text = format!(
-                                    "*{name}* (v{ver})\n\
+                    Some(skills) => match skills.find_by_name(&msg.tenant_id, skill_name) {
+                        Ok(Some(s)) => {
+                            let triggers = s.triggers.join(", ");
+                            let tags = s.tags.join(", ");
+                            let text = format!(
+                                "*{name}* (v{ver})\n\
                                      Status: {status}\n\
                                      Quality: {quality:.0}%\n\
                                      Used: {used} times\n\
                                      \n{desc}\n\
                                      \nTriggers: {triggers}\n\
                                      Tags: {tags}",
-                                    name = s.name,
-                                    ver = s.version,
-                                    status = s.status,
-                                    quality = s.quality_score * 100.0,
-                                    used = s.use_count,
-                                    desc = s.description,
-                                    triggers = triggers,
-                                    tags = tags,
-                                );
-                                Some(OutgoingMessage {
-                                    chat_id: msg.chat_id.clone(),
-                                    text,
-                                    markdown: true,
-                inline_keyboard: None,
-                                })
-                            }
-                            Ok(None) => Some(OutgoingMessage {
+                                name = s.name,
+                                ver = s.version,
+                                status = s.status,
+                                quality = s.quality_score * 100.0,
+                                used = s.use_count,
+                                desc = s.description,
+                                triggers = triggers,
+                                tags = tags,
+                            );
+                            Some(OutgoingMessage {
                                 chat_id: msg.chat_id.clone(),
-                                text: i18n.tf("skill_not_found", &[("name", skill_name)]),
-                                markdown: false,
-                inline_keyboard: None,
-                            }),
-                            Err(e) => Some(OutgoingMessage {
-                                chat_id: msg.chat_id.clone(),
-                                text: i18n.tf("error", &[("error", &e.to_string())]),
-                                markdown: false,
-                inline_keyboard: None,
-                            }),
+                                text,
+                                markdown: true,
+                                inline_keyboard: None,
+                            })
                         }
-                    }
+                        Ok(None) => Some(OutgoingMessage {
+                            chat_id: msg.chat_id.clone(),
+                            text: i18n.tf("skill_not_found", &[("name", skill_name)]),
+                            markdown: false,
+                            inline_keyboard: None,
+                        }),
+                        Err(e) => Some(OutgoingMessage {
+                            chat_id: msg.chat_id.clone(),
+                            text: i18n.tf("error", &[("error", &e.to_string())]),
+                            markdown: false,
+                            inline_keyboard: None,
+                        }),
+                    },
                     None => Some(OutgoingMessage {
                         chat_id: msg.chat_id.clone(),
                         text: i18n.t("skills_unavailable"),
                         markdown: false,
-                inline_keyboard: None,
+                        inline_keyboard: None,
                     }),
                 }
             }
@@ -754,103 +779,99 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Usage: /skilluse <name>".into(),
                         markdown: false,
-                inline_keyboard: None,
+                        inline_keyboard: None,
                     });
                 }
                 match &self.skills {
-                    Some(skills) => {
-                        match skills.find_by_name(&msg.tenant_id, skill_name) {
-                            Ok(Some(s)) => {
-                                match ohagent_skills::evaluator::record_success(
-                                    skills,
-                                    &s.id,
-                                    &format!("{}:{}", msg.platform, msg.chat_id),
-                                    &msg.tenant_id,
-                                    None,
-                                ) {
-                                    Ok(()) => Some(OutgoingMessage {
-                                        chat_id: msg.chat_id.clone(),
-                                        text: i18n.tf("skill_used", &[("name", &s.name)]),
-                                        markdown: false,
-                inline_keyboard: None,
-                                    }),
-                                    Err(e) => Some(OutgoingMessage {
-                                        chat_id: msg.chat_id.clone(),
-                                        text: i18n.tf("error", &[("error", &e.to_string())]),
-                                        markdown: false,
-                inline_keyboard: None,
-                                    }),
-                                }
+                    Some(skills) => match skills.find_by_name(&msg.tenant_id, skill_name) {
+                        Ok(Some(s)) => {
+                            match ohagent_skills::evaluator::record_success(
+                                skills,
+                                &s.id,
+                                &format!("{}:{}", msg.platform, msg.chat_id),
+                                &msg.tenant_id,
+                                None,
+                            ) {
+                                Ok(()) => Some(OutgoingMessage {
+                                    chat_id: msg.chat_id.clone(),
+                                    text: i18n.tf("skill_used", &[("name", &s.name)]),
+                                    markdown: false,
+                                    inline_keyboard: None,
+                                }),
+                                Err(e) => Some(OutgoingMessage {
+                                    chat_id: msg.chat_id.clone(),
+                                    text: i18n.tf("error", &[("error", &e.to_string())]),
+                                    markdown: false,
+                                    inline_keyboard: None,
+                                }),
                             }
-                            Ok(None) => Some(OutgoingMessage {
-                                chat_id: msg.chat_id.clone(),
-                                text: i18n.tf("skill_not_found", &[("name", skill_name)]),
-                                markdown: false,
-                inline_keyboard: None,
-                            }),
-                            Err(e) => Some(OutgoingMessage {
-                                chat_id: msg.chat_id.clone(),
-                                text: i18n.tf("error", &[("error", &e.to_string())]),
-                                markdown: false,
-                inline_keyboard: None,
-                            }),
                         }
-                    }
+                        Ok(None) => Some(OutgoingMessage {
+                            chat_id: msg.chat_id.clone(),
+                            text: i18n.tf("skill_not_found", &[("name", skill_name)]),
+                            markdown: false,
+                            inline_keyboard: None,
+                        }),
+                        Err(e) => Some(OutgoingMessage {
+                            chat_id: msg.chat_id.clone(),
+                            text: i18n.tf("error", &[("error", &e.to_string())]),
+                            markdown: false,
+                            inline_keyboard: None,
+                        }),
+                    },
                     None => Some(OutgoingMessage {
                         chat_id: msg.chat_id.clone(),
                         text: i18n.t("skills_unavailable"),
                         markdown: false,
-                inline_keyboard: None,
+                        inline_keyboard: None,
                     }),
                 }
             }
 
-            "logging" => {
-                match &self.message_log {
-                    Some(log) => {
-                        let sub = args.trim();
-                        match sub {
-                            "on" => {
-                                let _ = log.set_enabled(&msg.tenant_id, true);
-                                Some(OutgoingMessage {
-                                    chat_id: msg.chat_id.clone(),
-                                    text: i18n.t("logging_on"),
-                                    markdown: false,
-                inline_keyboard: None,
-                                })
-                            }
-                            "off" => {
-                                let _ = log.set_enabled(&msg.tenant_id, false);
-                                Some(OutgoingMessage {
-                                    chat_id: msg.chat_id.clone(),
-                                    text: i18n.t("logging_off"),
-                                    markdown: false,
-                inline_keyboard: None,
-                                })
-                            }
-                            _ => {
-                                let enabled = log.is_enabled_for(&msg.tenant_id);
-                                Some(OutgoingMessage {
-                                    chat_id: msg.chat_id.clone(),
-                                    text: if enabled {
-                                        i18n.t("logging_status_on")
-                                    } else {
-                                        i18n.t("logging_status_off")
-                                    },
-                                    markdown: false,
-                inline_keyboard: None,
-                                })
-                            }
+            "logging" => match &self.message_log {
+                Some(log) => {
+                    let sub = args.trim();
+                    match sub {
+                        "on" => {
+                            let _ = log.set_enabled(&msg.tenant_id, true);
+                            Some(OutgoingMessage {
+                                chat_id: msg.chat_id.clone(),
+                                text: i18n.t("logging_on"),
+                                markdown: false,
+                                inline_keyboard: None,
+                            })
+                        }
+                        "off" => {
+                            let _ = log.set_enabled(&msg.tenant_id, false);
+                            Some(OutgoingMessage {
+                                chat_id: msg.chat_id.clone(),
+                                text: i18n.t("logging_off"),
+                                markdown: false,
+                                inline_keyboard: None,
+                            })
+                        }
+                        _ => {
+                            let enabled = log.is_enabled_for(&msg.tenant_id);
+                            Some(OutgoingMessage {
+                                chat_id: msg.chat_id.clone(),
+                                text: if enabled {
+                                    i18n.t("logging_status_on")
+                                } else {
+                                    i18n.t("logging_status_off")
+                                },
+                                markdown: false,
+                                inline_keyboard: None,
+                            })
                         }
                     }
-                    None => Some(OutgoingMessage {
-                        chat_id: msg.chat_id.clone(),
-                        text: "Message logging is not configured.".into(),
-                        markdown: false,
-                inline_keyboard: None,
-                    }),
                 }
-            }
+                None => Some(OutgoingMessage {
+                    chat_id: msg.chat_id.clone(),
+                    text: "Message logging is not configured.".into(),
+                    markdown: false,
+                    inline_keyboard: None,
+                }),
+            },
 
             "remember" => {
                 let content = args.trim();
@@ -859,7 +880,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Usage: /remember <text to remember>".into(),
                         markdown: false,
-                inline_keyboard: None,
+                        inline_keyboard: None,
                     });
                 }
                 match &self.memory {
@@ -884,13 +905,13 @@ impl Dispatcher {
                                 chat_id: msg.chat_id.clone(),
                                 text: format!("*Remembered:* _{content}_\nID: `{}`", saved.id),
                                 markdown: true,
-                inline_keyboard: None,
+                                inline_keyboard: None,
                             }),
                             Err(e) => Some(OutgoingMessage {
                                 chat_id: msg.chat_id.clone(),
                                 text: format!("Failed to remember: {e}"),
                                 markdown: false,
-                inline_keyboard: None,
+                                inline_keyboard: None,
                             }),
                         }
                     }
@@ -898,7 +919,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Memory engine is not configured.".into(),
                         markdown: false,
-                inline_keyboard: None,
+                        inline_keyboard: None,
                     }),
                 }
             }
@@ -910,7 +931,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Usage: /recall <search query>".into(),
                         markdown: false,
-                inline_keyboard: None,
+                        inline_keyboard: None,
                     });
                 }
                 match &self.memory {
@@ -919,7 +940,7 @@ impl Dispatcher {
                             chat_id: msg.chat_id.clone(),
                             text: format!("_No memories found for \"{query}\"._"),
                             markdown: true,
-                inline_keyboard: None,
+                            inline_keyboard: None,
                         }),
                         Ok(results) => {
                             let mut text = format!("*Found {} memories:*\n", results.len());
@@ -936,21 +957,21 @@ impl Dispatcher {
                                 chat_id: msg.chat_id.clone(),
                                 text,
                                 markdown: true,
-                inline_keyboard: None,
+                                inline_keyboard: None,
                             })
                         }
                         Err(e) => Some(OutgoingMessage {
                             chat_id: msg.chat_id.clone(),
                             text: format!("Memory search failed: {e}"),
                             markdown: false,
-                inline_keyboard: None,
+                            inline_keyboard: None,
                         }),
                     },
                     None => Some(OutgoingMessage {
                         chat_id: msg.chat_id.clone(),
                         text: "Memory engine is not configured.".into(),
                         markdown: false,
-                inline_keyboard: None,
+                        inline_keyboard: None,
                     }),
                 }
             }
@@ -962,7 +983,7 @@ impl Dispatcher {
                         chat_id: msg.chat_id.clone(),
                         text: "Usage: /forget <memory ID>".into(),
                         markdown: false,
-                inline_keyboard: None,
+                        inline_keyboard: None,
                     });
                 }
                 match &self.memory {
@@ -971,20 +992,20 @@ impl Dispatcher {
                             chat_id: msg.chat_id.clone(),
                             text: format!("*Forgotten:* `{id}`"),
                             markdown: true,
-                inline_keyboard: None,
+                            inline_keyboard: None,
                         }),
                         Err(e) => Some(OutgoingMessage {
                             chat_id: msg.chat_id.clone(),
                             text: format!("Failed to forget: {e}"),
                             markdown: false,
-                inline_keyboard: None,
+                            inline_keyboard: None,
                         }),
                     },
                     None => Some(OutgoingMessage {
                         chat_id: msg.chat_id.clone(),
                         text: "Memory engine is not configured.".into(),
                         markdown: false,
-                inline_keyboard: None,
+                        inline_keyboard: None,
                     }),
                 }
             }
@@ -996,7 +1017,7 @@ impl Dispatcher {
                     chat_id: msg.chat_id.clone(),
                     text,
                     markdown: true,
-                inline_keyboard: None,
+                    inline_keyboard: None,
                 })
             }
 
@@ -1005,5 +1026,37 @@ impl Dispatcher {
                 None
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn incoming() -> IncomingMessage {
+        IncomingMessage {
+            chat_id: "chat-1".to_string(),
+            user_id: "user-1".to_string(),
+            tenant_id: "tenant-a".to_string(),
+            text: "hello".to_string(),
+            lang: crate::i18n::Lang::En,
+            platform: "telegram".to_string(),
+            attachment: None,
+        }
+    }
+
+    #[test]
+    fn sdk_response_message_returns_nonempty_assistant_text() {
+        let response = sdk_response_message(&incoming(), "assistant reply".to_string())
+            .expect("nonempty SDK response should be returned");
+
+        assert_eq!(response.chat_id, "chat-1");
+        assert_eq!(response.text, "assistant reply");
+        assert!(response.markdown);
+    }
+
+    #[test]
+    fn sdk_response_message_drops_empty_text() {
+        assert!(sdk_response_message(&incoming(), String::new()).is_none());
     }
 }

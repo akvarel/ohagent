@@ -5,8 +5,8 @@
 
 use std::sync::Arc;
 
-use ohagent_core::jcode_bridge::JcodeBridge;
 use crate::i18n::Lang;
+use ohagent_core::jcode_bridge::JcodeBridge;
 
 /// Regex patterns for noisy status/error messages that should not be sent
 /// to chat platforms (they're operational noise, not user-facing).
@@ -107,13 +107,22 @@ pub trait PlatformAdapter: Send + Sync {
 
     /// Start listening for incoming messages.
     /// Receives a reference to the JcodeBridge for session management.
-    async fn start(&self, bridge: Arc<JcodeBridge>) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+    async fn start(
+        &self,
+        bridge: Arc<JcodeBridge>,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
     /// Send a message back to the platform.
-    async fn send_message(&self, msg: OutgoingMessage) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
+    async fn send_message(
+        &self,
+        msg: OutgoingMessage,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
     /// Set a "typing" indicator in the chat.
-    async fn set_typing(&self, chat_id: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn set_typing(
+        &self,
+        chat_id: &str,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let _ = chat_id;
         Ok(())
     }

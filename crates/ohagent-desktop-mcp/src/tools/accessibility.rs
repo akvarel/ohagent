@@ -80,14 +80,8 @@ except Exception as e:
 /// Dump the accessibility tree. Linux-only (AT-SPI via Python3).
 /// Params: `{ "max_depth": 3, "app_name": "firefox" }` (optional filters)
 pub fn accessibility_tree(args: Value) -> Result<Vec<ContentBlock>, String> {
-    let max_depth = args
-        .get("max_depth")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(3);
-    let app_filter = args
-        .get("app_name")
-        .and_then(|v| v.as_str())
-        .unwrap_or("");
+    let max_depth = args.get("max_depth").and_then(|v| v.as_u64()).unwrap_or(3);
+    let app_filter = args.get("app_name").and_then(|v| v.as_str()).unwrap_or("");
 
     let output = Command::new("python3")
         .arg("-c")
@@ -119,7 +113,10 @@ pub fn accessibility_tree(args: Value) -> Result<Vec<ContentBlock>, String> {
                         }]);
                     }
                     Ok(vec![ContentBlock::Text {
-                        text: format!("Accessibility tree (max_depth={max_depth}):\n{}", serde_json::to_string_pretty(&v).unwrap_or(text)),
+                        text: format!(
+                            "Accessibility tree (max_depth={max_depth}):\n{}",
+                            serde_json::to_string_pretty(&v).unwrap_or(text)
+                        ),
                     }])
                 }
                 Err(_) => Ok(vec![ContentBlock::Text {

@@ -81,13 +81,35 @@ struct UsageInfo {
 
 #[derive(Debug, Clone)]
 enum ChatEntry {
-    UserMessage { text: String, timestamp: String },
-    AgentToken { text: String },
-    ToolCall { id: String, name: String, input: String },
-    ToolResult { id: String, name: String, output: String, success: bool },
-    Done { took_ms: u64, tokens: u32, tps: u32 },
-    Error { message: String },
-    Info { text: String },
+    UserMessage {
+        text: String,
+        timestamp: String,
+    },
+    AgentToken {
+        text: String,
+    },
+    ToolCall {
+        id: String,
+        name: String,
+        input: String,
+    },
+    ToolResult {
+        id: String,
+        name: String,
+        output: String,
+        success: bool,
+    },
+    Done {
+        took_ms: u64,
+        tokens: u32,
+        tps: u32,
+    },
+    Error {
+        message: String,
+    },
+    Info {
+        text: String,
+    },
 }
 
 struct ChatState {
@@ -180,7 +202,11 @@ async fn main() -> Result<()> {
     result
 }
 
-async fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, ws_url: &str, review_mode: bool) -> Result<()> {
+async fn run_app(
+    terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>,
+    ws_url: &str,
+    review_mode: bool,
+) -> Result<()> {
     let mut app = App::new();
 
     if review_mode {
@@ -221,9 +247,9 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, ws_
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
-                    Constraint::Length(3),   // header
-                    Constraint::Min(1),      // chat area
-                    Constraint::Length(3),   // input
+                    Constraint::Length(3), // header
+                    Constraint::Min(1),    // chat area
+                    Constraint::Length(3), // input
                 ])
                 .split(area);
 
@@ -234,9 +260,15 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, ws_
                 Style::default().fg(Color::Red)
             };
             let header = Paragraph::new(Text::from(Line::from(vec![
-                Span::styled(" ohAgent ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
+                Span::styled(
+                    " ohAgent ",
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::BOLD),
+                ),
                 Span::styled("●", status_style),
-                Span::raw(format!(" {} | uptime: {}s | model: {}",
+                Span::raw(format!(
+                    " {} | uptime: {}s | model: {}",
                     app.status_msg,
                     app.start_time.elapsed().as_secs(),
                     app.model,
@@ -256,7 +288,12 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, ws_
                 match entry {
                     ChatEntry::UserMessage { text, .. } => {
                         lines.push(Line::from(vec![
-                            Span::styled("▶ ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                            Span::styled(
+                                "▶ ",
+                                Style::default()
+                                    .fg(Color::Green)
+                                    .add_modifier(Modifier::BOLD),
+                            ),
                             Span::raw(text.clone()),
                         ]));
                         lines.push(Line::from(""));
@@ -288,13 +325,21 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, ws_
                         };
                         lines.push(Line::from(vec![
                             Span::styled("🔧 ", Style::default().fg(Color::Yellow)),
-                            Span::styled(display_name, Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+                            Span::styled(
+                                display_name,
+                                Style::default()
+                                    .fg(Color::Yellow)
+                                    .add_modifier(Modifier::BOLD),
+                            ),
                             Span::raw(" "),
                             Span::styled(truncated, Style::default().fg(Color::DarkGray)),
                         ]));
                     }
-                    ChatEntry::ToolResult { output, success, .. } => {
-                        let preview = output.lines()
+                    ChatEntry::ToolResult {
+                        output, success, ..
+                    } => {
+                        let preview = output
+                            .lines()
                             .filter(|l| !l.is_empty())
                             .take(5)
                             .collect::<Vec<_>>()
@@ -311,19 +356,21 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, ws_
                                 Span::styled(truncated, Style::default().fg(Color::DarkGray)),
                             ]));
                         } else {
-                            lines.push(Line::from(vec![
-                                Span::raw(format!("{icon} (empty result)")),
-                            ]));
+                            lines.push(Line::from(vec![Span::raw(format!(
+                                "{icon} (empty result)"
+                            ))]));
                         }
                         lines.push(Line::from(""));
                     }
-                    ChatEntry::Done { took_ms, tokens, tps } => {
-                        lines.push(Line::from(vec![
-                            Span::styled(
-                                format!("⚡ Done in {took_ms}ms · {tokens} tokens · {tps} tok/s"),
-                                Style::default().fg(Color::DarkGray),
-                            ),
-                        ]));
+                    ChatEntry::Done {
+                        took_ms,
+                        tokens,
+                        tps,
+                    } => {
+                        lines.push(Line::from(vec![Span::styled(
+                            format!("⚡ Done in {took_ms}ms · {tokens} tokens · {tps} tok/s"),
+                            Style::default().fg(Color::DarkGray),
+                        )]));
                         lines.push(Line::from(""));
                     }
                     ChatEntry::Error { message } => {
@@ -334,9 +381,10 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, ws_
                         lines.push(Line::from(""));
                     }
                     ChatEntry::Info { text } => {
-                        lines.push(Line::from(vec![
-                            Span::styled(text.clone(), Style::default().fg(Color::DarkGray)),
-                        ]));
+                        lines.push(Line::from(vec![Span::styled(
+                            text.clone(),
+                            Style::default().fg(Color::DarkGray),
+                        )]));
                         lines.push(Line::from(""));
                     }
                 }
@@ -370,17 +418,22 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, ws_
                     // First token about to arrive
                 }
                 "token" => {
-                    app.chat.add(ChatEntry::AgentToken { text: event.content });
+                    app.chat.add(ChatEntry::AgentToken {
+                        text: event.content,
+                    });
                     // Merge consecutive tokens into previous AgentToken
                     let len = app.chat.entries.len();
                     if len >= 2 {
                         if let ChatEntry::AgentToken { text: prev } = &app.chat.entries[len - 2] {
-                            if let ChatEntry::AgentToken { text: last } = &app.chat.entries[len - 1] {
+                            if let ChatEntry::AgentToken { text: last } = &app.chat.entries[len - 1]
+                            {
                                 // Merge: replace both with one combined entry
                                 let combined = format!("{prev}{last}");
                                 app.chat.entries.pop();
                                 app.chat.entries.pop();
-                                app.chat.entries.push(ChatEntry::AgentToken { text: combined });
+                                app.chat
+                                    .entries
+                                    .push(ChatEntry::AgentToken { text: combined });
                             }
                         }
                     }
@@ -410,11 +463,15 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, ws_
                     });
                 }
                 "error" => {
-                    app.chat.add(ChatEntry::Error { message: event.message });
+                    app.chat.add(ChatEntry::Error {
+                        message: event.message,
+                    });
                     app.status_msg = "Error".into();
                 }
                 "cancelled" => {
-                    app.chat.add(ChatEntry::Info { text: "⚠ Cancelled".into() });
+                    app.chat.add(ChatEntry::Info {
+                        text: "⚠ Cancelled".into(),
+                    });
                     app.status_msg = "Connected".into();
                 }
                 _ => {}
@@ -446,7 +503,11 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, ws_
                                 if review_mode {
                                     chat_msg["review"] = serde_json::json!(true);
                                 }
-                                if ws_tx.send(Message::Text(chat_msg.to_string().into())).await.is_err() {
+                                if ws_tx
+                                    .send(Message::Text(chat_msg.to_string().into()))
+                                    .await
+                                    .is_err()
+                                {
                                     app.connected = false;
                                     app.status_msg = "Disconnected".into();
                                 }
@@ -457,7 +518,10 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, ws_
                         crossterm::event::KeyCode::Char(c) => {
                             // Ctrl+C or Ctrl+D to quit
                             if c == 'c' || c == 'd' {
-                                if key.modifiers.contains(crossterm::event::KeyModifiers::CONTROL) {
+                                if key
+                                    .modifiers
+                                    .contains(crossterm::event::KeyModifiers::CONTROL)
+                                {
                                     break;
                                 }
                             }
@@ -468,21 +532,25 @@ async fn run_app(terminal: &mut Terminal<CrosstermBackend<std::io::Stdout>>, ws_
                         }
                         crossterm::event::KeyCode::Esc => {
                             // Send cancel
-                            let _ = ws_tx.send(Message::Text(
-                                serde_json::json!({"type": "cancel"}).to_string().into()
-                            )).await;
+                            let _ = ws_tx
+                                .send(Message::Text(
+                                    serde_json::json!({"type": "cancel"}).to_string().into(),
+                                ))
+                                .await;
                         }
                         crossterm::event::KeyCode::Up => {
                             app.chat.scroll = app.chat.scroll.saturating_sub(1);
                         }
                         crossterm::event::KeyCode::Down => {
-                            app.chat.scroll = (app.chat.scroll + 1).min(app.chat.entries.len().saturating_sub(1));
+                            app.chat.scroll =
+                                (app.chat.scroll + 1).min(app.chat.entries.len().saturating_sub(1));
                         }
                         crossterm::event::KeyCode::PageUp => {
                             app.chat.scroll = app.chat.scroll.saturating_sub(10);
                         }
                         crossterm::event::KeyCode::PageDown => {
-                            app.chat.scroll = (app.chat.scroll + 10).min(app.chat.entries.len().saturating_sub(1));
+                            app.chat.scroll = (app.chat.scroll + 10)
+                                .min(app.chat.entries.len().saturating_sub(1));
                         }
                         _ => {}
                     }

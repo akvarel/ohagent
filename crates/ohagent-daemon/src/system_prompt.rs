@@ -98,9 +98,7 @@ impl PromptBudget {
             rules_max: (usable as f64 * 0.20) as u32,
             skills_max: (usable as f64 * 0.15) as u32,
             memory_rag_max: (usable as f64 * 0.10) as u32,
-            remaining_for_conversation: usable.saturating_sub(
-                (usable as f64 * 0.45) as u32
-            ),
+            remaining_for_conversation: usable.saturating_sub((usable as f64 * 0.45) as u32),
         }
     }
 }
@@ -141,7 +139,10 @@ impl SystemPromptBuilder {
     /// Create a builder with skills + tenant overrides.
     /// AGENTS.md rules are loaded per-request via `project_dir` in `assemble()`.
     pub fn new(skills: Vec<SkillPrompt>, tenant_overrides: Option<String>) -> Self {
-        Self { skills, tenant_overrides }
+        Self {
+            skills,
+            tenant_overrides,
+        }
     }
 
     /// Preprocess skill instructions: substitute template vars and execute inline shell.
@@ -153,7 +154,11 @@ impl SystemPromptBuilder {
     /// Inline shell: `` !`command` `` — executes command and replaces with stdout.
     /// Shell is always `bash -c`. Execution is best-effort; failures produce
     /// a short `[inline-shell error: ...]` marker.
-    pub fn preprocess_skill(text: &str, skill_dir: Option<&str>, session_id: Option<&str>) -> String {
+    pub fn preprocess_skill(
+        text: &str,
+        skill_dir: Option<&str>,
+        session_id: Option<&str>,
+    ) -> String {
         use std::sync::OnceLock;
         static INLINE_SHELL_RE: OnceLock<regex::Regex> = OnceLock::new();
         static TEMPLATE_RE: OnceLock<regex::Regex> = OnceLock::new();
@@ -162,48 +167,50 @@ impl SystemPromptBuilder {
         let template_re = TEMPLATE_RE.get_or_init(|| {
             regex::Regex::new(r"\$\{(HERMES_SKILL_DIR|HERMES_SESSION_ID)\}").unwrap()
         });
-        let after_templates = template_re.replace_all(text, |caps: &regex::Captures| {
-            match caps.get(1).map(|m| m.as_str()) {
-                Some("HERMES_SKILL_DIR") => skill_dir.unwrap_or(""),
-                Some("HERMES_SESSION_ID") => session_id.unwrap_or(""),
-                _ => "",
-            }
-            .to_string()
-        }).to_string();
+        let after_templates = template_re
+            .replace_all(text, |caps: &regex::Captures| {
+                match caps.get(1).map(|m| m.as_str()) {
+                    Some("HERMES_SKILL_DIR") => skill_dir.unwrap_or(""),
+                    Some("HERMES_SESSION_ID") => session_id.unwrap_or(""),
+                    _ => "",
+                }
+                .to_string()
+            })
+            .to_string();
 
         // Step 2: execute inline shell snippets
-        let shell_re = INLINE_SHELL_RE.get_or_init(|| {
-            regex::Regex::new(r"!`([^`\n]+)`").unwrap()
-        });
-        shell_re.replace_all(&after_templates, |caps: &regex::Captures| {
-            let command = caps.get(1).map(|m| m.as_str()).unwrap_or("");
-            if command.is_empty() {
-                return String::new();
-            }
-            let output = std::process::Command::new("bash")
-                .args(["-c", command])
-                .output();
-            match output {
-                Ok(out) if out.status.success() => {
-                    let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
-                    if stdout.len() > 4000 {
-                        format!("{}\n...[output truncated to 4K chars]", &stdout[..4000])
-                    } else {
-                        stdout
+        let shell_re = INLINE_SHELL_RE.get_or_init(|| regex::Regex::new(r"!`([^`\n]+)`").unwrap());
+        shell_re
+            .replace_all(&after_templates, |caps: &regex::Captures| {
+                let command = caps.get(1).map(|m| m.as_str()).unwrap_or("");
+                if command.is_empty() {
+                    return String::new();
+                }
+                let output = std::process::Command::new("bash")
+                    .args(["-c", command])
+                    .output();
+                match output {
+                    Ok(out) if out.status.success() => {
+                        let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                        if stdout.len() > 4000 {
+                            format!("{}\n...[output truncated to 4K chars]", &stdout[..4000])
+                        } else {
+                            stdout
+                        }
                     }
+                    Ok(out) => {
+                        let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+                        let preview = if stderr.len() > 200 {
+                            format!("{}...", &stderr[..200])
+                        } else {
+                            stderr
+                        };
+                        format!("[inline-shell error: {}]", preview)
+                    }
+                    Err(e) => format!("[inline-shell error: {}]", e),
                 }
-                Ok(out) => {
-                    let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
-                    let preview = if stderr.len() > 200 {
-                        format!("{}...", &stderr[..200])
-                    } else {
-                        stderr
-                    };
-                    format!("[inline-shell error: {}]", preview)
-                }
-                Err(e) => format!("[inline-shell error: {}]", e),
-            }
-        }).to_string()
+            })
+            .to_string()
     }
 
     /// Load AGENTS.md files following Jcode's resolution order:
@@ -233,7 +240,9 @@ impl SystemPromptBuilder {
         loop {
             // Don't re-read ~/.AGENTS.md as an Inherited rule
             if Some(&current) == home.as_ref() {
-                if !current.pop() { break; }
+                if !current.pop() {
+                    break;
+                }
                 continue;
             }
 
@@ -398,8 +407,8 @@ impl SystemPromptBuilder {
             // Preprocess inline shell and template variables in skill instructions
             let preprocessed = Self::preprocess_skill(
                 &skill.instructions,
-                None,   // skill_dir — not available at this level; caller passes None
-                None,   // session_id — not available at assembly time
+                None, // skill_dir — not available at this level; caller passes None
+                None, // session_id — not available at assembly time
             );
             out.push_str(&format!(
                 "### /{} — {}\nTrigger: {}\n{}\n\n",
@@ -619,7 +628,15 @@ mod tests {
 
         // Even with non-existent project_dir, global rules should load
         // (if ~/.AGENTS.md exists on this machine)
-        let result = builder.assemble(&PathBuf::from("/nonexistent"), "hi", "hi", None, &[], &budget, false);
+        let result = builder.assemble(
+            &PathBuf::from("/nonexistent"),
+            "hi",
+            "hi",
+            None,
+            &[],
+            &budget,
+            false,
+        );
         // Should not panic — just might not have rules if ~/.AGENTS.md doesn't exist
         assert!(!result.system.is_empty());
     }
@@ -632,15 +649,30 @@ mod tests {
 
         // Normal mode — skills present
         let normal = builder.assemble(&cwd, "hello", "hello", None, &[], &budget, false);
-        assert!(normal.system.contains("── SKILLS ──"), "normal mode should include skills");
+        assert!(
+            normal.system.contains("── SKILLS ──"),
+            "normal mode should include skills"
+        );
 
         // Review mode — no skills, no memory RAG, has banner
         let review = builder.assemble(&cwd, "hello", "hello", None, &[], &budget, true);
-        assert!(review.system.contains("── REVIEW MODE ACTIVE ──"), "review mode should show banner");
-        assert!(!review.system.contains("── SKILLS ──"), "review mode should skip skills");
-        assert!(!review.system.contains("── RELEVANT CONTEXT ──"), "review mode should skip memory RAG");
+        assert!(
+            review.system.contains("── REVIEW MODE ACTIVE ──"),
+            "review mode should show banner"
+        );
+        assert!(
+            !review.system.contains("── SKILLS ──"),
+            "review mode should skip skills"
+        );
+        assert!(
+            !review.system.contains("── RELEVANT CONTEXT ──"),
+            "review mode should skip memory RAG"
+        );
         // Rules are still present
-        assert!(review.system.contains("── RULES ──"), "review mode should keep rules");
+        assert!(
+            review.system.contains("── RULES ──"),
+            "review mode should keep rules"
+        );
     }
 
     #[test]
@@ -651,26 +683,47 @@ mod tests {
 
         // Query about deployment — only deploy skill should appear in skills section
         let result = builder.assemble(
-            &cwd, "deploy to kubernetes", "deploy to kubernetes",
-            None, &[], &budget, false,
+            &cwd,
+            "deploy to kubernetes",
+            "deploy to kubernetes",
+            None,
+            &[],
+            &budget,
+            false,
         );
         let skills_section = extract_skills_section(&result.system);
         assert!(skills_section.contains("/deploy"), "expected deploy skill");
-        assert!(!skills_section.contains("test-skill"), "test-skill should not appear for deploy query");
+        assert!(
+            !skills_section.contains("test-skill"),
+            "test-skill should not appear for deploy query"
+        );
 
         // Query about testing — only test skill should appear in skills section
         let result = builder.assemble(
-            &cwd, "run the test suite", "run the test suite",
-            None, &[], &budget, false,
+            &cwd,
+            "run the test suite",
+            "run the test suite",
+            None,
+            &[],
+            &budget,
+            false,
         );
         let skills_section = extract_skills_section(&result.system);
         assert!(skills_section.contains("test-skill"), "expected test-skill");
-        assert!(!skills_section.contains("/deploy"), "deploy skill should not appear for testing query");
+        assert!(
+            !skills_section.contains("/deploy"),
+            "deploy skill should not appear for testing query"
+        );
 
         // Unrelated query — all skills fall back
         let result = builder.assemble(
-            &cwd, "hello world", "hello world",
-            None, &[], &budget, false,
+            &cwd,
+            "hello world",
+            "hello world",
+            None,
+            &[],
+            &budget,
+            false,
         );
         // Fallback: all skills included
         assert!(result.system.contains("── SKILLS ──"));

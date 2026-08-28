@@ -81,9 +81,18 @@ pub enum AgentEvent {
     /// Text delta — stream to user
     TextDelta(String),
     /// Tool call started
-    ToolCallStart { id: String, name: String, input: String },
+    ToolCallStart {
+        id: String,
+        name: String,
+        input: String,
+    },
     /// Tool execution result
-    ToolResult { id: String, name: String, output: String, success: bool },
+    ToolResult {
+        id: String,
+        name: String,
+        output: String,
+        success: bool,
+    },
     /// Turn complete
     Done { total_tokens: u32 },
     /// Error
@@ -132,7 +141,9 @@ pub async fn run_agent_turn(
                     has_text = true;
                     let _ = event_tx.send(AgentEvent::TextDelta(text));
                 }
-                Ok(StreamEvent::ToolUseStart { id, name }) if tool_progress_mode == ToolProgressMode::None => {
+                Ok(StreamEvent::ToolUseStart { id, name })
+                    if tool_progress_mode == ToolProgressMode::None =>
+                {
                     has_tools = true;
                     current_tool = Some(PendingTool {
                         id,
@@ -169,7 +180,11 @@ pub async fn run_agent_turn(
                 Ok(StreamEvent::MessageEnd { .. }) => {
                     break;
                 }
-                Ok(StreamEvent::TokenUsage { input_tokens, output_tokens, .. }) => {
+                Ok(StreamEvent::TokenUsage {
+                    input_tokens,
+                    output_tokens,
+                    ..
+                }) => {
                     total_input_tokens += input_tokens.unwrap_or(0) as u32;
                     total_output_tokens += output_tokens.unwrap_or(0) as u32;
                 }
@@ -241,37 +256,41 @@ pub async fn run_agent_turn(
         let mut assistant_content: Vec<ContentBlock> = Vec::new();
 
         // Map tool IDs to their raw input for assistant content construction
-        let mut tool_input_by_id: std::collections::HashMap<String, String> = std::collections::HashMap::new();
+        let mut tool_input_by_id: std::collections::HashMap<String, String> =
+            std::collections::HashMap::new();
         for tool in &pending_tools {
             tool_input_by_id.insert(tool.id.clone(), tool.input.clone());
         }
 
         // Build parallel tasks for independent tool calls
-        let tool_tasks: Vec<_> = pending_tools.iter().map(|tool| {
-            let tool_registry = Arc::clone(&tool_registry);
-            let tool_name = tool.name.clone();
-            let tool_id = tool.id.clone();
-            let tool_input = tool.input.clone();
+        let tool_tasks: Vec<_> = pending_tools
+            .iter()
+            .map(|tool| {
+                let tool_registry = Arc::clone(&tool_registry);
+                let tool_name = tool.name.clone();
+                let tool_id = tool.id.clone();
+                let tool_input = tool.input.clone();
 
-            tokio::task::spawn_blocking(move || {
-                let params: JsonValue = match serde_json::from_str(&tool_input) {
-                    Ok(v) => v,
-                    Err(_) => serde_json::json!({"input": tool_input}),
-                };
+                tokio::task::spawn_blocking(move || {
+                    let params: JsonValue = match serde_json::from_str(&tool_input) {
+                        Ok(v) => v,
+                        Err(_) => serde_json::json!({"input": tool_input}),
+                    };
 
-                let result = match tool_registry.execute(&tool_name, params) {
-                    Some(r) => r,
-                    None => ToolResult {
-                        success: false,
-                        output: format!("Unknown tool: {}", tool_name),
-                        data: None,
-                        error: Some(format!("Tool '{}' not found in registry", tool_name)),
-                    },
-                };
+                    let result = match tool_registry.execute(&tool_name, params) {
+                        Some(r) => r,
+                        None => ToolResult {
+                            success: false,
+                            output: format!("Unknown tool: {}", tool_name),
+                            data: None,
+                            error: Some(format!("Tool '{}' not found in registry", tool_name)),
+                        },
+                    };
 
-                (tool_id, tool_name, result)
+                    (tool_id, tool_name, result)
+                })
             })
-        }).collect();
+            .collect();
 
         // Await all parallel tool executions
         let tool_results = futures::future::join_all(tool_tasks).await;
@@ -296,7 +315,11 @@ pub async fn run_agent_turn(
             } else if tool_progress_mode == ToolProgressMode::StreamingOnly {
                 // Truncate large outputs for streaming-only mode
                 let preview = if result.output.len() > 200 {
-                    format!("{}... [{} bytes total]", &result.output[..200], result.output.len())
+                    format!(
+                        "{}... [{} bytes total]",
+                        &result.output[..200],
+                        result.output.len()
+                    )
                 } else {
                     result.output.clone()
                 };
@@ -309,7 +332,8 @@ pub async fn run_agent_turn(
             }
 
             // Build assistant tool_use content block
-            let tool_input_str = tool_input_by_id.get(&tool_id)
+            let tool_input_str = tool_input_by_id
+                .get(&tool_id)
                 .map(|s| s.as_str())
                 .unwrap_or("");
             assistant_content.push(ContentBlock::ToolUse {
@@ -324,7 +348,10 @@ pub async fn run_agent_turn(
             let result_content = if result.success {
                 result.output
             } else {
-                format!("ERROR: {}", result.error.unwrap_or_else(|| result.output.clone()))
+                format!(
+                    "ERROR: {}",
+                    result.error.unwrap_or_else(|| result.output.clone())
+                )
             };
 
             tool_result_blocks.push(ContentBlock::ToolResult {

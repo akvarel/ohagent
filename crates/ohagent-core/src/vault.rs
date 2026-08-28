@@ -137,18 +137,20 @@ impl VaultClient {
                 Ok(())
             }
             AuthMethod::Kubernetes { role } => {
-                let jwt = std::fs::read_to_string(
-                    "/var/run/secrets/kubernetes.io/serviceaccount/token",
-                )
-                .map_err(|_| {
-                    VaultError::Auth("Not in Kubernetes — no service account token".into())
-                })?;
+                let jwt =
+                    std::fs::read_to_string("/var/run/secrets/kubernetes.io/serviceaccount/token")
+                        .map_err(|_| {
+                            VaultError::Auth("Not in Kubernetes — no service account token".into())
+                        })?;
 
                 let resp = self
-                    .post("auth/kubernetes/login", &serde_json::json!({
-                        "role": role,
-                        "jwt": jwt.trim(),
-                    }))
+                    .post(
+                        "auth/kubernetes/login",
+                        &serde_json::json!({
+                            "role": role,
+                            "jwt": jwt.trim(),
+                        }),
+                    )
                     .await?;
 
                 let token = resp["auth"]["client_token"]
@@ -159,15 +161,15 @@ impl VaultClient {
                 info!("Vault Kubernetes auth successful");
                 Ok(())
             }
-            AuthMethod::AppRole {
-                role_id,
-                secret_id,
-            } => {
+            AuthMethod::AppRole { role_id, secret_id } => {
                 let resp = self
-                    .post("auth/approle/login", &serde_json::json!({
-                        "role_id": role_id,
-                        "secret_id": secret_id,
-                    }))
+                    .post(
+                        "auth/approle/login",
+                        &serde_json::json!({
+                            "role_id": role_id,
+                            "secret_id": secret_id,
+                        }),
+                    )
                     .await?;
 
                 let token = resp["auth"]["client_token"]
@@ -308,10 +310,7 @@ impl VaultClient {
             .send()
             .await?;
         let body: serde_json::Value = resp.json().await?;
-        Ok(body
-            .get("sealed")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(true))
+        Ok(body.get("sealed").and_then(|v| v.as_bool()).unwrap_or(true))
     }
 
     // ── Internal helpers ──
@@ -320,10 +319,7 @@ impl VaultClient {
         let resp = self
             .api_get(&format!("{}/data/{}", self.kv_path, path))
             .await?;
-        let data = resp
-            .get("data")
-            .cloned()
-            .unwrap_or(serde_json::Value::Null);
+        let data = resp.get("data").cloned().unwrap_or(serde_json::Value::Null);
         Ok(data)
     }
 
@@ -385,8 +381,7 @@ impl VaultClient {
             return Err(VaultError::Http(status.as_u16(), msg));
         }
 
-        let value: serde_json::Value =
-            serde_json::from_str(&text).map_err(VaultError::Json)?;
+        let value: serde_json::Value = serde_json::from_str(&text).map_err(VaultError::Json)?;
         Ok(value)
     }
 }

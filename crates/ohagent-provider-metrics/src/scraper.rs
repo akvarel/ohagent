@@ -6,7 +6,9 @@ use crate::store::MetricsStore;
 pub struct PriceScraper;
 
 impl PriceScraper {
-    pub fn new() -> Self { Self }
+    pub fn new() -> Self {
+        Self
+    }
     pub async fn scrape_all(&self, store: &MetricsStore) -> Result<usize, String> {
         let prices = known_prices();
         let count = prices.len();

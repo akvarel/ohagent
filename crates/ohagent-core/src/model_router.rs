@@ -227,14 +227,15 @@ impl Capability {
 
     /// Whether this capability is model-declared (not keyword-detected).
     pub fn is_model_declared(&self) -> bool {
-        matches!(self,
+        matches!(
+            self,
             Capability::ImageGen
-            | Capability::VideoGen
-            | Capability::VoiceToText
-            | Capability::Ocr
-            | Capability::Translation
-            | Capability::Embedding
-            | Capability::Agentic
+                | Capability::VideoGen
+                | Capability::VoiceToText
+                | Capability::Ocr
+                | Capability::Translation
+                | Capability::Embedding
+                | Capability::Agentic
         )
     }
 }
@@ -245,8 +246,13 @@ pub fn classify_task(message: &str) -> Vec<Capability> {
     let mut caps = Vec::new();
 
     // Image generation patterns
-    if lower.contains("generate") && (lower.contains("image") || lower.contains("picture") || lower.contains("photo") || lower.contains("draw"))
-        || lower.contains("create") && (lower.contains("image") || lower.contains("picture") || lower.contains("photo"))
+    if lower.contains("generate")
+        && (lower.contains("image")
+            || lower.contains("picture")
+            || lower.contains("photo")
+            || lower.contains("draw"))
+        || lower.contains("create")
+            && (lower.contains("image") || lower.contains("picture") || lower.contains("photo"))
         || lower.starts_with("draw ")
         || lower.contains("dall-e")
     {
@@ -265,17 +271,25 @@ pub fn classify_task(message: &str) -> Vec<Capability> {
     }
 
     // Voice-to-text patterns (model-declared; keywords act as hints)
-    if lower.contains("transcribe") || lower.contains("speech to text")
-        || lower.contains("voice to text") || lower.contains("audio to text")
-        || lower.contains("dictation") || (lower.contains("audio") && lower.contains("text"))
+    if lower.contains("transcribe")
+        || lower.contains("speech to text")
+        || lower.contains("voice to text")
+        || lower.contains("audio to text")
+        || lower.contains("dictation")
+        || (lower.contains("audio") && lower.contains("text"))
     {
         caps.push(Capability::VoiceToText);
         return caps; // Exclusive — needs specialized model
     }
 
     // OCR patterns (model-declared; keywords act as hints)
-    if lower.contains("ocr") || lower.contains("optical character")
-        || lower.contains("extract text from") && (lower.contains("image") || lower.contains("photo") || lower.contains("scan") || lower.contains("pdf"))
+    if lower.contains("ocr")
+        || lower.contains("optical character")
+        || lower.contains("extract text from")
+            && (lower.contains("image")
+                || lower.contains("photo")
+                || lower.contains("scan")
+                || lower.contains("pdf"))
         || lower.contains("read text from") && (lower.contains("image") || lower.contains("photo"))
         || lower.contains("scan document")
     {
@@ -284,10 +298,17 @@ pub fn classify_task(message: &str) -> Vec<Capability> {
     }
 
     // Translation patterns
-    if lower.contains("translate") || lower.contains("translation")
-        || lower.contains("переведи") || lower.contains("перевод")
-        || (lower.contains("to ") && (lower.contains("english") || lower.contains("russian") || lower.contains("latvian")
-            || lower.contains("german") || lower.contains("french") || lower.contains("spanish"))
+    if lower.contains("translate")
+        || lower.contains("translation")
+        || lower.contains("переведи")
+        || lower.contains("перевод")
+        || (lower.contains("to ")
+            && (lower.contains("english")
+                || lower.contains("russian")
+                || lower.contains("latvian")
+                || lower.contains("german")
+                || lower.contains("french")
+                || lower.contains("spanish"))
             && lower.contains("translate"))
     {
         caps.push(Capability::Translation);
@@ -295,43 +316,84 @@ pub fn classify_task(message: &str) -> Vec<Capability> {
     }
 
     // Coding patterns
-    if lower.contains("code") || lower.contains("implement") || lower.contains("fix bug")
-        || lower.contains("refactor") || lower.contains("function") || lower.contains("class ")
-        || lower.contains("api") || lower.contains("endpoint") || lower.contains("deploy")
-        || lower.contains("docker") || lower.contains("kubernetes") || lower.contains("k8s")
-        || lower.contains("test ") || lower.contains("compile") || lower.contains("build ")
-        || lower.contains("error") || lower.contains("debug") || lower.contains("commit")
-        || lower.contains("git ") || lower.contains("pull request") || lower.contains("pr ")
-        || lower.contains("merge") || lower.contains("cargo") || lower.contains("npm ")
-        || lower.contains("pip ") || lower.contains("import ") || lower.contains("mod ")
-        || lower.contains("trait ") || lower.contains("struct ") || lower.contains("impl ")
-        || lower.contains("fn ") || lower.contains("def ") || lower.contains("class ")
+    if lower.contains("code")
+        || lower.contains("implement")
+        || lower.contains("fix bug")
+        || lower.contains("refactor")
+        || lower.contains("function")
+        || lower.contains("class ")
+        || lower.contains("api")
+        || lower.contains("endpoint")
+        || lower.contains("deploy")
+        || lower.contains("docker")
+        || lower.contains("kubernetes")
+        || lower.contains("k8s")
+        || lower.contains("test ")
+        || lower.contains("compile")
+        || lower.contains("build ")
+        || lower.contains("error")
+        || lower.contains("debug")
+        || lower.contains("commit")
+        || lower.contains("git ")
+        || lower.contains("pull request")
+        || lower.contains("pr ")
+        || lower.contains("merge")
+        || lower.contains("cargo")
+        || lower.contains("npm ")
+        || lower.contains("pip ")
+        || lower.contains("import ")
+        || lower.contains("mod ")
+        || lower.contains("trait ")
+        || lower.contains("struct ")
+        || lower.contains("impl ")
+        || lower.contains("fn ")
+        || lower.contains("def ")
+        || lower.contains("class ")
         || lower.contains("use ") && (lower.contains("rust") || lower.contains("python"))
     {
         caps.push(Capability::Coding);
     }
 
     // Reasoning patterns (deep thinking needed)
-    if lower.contains("think") || lower.contains("reason") || lower.contains("analyze")
-        || lower.contains("explain why") || lower.contains("prove") || lower.contains("logic")
-        || lower.contains("puzzle") || lower.contains("riddle") || lower.contains("solve")
-        || lower.contains("optimize") || lower.contains("architecture") || lower.contains("design pattern")
+    if lower.contains("think")
+        || lower.contains("reason")
+        || lower.contains("analyze")
+        || lower.contains("explain why")
+        || lower.contains("prove")
+        || lower.contains("logic")
+        || lower.contains("puzzle")
+        || lower.contains("riddle")
+        || lower.contains("solve")
+        || lower.contains("optimize")
+        || lower.contains("architecture")
+        || lower.contains("design pattern")
     {
         caps.push(Capability::Reasoning);
     }
 
     // Analysis patterns
-    if lower.contains("analyze") || lower.contains("summarize") || lower.contains("break down")
-        || lower.contains("compare") || lower.contains("evaluate") || lower.contains("review")
-        || lower.contains("audit") || lower.contains("assess")
+    if lower.contains("analyze")
+        || lower.contains("summarize")
+        || lower.contains("break down")
+        || lower.contains("compare")
+        || lower.contains("evaluate")
+        || lower.contains("review")
+        || lower.contains("audit")
+        || lower.contains("assess")
     {
         caps.push(Capability::Analysis);
     }
 
     // Creative writing
-    if lower.contains("write") && (lower.contains("story") || lower.contains("poem") || lower.contains("script")
-        || lower.contains("article") || lower.contains("blog") || lower.contains("creative"))
-        || lower.contains("compose") || lower.contains("narrative")
+    if lower.contains("write")
+        && (lower.contains("story")
+            || lower.contains("poem")
+            || lower.contains("script")
+            || lower.contains("article")
+            || lower.contains("blog")
+            || lower.contains("creative"))
+        || lower.contains("compose")
+        || lower.contains("narrative")
     {
         caps.push(Capability::CreativeWriting);
     }
@@ -393,12 +455,9 @@ impl ModelRouter {
     /// Load the catalog from the embedded `models.toml`.
     pub fn load() -> Result<Self> {
         let catalog_str = include_str!("models.toml");
-        let catalog: ModelCatalog = toml::from_str(catalog_str)
-            .context("Failed to parse model catalog")?;
-        info!(
-            models = catalog.models.len(),
-            "Model catalog loaded"
-        );
+        let catalog: ModelCatalog =
+            toml::from_str(catalog_str).context("Failed to parse model catalog")?;
+        info!(models = catalog.models.len(), "Model catalog loaded");
         Ok(Self {
             catalog,
             user_prefs: HashMap::new(),
@@ -412,8 +471,8 @@ impl ModelRouter {
     pub fn load_from(path: &str) -> Result<Self> {
         let catalog_str = std::fs::read_to_string(path)
             .with_context(|| format!("Failed to read catalog from {path}"))?;
-        let catalog: ModelCatalog = toml::from_str(&catalog_str)
-            .context("Failed to parse model catalog")?;
+        let catalog: ModelCatalog =
+            toml::from_str(&catalog_str).context("Failed to parse model catalog")?;
         Ok(Self {
             catalog,
             user_prefs: HashMap::new(),
@@ -439,7 +498,8 @@ impl ModelRouter {
             return false;
         }
         // Catalog default
-        self.catalog.models
+        self.catalog
+            .models
             .iter()
             .find(|m| m.id == model_id)
             .map(|m| m.enabled)
@@ -465,16 +525,18 @@ impl ModelRouter {
 
     /// List all models with their enabled state.
     pub fn model_statuses(&self) -> Vec<ModelStatus> {
-        self.catalog.models.iter().map(|m| {
-            ModelStatus {
+        self.catalog
+            .models
+            .iter()
+            .map(|m| ModelStatus {
                 id: m.id.clone(),
                 display: m.display.clone(),
                 provider: m.provider.clone(),
                 cost_tier: m.cost_tier.clone(),
                 enabled: self.is_enabled(&m.id),
                 has_api_key: std::env::var(&m.api_key_env).is_ok(),
-            }
-        }).collect()
+            })
+            .collect()
     }
 
     /// Load disabled list from disk.
@@ -550,23 +612,23 @@ impl ModelRouter {
     /// Checks per-tenant preferences first, then falls back to auto-routing.
     /// Returns a `RoutedModel` with a ready-to-use provider, or falls back
     /// to the first available model in the catalog.
-    pub fn route(
-        &self,
-        tenant_id: &str,
-        message: &str,
-    ) -> Result<RoutedModel> {
+    pub fn route(&self, tenant_id: &str, message: &str) -> Result<RoutedModel> {
         let caps = classify_task(message);
         let cap_names: Vec<&str> = caps.iter().map(|c| c.as_str()).collect();
         debug!(message = %message, tenant = %tenant_id, capabilities = ?cap_names, "Classified task");
 
         // Check user preference for the primary capability
-        let preferred = caps.first().and_then(|cap| {
-            self.get_pref(tenant_id, cap.as_str())
-        });
+        let preferred = caps
+            .first()
+            .and_then(|cap| self.get_pref(tenant_id, cap.as_str()));
 
         let entry = if let Some(pref_model_id) = preferred {
             // Try to find the preferred model in the catalog
-            let preferred_entry = self.catalog.models.iter().find(|m| m.id == pref_model_id)
+            let preferred_entry = self
+                .catalog
+                .models
+                .iter()
+                .find(|m| m.id == pref_model_id)
                 .and_then(|m| {
                     if std::env::var(&m.api_key_env).is_ok() {
                         Some(m)
@@ -589,21 +651,21 @@ impl ModelRouter {
             None
         };
 
-        let entry = entry.or_else(|| {
-            self.find_model(&caps, None)
-        })
-        .or_else(|| {
-            // Fall back: try general_chat capability
-            let fallback = vec![Capability::GeneralChat];
-            self.find_model(&fallback, None)
-        })
-        .or_else(|| {
-            // Last resort: first model in catalog with any key set
-            self.catalog.models.iter().find(|m| {
-                std::env::var(&m.api_key_env).is_ok()
+        let entry = entry
+            .or_else(|| self.find_model(&caps, None))
+            .or_else(|| {
+                // Fall back: try general_chat capability
+                let fallback = vec![Capability::GeneralChat];
+                self.find_model(&fallback, None)
             })
-        })
-        .context("No available model found — check API keys")?;
+            .or_else(|| {
+                // Last resort: first model in catalog with any key set
+                self.catalog
+                    .models
+                    .iter()
+                    .find(|m| std::env::var(&m.api_key_env).is_ok())
+            })
+            .context("No available model found — check API keys")?;
 
         let provider = self.build_provider(entry)?;
 
@@ -635,7 +697,9 @@ impl ModelRouter {
         let cap_names: Vec<&str> = caps.iter().map(|c| c.as_str()).collect();
 
         // Preferred model
-        let preferred = caps.first().and_then(|cap| self.get_pref(tenant_id, cap.as_str()));
+        let preferred = caps
+            .first()
+            .and_then(|cap| self.get_pref(tenant_id, cap.as_str()));
         let mut preferred_entry = None;
         if let Some(ref pref_id) = preferred {
             if let Some(e) = self.catalog.models.iter().find(|m| &m.id == pref_id) {
@@ -652,8 +716,12 @@ impl ModelRouter {
         }
 
         let context_filter = |m: &&ModelEntry| -> bool {
-            if !self.is_enabled(&m.id) { return false; }
-            if std::env::var(&m.api_key_env).is_err() { return false; }
+            if !self.is_enabled(&m.id) {
+                return false;
+            }
+            if std::env::var(&m.api_key_env).is_err() {
+                return false;
+            }
             if let (Some(msgs), Some(sys)) = (full_messages, system_prompt) {
                 if !crate::context_estimator::fits_context_window(msgs, sys, m.context) {
                     return false;
@@ -662,16 +730,11 @@ impl ModelRouter {
             true
         };
 
-        let entry = preferred_entry.or_else(|| {
-            self.find_filtered(&caps, None, &context_filter)
-        })
-        .or_else(|| {
-            self.find_filtered(&[Capability::GeneralChat], None, &context_filter)
-        })
-        .or_else(|| {
-            self.catalog.models.iter().find(|m| context_filter(m))
-        })
-        .context("No model fits the conversation context — try reducing history")?;
+        let entry = preferred_entry
+            .or_else(|| self.find_filtered(&caps, None, &context_filter))
+            .or_else(|| self.find_filtered(&[Capability::GeneralChat], None, &context_filter))
+            .or_else(|| self.catalog.models.iter().find(|m| context_filter(m)))
+            .context("No model fits the conversation context — try reducing history")?;
 
         let provider = self.build_provider(entry)?;
         info!(
@@ -705,7 +768,9 @@ impl ModelRouter {
             .models
             .iter()
             .filter(|m| {
-                required.iter().all(|rc| m.capabilities.iter().any(|mc| mc == rc))
+                required
+                    .iter()
+                    .all(|rc| m.capabilities.iter().any(|mc| mc == rc))
             })
             .filter(|m| tier_value(&m.cost_tier) <= max_tier_val)
             .filter(|m| extra_filter(m))
@@ -723,28 +788,32 @@ impl ModelRouter {
                 // MultiProvider reads DEEPSEEK_API_KEY from env; ensure it's set
                 std::env::set_var("DEEPSEEK_API_KEY", &key);
                 // Use the openrouter path for DeepSeek (it's an OpenAI-compatible profile)
-                multi.set_model(&format!("deepseek:{}", entry.id))
+                multi
+                    .set_model(&format!("deepseek:{}", entry.id))
                     .with_context(|| format!("Failed to set model deepseek:{}", entry.id))?;
             }
             "anthropic" => {
                 let key = std::env::var(&entry.api_key_env)
                     .with_context(|| format!("{} not set", entry.api_key_env))?;
                 std::env::set_var("ANTHROPIC_API_KEY", &key);
-                multi.set_model(&format!("claude:{}", entry.id))
+                multi
+                    .set_model(&format!("claude:{}", entry.id))
                     .with_context(|| format!("Failed to set model claude:{}", entry.id))?;
             }
             "openai" => {
                 let key = std::env::var(&entry.api_key_env)
                     .with_context(|| format!("{} not set", entry.api_key_env))?;
                 std::env::set_var("OPENAI_API_KEY", &key);
-                multi.set_model(&format!("openai:{}", entry.id))
+                multi
+                    .set_model(&format!("openai:{}", entry.id))
                     .with_context(|| format!("Failed to set model openai:{}", entry.id))?;
             }
             "openrouter" => {
                 let key = std::env::var(&entry.api_key_env)
                     .with_context(|| format!("{} not set", entry.api_key_env))?;
                 std::env::set_var("OPENROUTER_API_KEY", &key);
-                multi.set_model(&format!("openrouter:{}", entry.id))
+                multi
+                    .set_model(&format!("openrouter:{}", entry.id))
                     .with_context(|| format!("Failed to set model openrouter:{}", entry.id))?;
             }
             "zhipu" => {
@@ -754,7 +823,8 @@ impl ModelRouter {
                 std::env::set_var("OPENAI_API_KEY", &key);
                 // Route through openai provider with custom base URL set via env
                 std::env::set_var("OPENAI_BASE_URL", "https://api.z.ai/v1");
-                multi.set_model(&format!("openai:{}", entry.id))
+                multi
+                    .set_model(&format!("openai:{}", entry.id))
                     .with_context(|| format!("Failed to set model openai:{}", entry.id))?;
             }
             "siliconflow" => {
@@ -763,7 +833,8 @@ impl ModelRouter {
                     .with_context(|| format!("{} not set", entry.api_key_env))?;
                 std::env::set_var("OPENAI_API_KEY", &key);
                 std::env::set_var("OPENAI_BASE_URL", "https://api.siliconflow.com/v1");
-                multi.set_model(&format!("openai:{}", entry.id))
+                multi
+                    .set_model(&format!("openai:{}", entry.id))
                     .with_context(|| format!("Failed to set model openai:{}", entry.id))?;
                 // If the model has a LoRA adapter, set the extra_body env var
                 // so the provider can pass it in API requests.
@@ -781,14 +852,17 @@ impl ModelRouter {
                         "copilot CLI not found. Install GitHub Copilot CLI or set COPILOT_CLI_PATH"
                     ));
                 }
-                return Ok(Arc::new(crate::copilot_acp::CopilotAcpProvider::new(&entry.id)));
+                return Ok(Arc::new(crate::copilot_acp::CopilotAcpProvider::new(
+                    &entry.id,
+                )));
             }
             _ => {
                 // Unknown provider — try as openrouter model
                 let key = std::env::var(&entry.api_key_env)
                     .with_context(|| format!("{} not set", entry.api_key_env))?;
                 std::env::set_var("OPENROUTER_API_KEY", &key);
-                multi.set_model(&format!("openrouter:{}", entry.id))
+                multi
+                    .set_model(&format!("openrouter:{}", entry.id))
                     .with_context(|| format!("Failed to set model openrouter:{}", entry.id))?;
             }
         }
@@ -849,11 +923,7 @@ impl ModelRouter {
 
     /// Clear preferences for a tenant. If `capability` is Some, clear only
     /// that capability. If None, clear all preferences for the tenant.
-    pub fn clear_pref(
-        &mut self,
-        tenant: &str,
-        capability: Option<&str>,
-    ) -> Result<()> {
+    pub fn clear_pref(&mut self, tenant: &str, capability: Option<&str>) -> Result<()> {
         match capability {
             Some(cap) => {
                 if let Some(caps) = self.user_prefs.get_mut(tenant) {
@@ -872,10 +942,7 @@ impl ModelRouter {
 
     /// List all preferences for a tenant.
     pub fn list_prefs(&self, tenant: &str) -> HashMap<String, String> {
-        self.user_prefs
-            .get(tenant)
-            .cloned()
-            .unwrap_or_default()
+        self.user_prefs.get(tenant).cloned().unwrap_or_default()
     }
 
     /// Load preferences from the prefs_path file.
@@ -980,8 +1047,11 @@ mod tests {
     #[test]
     fn test_capability_parse_roundtrip() {
         for cap in &[
-            Capability::Coding, Capability::VoiceToText, Capability::Ocr,
-            Capability::Translation, Capability::Embedding,
+            Capability::Coding,
+            Capability::VoiceToText,
+            Capability::Ocr,
+            Capability::Translation,
+            Capability::Embedding,
         ] {
             let s = cap.as_str();
             let parsed = Capability::from_str(s);
@@ -1016,7 +1086,11 @@ mod tests {
     fn test_router_loads() {
         let router = ModelRouter::load().unwrap();
         let models = router.list_models();
-        assert!(models.len() > 5, "Expected many models, got {}", models.len());
+        assert!(
+            models.len() > 5,
+            "Expected many models, got {}",
+            models.len()
+        );
     }
 
     #[test]
@@ -1036,9 +1110,15 @@ mod tests {
         assert!(diag.contains_key("coding"));
         assert!(diag.contains_key("image_gen"));
         // New capabilities should appear in diagnostics
-        assert!(diag.contains_key("voice_to_text"), "voice_to_text not in diagnostics");
+        assert!(
+            diag.contains_key("voice_to_text"),
+            "voice_to_text not in diagnostics"
+        );
         assert!(diag.contains_key("ocr"), "ocr not in diagnostics");
-        assert!(diag.contains_key("embedding"), "embedding not in diagnostics");
+        assert!(
+            diag.contains_key("embedding"),
+            "embedding not in diagnostics"
+        );
     }
 
     #[test]

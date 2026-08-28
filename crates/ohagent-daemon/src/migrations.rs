@@ -63,10 +63,7 @@ pub fn run(conn: &Connection) -> Result<Vec<i64>, Box<dyn std::error::Error>> {
     if new_migrations.is_empty() {
         info!("All migrations up to date");
     } else {
-        info!(
-            count = new_migrations.len(),
-            "Applied new migrations"
-        );
+        info!(count = new_migrations.len(), "Applied new migrations");
     }
 
     Ok(new_migrations)

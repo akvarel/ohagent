@@ -9,13 +9,7 @@
 //!
 //! Token is resolved from Vault → env var `OHAGENT_API_KEY` → generated on startup.
 
-use axum::{
-    extract::Request,
-    http::StatusCode,
-    middleware::Next,
-    response::Response,
-    Extension,
-};
+use axum::{extract::Request, http::StatusCode, middleware::Next, response::Response, Extension};
 use std::sync::Arc;
 use tracing::warn;
 
@@ -206,12 +200,7 @@ mod tests {
     fn test_slack_signature_replay_rejection() {
         // Old timestamp
         let old_ts = "1000000"; // Way in the past
-        assert!(!verify_slack_signature(
-            "secret",
-            old_ts,
-            "body",
-            "v0=abc"
-        ));
+        assert!(!verify_slack_signature("secret", old_ts, "body", "v0=abc"));
     }
 
     #[test]

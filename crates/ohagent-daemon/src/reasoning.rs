@@ -23,10 +23,10 @@ use std::sync::{Arc, Mutex};
 use tracing::{debug, info, warn};
 
 use ohagent_core::model_router::{ModelRouter, RoutedModel};
-use ohagent_reasoning::budget::{BudgetTracker, BudgetConfig};
-use ohagent_reasoning::cmc::CmcConfig;
-use ohagent_reasoning::router::{ReasoningRouter, ReasoningAction, ReasoningStep};
 use ohagent_core::pricing::PricingRegistry;
+use ohagent_reasoning::budget::{BudgetConfig, BudgetTracker};
+use ohagent_reasoning::cmc::CmcConfig;
+use ohagent_reasoning::router::{ReasoningAction, ReasoningRouter, ReasoningStep};
 
 /// Result from an LLM call through the router.
 pub struct LlmCallResult {
@@ -77,14 +77,16 @@ impl CmcRouterIntegration {
         let mut results: Vec<LlmCallResult> = Vec::new();
 
         for i in 0..batch_size {
-            let routed = self.model_router
-                .lock().map_err(|e| format!("Model router lock: {e}"))?
+            let routed = self
+                .model_router
+                .lock()
+                .map_err(|e| format!("Model router lock: {e}"))?
                 .route(&self.tenant_id, message)
                 .map_err(|e| format!("Model routing failed: {e}"))?;
 
-            let (answer, tokens) = self.call_model(
-                &routed, message, &format!("Branch {i}")
-            ).await?;
+            let (answer, tokens) = self
+                .call_model(&routed, message, &format!("Branch {i}"))
+                .await?;
 
             results.push(LlmCallResult {
                 branch_index: i,
@@ -114,7 +116,11 @@ impl CmcRouterIntegration {
     /// Run the full CMC reasoning loop.
     ///
     /// Returns (final_answer, total_tokens, model_used).
-    pub async fn reason(&mut self, message: &str, max_iterations: usize) -> Result<(Option<String>, u64), String> {
+    pub async fn reason(
+        &mut self,
+        message: &str,
+        max_iterations: usize,
+    ) -> Result<(Option<String>, u64), String> {
         if self.reasoning.controller().branches().is_empty() {
             // Initial batch
             let batch = self.reasoning.controller().beta() as usize * 4 + 2;
@@ -127,7 +133,11 @@ impl CmcRouterIntegration {
             let action = self.reasoning.decide();
 
             match action {
-                ReasoningAction::Stop { answer, confidence, reason } => {
+                ReasoningAction::Stop {
+                    answer,
+                    confidence,
+                    reason,
+                } => {
                     info!(
                         answer = ?answer,
                         confidence = %confidence,
@@ -141,15 +151,20 @@ impl CmcRouterIntegration {
 
                 ReasoningAction::Probe { allocations } => {
                     for (branch_idx, steps) in &allocations {
-                        let routed = self.model_router
-                            .lock().map_err(|e| format!("Router lock: {e}"))?
+                        let routed = self
+                            .model_router
+                            .lock()
+                            .map_err(|e| format!("Router lock: {e}"))?
                             .route(&self.tenant_id, message)
                             .map_err(|e| format!("Routing failed: {e}"))?;
 
-                        let (answer, tokens) = self.call_model(
-                            &routed, message,
-                            &format!("Branch {}-step {}", branch_idx, steps)
-                        ).await?;
+                        let (answer, tokens) = self
+                            .call_model(
+                                &routed,
+                                message,
+                                &format!("Branch {}-step {}", branch_idx, steps),
+                            )
+                            .await?;
 
                         self.reasoning.apply_results(&[(
                             *branch_idx,
@@ -167,20 +182,18 @@ impl CmcRouterIntegration {
                 ReasoningAction::Widen { count } => {
                     info!(%count, "CMC widening — spawning more branches");
                     for _ in 0..count {
-                        let routed = self.model_router
-                            .lock().map_err(|e| format!("Router lock: {e}"))?
+                        let routed = self
+                            .model_router
+                            .lock()
+                            .map_err(|e| format!("Router lock: {e}"))?
                             .route(&self.tenant_id, message)
                             .map_err(|e| format!("Routing failed: {e}"))?;
 
-                        let (answer, tokens) = self.call_model(
-                            &routed, message, "Widened branch"
-                        ).await?;
+                        let (answer, tokens) =
+                            self.call_model(&routed, message, "Widened branch").await?;
 
                         // Add as a new branch
-                        self.reasoning.controller_mut().spawn_branch(
-                            answer,
-                            false,
-                        );
+                        self.reasoning.controller_mut().spawn_branch(answer, false);
                         let _ = tokens; // tracked via budget
                     }
                 }
@@ -221,7 +234,11 @@ impl CmcRouterIntegration {
 
         use futures::StreamExt;
 
-        match routed.provider.complete(&messages, &[], &system, None).await {
+        match routed
+            .provider
+            .complete(&messages, &[], &system, None)
+            .await
+        {
             Ok(mut stream) => {
                 let mut content = String::new();
                 while let Some(event) = stream.next().await {

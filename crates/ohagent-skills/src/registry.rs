@@ -80,9 +80,8 @@ impl SkillRegistry {
             ",
         )?;
         // Add pinned column (migration: safe to run on existing databases)
-        conn.execute_batch(
-            "ALTER TABLE skills ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;"
-        ).ok();
+        conn.execute_batch("ALTER TABLE skills ADD COLUMN pinned INTEGER NOT NULL DEFAULT 0;")
+            .ok();
         debug!("Skill schema initialized");
         Ok(())
     }
@@ -171,8 +170,10 @@ impl SkillRegistry {
 
         let mut stmt = conn.prepare(&query)?;
         let rows: Vec<Skill> = if let Some(st) = status {
-            stmt.query_map(params![tenant_id, st.to_string()], |row| Ok(Self::row_to_skill(row)))?
-                .collect::<std::result::Result<Vec<_>, _>>()?
+            stmt.query_map(params![tenant_id, st.to_string()], |row| {
+                Ok(Self::row_to_skill(row))
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?
         } else {
             stmt.query_map(params![tenant_id], |row| Ok(Self::row_to_skill(row)))?
                 .collect::<std::result::Result<Vec<_>, _>>()?
@@ -270,7 +271,7 @@ impl SkillRegistry {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
             "SELECT id, skill_id, session_id, tenant_id, success, rating, duration_secs, timestamp
-             FROM skill_usage WHERE skill_id = ?1 ORDER BY timestamp DESC LIMIT ?2"
+             FROM skill_usage WHERE skill_id = ?1 ORDER BY timestamp DESC LIMIT ?2",
         )?;
         let rows = stmt.query_map(params![skill_id, limit as i64], |row| {
             Ok(SkillUsage {
@@ -284,7 +285,8 @@ impl SkillRegistry {
                 timestamp: parse_dt(&row.get::<_, String>(7).unwrap_or_default()),
             })
         })?;
-        rows.collect::<std::result::Result<Vec<_>, _>>().map_err(Into::into)
+        rows.collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(Into::into)
     }
 
     // ── Helpers ──
@@ -304,7 +306,11 @@ impl SkillRegistry {
             status: parse_status(&row.get::<_, String>(8).unwrap_or_default()),
             created_at: parse_dt(&row.get::<_, String>(9).unwrap_or_default()),
             updated_at: parse_dt(&row.get::<_, String>(10).unwrap_or_default()),
-            last_used_at: row.get::<_, Option<String>>(11).ok().flatten().map(|s| parse_dt(&s)),
+            last_used_at: row
+                .get::<_, Option<String>>(11)
+                .ok()
+                .flatten()
+                .map(|s| parse_dt(&s)),
             use_count: row.get(12).unwrap_or(0),
             success_count: row.get(13).unwrap_or(0),
             failure_count: row.get(14).unwrap_or(0),
@@ -420,7 +426,9 @@ mod tests {
         let reg = SkillRegistry::open(test_config()).unwrap();
         for i in 0..3 {
             let mut sk = test_skill("t1", &format!("sk-{i}"));
-            if i == 0 { sk.status = SkillStatus::Active; }
+            if i == 0 {
+                sk.status = SkillStatus::Active;
+            }
             reg.save(&sk).unwrap();
         }
         let proposed = reg.list("t1", Some(&SkillStatus::Proposed), 10).unwrap();
@@ -445,7 +453,8 @@ mod tests {
                 rating: None,
                 duration_secs: None,
                 timestamp: Utc::now(),
-            }).unwrap();
+            })
+            .unwrap();
         }
 
         let updated = reg.get(&skill.id).unwrap().unwrap();

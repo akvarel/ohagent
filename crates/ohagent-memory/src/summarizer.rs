@@ -30,9 +30,12 @@ pub fn summarize_conversation(
 
     // Create a memory entry from the summary
     let mut tags = vec!["summary".to_string(), "conversation".to_string()];
-    tags.extend(summary.key_points.iter().map(|kp| {
-        kp.chars().take(30).collect::<String>()
-    }));
+    tags.extend(
+        summary
+            .key_points
+            .iter()
+            .map(|kp| kp.chars().take(30).collect::<String>()),
+    );
 
     let entry = MemoryEntry {
         id: Uuid::new_v4().to_string(),

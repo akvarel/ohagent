@@ -24,7 +24,8 @@ pub async fn plugin_audit_handler(State(state): State<ApiState>) -> Json<AuditLo
         .plugin_manager
         .as_ref()
         .map(|pm| {
-            pm.lock().unwrap()
+            pm.lock()
+                .unwrap()
                 .audit_log()
                 .into_iter()
                 .map(|e| AuditEntry {

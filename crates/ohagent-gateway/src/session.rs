@@ -5,7 +5,7 @@
 //! idle or when the session cache exceeds the maximum size (LRU).
 
 use dashmap::DashMap;
-use ohagent_core::jcode_bridge::{JcodeBridge, SessionHandle, SessionConfig};
+use ohagent_core::jcode_bridge::{JcodeBridge, SessionConfig, SessionHandle};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -86,18 +86,27 @@ impl SessionManager {
             "Creating new gateway session"
         );
 
+        let workspace_root = std::env::var("OHAGENT_GATEWAY_WORKSPACE_ROOT")
+            .unwrap_or_else(|_| "/tmp/ohagent/workspaces".to_string());
         let config = SessionConfig {
+            tenant_id: tenant_id.to_string(),
             model: None,
-            working_dir: Some(format!("/tmp/ohagent/{tenant_id}")),
+            working_dir: Some(format!(
+                "{workspace_root}/{}",
+                hashed_workspace_component(tenant_id)
+            )),
             selfdev: false,
             report_back_to: None,
         };
 
         let handle = self.bridge.create_session(config).await?;
-        self.sessions.insert(session_key.to_string(), SessionEntry {
-            handle: handle.clone(),
-            last_active: AtomicU64::new(now_millis()),
-        });
+        self.sessions.insert(
+            session_key.to_string(),
+            SessionEntry {
+                handle: handle.clone(),
+                last_active: AtomicU64::new(now_millis()),
+            },
+        );
 
         info!(
             session_key = %session_key,
@@ -133,7 +142,9 @@ impl SessionManager {
 
     /// Get an existing session handle (returns None if not found).
     pub fn get(&self, session_key: &str) -> Option<SessionHandle> {
-        self.sessions.get(session_key).map(|entry| entry.handle.clone())
+        self.sessions
+            .get(session_key)
+            .map(|entry| entry.handle.clone())
     }
 
     /// Get the number of active sessions.
@@ -143,7 +154,10 @@ impl SessionManager {
 
     /// List all active session keys.
     pub fn list_keys(&self) -> Vec<String> {
-        self.sessions.iter().map(|entry| entry.key().clone()).collect()
+        self.sessions
+            .iter()
+            .map(|entry| entry.key().clone())
+            .collect()
     }
 
     /// Evict sessions that have been idle beyond the TTL.
@@ -167,7 +181,9 @@ impl SessionManager {
 
     /// Evict the single least recently used session.
     fn evict_lru(&self) {
-        let lru_key = self.sessions.iter()
+        let lru_key = self
+            .sessions
+            .iter()
             .min_by_key(|entry| entry.last_active.load(Ordering::Relaxed))
             .map(|entry| entry.key().clone());
 
@@ -189,4 +205,22 @@ fn now_millis() -> u64 {
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_millis() as u64
+}
+
+fn hashed_workspace_component(value: &str) -> String {
+    use sha2::{Digest, Sha256};
+    format!("ws-{:x}", Sha256::digest(value.as_bytes()))
+}
+
+#[cfg(test)]
+mod tenant_workspace_tests {
+    use super::hashed_workspace_component;
+
+    #[test]
+    fn workspace_component_uses_frozen_sha256_tenant_key() {
+        assert_eq!(
+            hashed_workspace_component("tenant-a"),
+            "ws-80a707af7dc77ee1228f9127180f3964835e5beb4c4ab0d812f0fe7593579b3a"
+        );
+    }
 }

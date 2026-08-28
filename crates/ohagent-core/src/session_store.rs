@@ -65,9 +65,11 @@ impl SessionStore {
                 PRIMARY KEY (tenant_id, session_hash)
             );
             CREATE INDEX IF NOT EXISTS idx_sessions_activity
-                ON active_sessions(last_activity);"
+                ON active_sessions(last_activity);",
         )?;
-        Ok(Self { db: Mutex::new(conn) })
+        Ok(Self {
+            db: Mutex::new(conn),
+        })
     }
 
     /// Record activity for a session (upsert). Call on every message exchange.
@@ -102,19 +104,21 @@ impl SessionStore {
              FROM active_sessions
              ORDER BY last_activity DESC"
         )?;
-        let sessions = stmt.query_map([], |row| {
-            let last_str: String = row.get(2)?;
-            Ok(ActiveSession {
-                tenant_id: row.get(0)?,
-                session_hash: row.get(1)?,
-                last_activity: DateTime::parse_from_rfc3339(&last_str)
-                    .unwrap_or_default()
-                    .with_timezone(&Utc),
-                message_count: row.get(3)?,
-                total_tokens: row.get(4)?,
-                project_dir: row.get(5)?,
-            })
-        })?.collect::<std::result::Result<Vec<_>, _>>()?;
+        let sessions = stmt
+            .query_map([], |row| {
+                let last_str: String = row.get(2)?;
+                Ok(ActiveSession {
+                    tenant_id: row.get(0)?,
+                    session_hash: row.get(1)?,
+                    last_activity: DateTime::parse_from_rfc3339(&last_str)
+                        .unwrap_or_default()
+                        .with_timezone(&Utc),
+                    message_count: row.get(3)?,
+                    total_tokens: row.get(4)?,
+                    project_dir: row.get(5)?,
+                })
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
         Ok(sessions)
     }
 

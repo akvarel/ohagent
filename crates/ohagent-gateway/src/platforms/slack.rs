@@ -45,10 +45,9 @@ pub struct SlackAdapter {
 
 impl SlackAdapter {
     pub fn from_env() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        let bot_token = std::env::var("SLACK_BOT_TOKEN")
-            .map_err(|_| "SLACK_BOT_TOKEN not set")?;
-        let signing_secret = std::env::var("SLACK_SIGNING_SECRET")
-            .map_err(|_| "SLACK_SIGNING_SECRET not set")?;
+        let bot_token = std::env::var("SLACK_BOT_TOKEN").map_err(|_| "SLACK_BOT_TOKEN not set")?;
+        let signing_secret =
+            std::env::var("SLACK_SIGNING_SECRET").map_err(|_| "SLACK_SIGNING_SECRET not set")?;
 
         Ok(Self {
             bot_token,
@@ -105,8 +104,8 @@ impl SlackAdapter {
         }
 
         // Handle event callback
-        let event: SlackEvent = serde_json::from_str(body)
-            .map_err(|e| format!("Event parse: {e}"))?;
+        let event: SlackEvent =
+            serde_json::from_str(body).map_err(|e| format!("Event parse: {e}"))?;
 
         // Skip bot's own messages
         if let Some(ref e) = event.event {
@@ -141,7 +140,7 @@ impl SlackAdapter {
                 text: cleaned,
                 lang: Lang::En,
                 platform: "slack".into(),
-            attachment: None,
+                attachment: None,
             };
 
             if let Some(response) = dispatcher.handle_message(incoming).await {
@@ -150,7 +149,7 @@ impl SlackAdapter {
                         chat_id: channel,
                         text: response.text,
                         markdown: response.markdown,
-                                    inline_keyboard: response.inline_keyboard,
+                        inline_keyboard: response.inline_keyboard,
                     })
                     .await
                 {

@@ -82,30 +82,27 @@ async fn handle_ws(ws: WebSocket, state: ApiState) {
             match msg {
                 Message::Text(text) => {
                     let cmd = match serde_json::from_str::<serde_json::Value>(&text) {
-                        Ok(val) => {
-                            match val["type"].as_str() {
-                                Some("chat") => {
-                                    let model = val["model"].as_str().unwrap_or("deepseek-chat");
-                                    let messages: Vec<OpenAiWsMessage> =
-                                        serde_json::from_value(val["messages"].clone())
-                                            .unwrap_or_default();
-                                    let temperature = val["temperature"].as_f64().map(|t| t as f32);
-                                    let max_tokens = val["max_tokens"].as_u64().map(|t| t as u32);
-                                    let review = val.get("review")
-                                        .and_then(|v| v.as_bool())
-                                        .unwrap_or(false);
-                                    WsCommand::Chat {
-                                        model: model.to_string(),
-                                        messages,
-                                        temperature,
-                                        max_tokens,
-                                        review,
-                                    }
+                        Ok(val) => match val["type"].as_str() {
+                            Some("chat") => {
+                                let model = val["model"].as_str().unwrap_or("deepseek-chat");
+                                let messages: Vec<OpenAiWsMessage> =
+                                    serde_json::from_value(val["messages"].clone())
+                                        .unwrap_or_default();
+                                let temperature = val["temperature"].as_f64().map(|t| t as f32);
+                                let max_tokens = val["max_tokens"].as_u64().map(|t| t as u32);
+                                let review =
+                                    val.get("review").and_then(|v| v.as_bool()).unwrap_or(false);
+                                WsCommand::Chat {
+                                    model: model.to_string(),
+                                    messages,
+                                    temperature,
+                                    max_tokens,
+                                    review,
                                 }
-                                Some("cancel") => WsCommand::Cancel,
-                                _ => continue,
                             }
-                        }
+                            Some("cancel") => WsCommand::Cancel,
+                            _ => continue,
+                        },
                         Err(e) => {
                             tracing::warn!(error = %e, "Invalid WebSocket message");
                             continue;
@@ -130,16 +127,33 @@ async fn handle_ws(ws: WebSocket, state: ApiState) {
                 WsCommand::Cancel => {
                     send_json(&mut ws_tx, &serde_json::json!({"type": "cancelled"})).await;
                 }
-                WsCommand::Chat { model: _model, messages, temperature, max_tokens, review } => {
+                WsCommand::Chat {
+                    model: _model,
+                    messages,
+                    temperature,
+                    max_tokens,
+                    review,
+                } => {
                     let result = handle_chat(
-                        &state, &messages, temperature, max_tokens, review,
-                        &mut ws_tx, &cmd_tx_writer, &mut cmd_rx,
-                    ).await;
+                        &state,
+                        &messages,
+                        temperature,
+                        max_tokens,
+                        review,
+                        &mut ws_tx,
+                        &cmd_tx_writer,
+                        &mut cmd_rx,
+                    )
+                    .await;
                     if let Err(e) = result {
-                        send_json(&mut ws_tx, &serde_json::json!({
-                            "type": "error",
-                            "message": e,
-                        })).await;
+                        send_json(
+                            &mut ws_tx,
+                            &serde_json::json!({
+                                "type": "error",
+                                "message": e,
+                            }),
+                        )
+                        .await;
                     }
                 }
             }
@@ -172,21 +186,23 @@ async fn handle_chat(
     // When review=true, memory RAG and skills are skipped for unbiased analysis.
     let system = if let Some(ref builder) = state.system_prompt_builder {
         let budget = crate::system_prompt::PromptBudget::from_window(128_000);
-        let project_dir = std::env::current_dir()
-            .unwrap_or_else(|_| std::path::PathBuf::from("."));
+        let project_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
 
-        let user_msg = messages.last()
-            .map(|m| m.content.as_str())
-            .unwrap_or("");
+        let user_msg = messages.last().map(|m| m.content.as_str()).unwrap_or("");
 
         // In review mode, skip loading compressed history and memory RAG
         // to avoid biasing the agent with accumulated context.
         let compressed: Option<String> = if !review {
             state.memory.as_ref().and_then(|mem| {
-                ohagent_memory::rolling_summary::load_or_create(
-                    mem.store(), "default", "default",
-                ).ok()
-                .and_then(|rs| if rs.compressed_history.is_empty() { None } else { Some(rs.compressed_history) })
+                ohagent_memory::rolling_summary::load_or_create(mem.store(), "default", "default")
+                    .ok()
+                    .and_then(|rs| {
+                        if rs.compressed_history.is_empty() {
+                            None
+                        } else {
+                            Some(rs.compressed_history)
+                        }
+                    })
             })
         } else {
             None
@@ -194,10 +210,14 @@ async fn handle_chat(
 
         let rag_strings: Vec<String> = if !review {
             if let Some(ref mem) = state.memory {
-                mem.search("default", user_msg).ok()
-                    .map(|r| r.into_iter().take(5)
-                        .map(|r| format!("[{}] {}", r.entry.id, r.entry.content))
-                        .collect())
+                mem.search("default", user_msg)
+                    .ok()
+                    .map(|r| {
+                        r.into_iter()
+                            .take(5)
+                            .map(|r| format!("[{}] {}", r.entry.id, r.entry.content))
+                            .collect()
+                    })
                     .unwrap_or_default()
             } else {
                 Vec::new()
@@ -207,8 +227,13 @@ async fn handle_chat(
         };
 
         let assembled = builder.assemble(
-            &project_dir, user_msg, &system,
-            compressed.as_deref(), &rag_strings, &budget, review,
+            &project_dir,
+            user_msg,
+            &system,
+            compressed.as_deref(),
+            &rag_strings,
+            &budget,
+            review,
         );
         assembled.system
     } else {
@@ -216,15 +241,15 @@ async fn handle_chat(
     };
 
     let started = Instant::now();
-    let input_tokens = ohagent_core::context_estimator::estimate_conversation_tokens(
-        &jcode_msgs, &system,
-    );
+    let input_tokens =
+        ohagent_core::context_estimator::estimate_conversation_tokens(&jcode_msgs, &system);
 
     // Session heartbeat — skipped in review mode to avoid persisting ephemeral sessions
     if !review {
         if let Some(ref ss) = state.session_store {
             let tenant = "default";
-            let shash = &messages.first()
+            let shash = &messages
+                .first()
                 .map(|m| {
                     use std::hash::{Hash, Hasher};
                     let mut h = std::collections::hash_map::DefaultHasher::new();
@@ -232,20 +257,27 @@ async fn handle_chat(
                     format!("{:x}", h.finish())
                 })
                 .unwrap_or_else(|| "default".into());
-            let _ = ss.heartbeat(tenant, shash, messages.len() as u32, input_tokens as u64, ".");
+            let _ = ss.heartbeat(
+                tenant,
+                shash,
+                messages.len() as u32,
+                input_tokens as u64,
+                ".",
+            );
         }
     }
 
     // Resolve provider
-    let provider: Arc<dyn jcode_provider_core::Provider> = if let Some(ref router) = state.model_router {
+    let provider: Arc<dyn jcode_provider_core::Provider> = if let Some(ref router) =
+        state.model_router
+    {
         match router.lock() {
             Ok(r) => {
-                let msg = messages.last()
-                    .map(|m| m.content.as_str())
-                    .unwrap_or("");
+                let msg = messages.last().map(|m| m.content.as_str()).unwrap_or("");
                 match r.route_with_messages("default", msg, Some(&jcode_msgs), Some(&system)) {
                     Ok(rm) => rm.provider,
-                    Err(_) => Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>,
+                    Err(_) => Arc::clone(state.bridge.provider())
+                        as Arc<dyn jcode_provider_core::Provider>,
                 }
             }
             Err(_) => Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>,
@@ -258,16 +290,20 @@ async fn handle_chat(
 
     // Build tool definitions from the tool registry
     let tool_defs: Vec<ToolDefinition> = if let Some(ref tr) = state.tool_registry {
-        tr.list().into_iter().map(|(name, desc)| {
-            let schema = tr.get(&name)
-                .map(|t| t.parameters_schema.clone())
-                .unwrap_or(serde_json::Value::Null);
-            ToolDefinition {
-                name,
-                description: desc,
-                input_schema: schema,
-            }
-        }).collect()
+        tr.list()
+            .into_iter()
+            .map(|(name, desc)| {
+                let schema = tr
+                    .get(&name)
+                    .map(|t| t.parameters_schema.clone())
+                    .unwrap_or(serde_json::Value::Null);
+                ToolDefinition {
+                    name,
+                    description: desc,
+                    input_schema: schema,
+                }
+            })
+            .collect()
     } else {
         Vec::new()
     };
@@ -282,7 +318,9 @@ async fn handle_chat(
     let runner_msgs = jcode_msgs.clone();
     let runner_system = system.clone();
     let runner_defs = tool_defs.clone();
-    let runner_tr = state.tool_registry.clone()
+    let runner_tr = state
+        .tool_registry
+        .clone()
         .unwrap_or_else(|| Arc::new(ohagent_core::tools::ToolRegistry::new()));
 
     let handle = tokio::spawn(async move {
@@ -294,7 +332,8 @@ async fn handle_chat(
             runner_tr,
             event_tx,
             agent_runner::ToolProgressMode::All,
-        ).await
+        )
+        .await
     });
 
     // Drain agent events and stream to client.

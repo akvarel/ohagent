@@ -112,9 +112,15 @@ impl CmcConfig {
     }
 
     /// Pre-set configs for common use cases.
-    pub fn cheap() -> Self { Self::new(0.1) }
-    pub fn balanced() -> Self { Self::new(0.5) }
-    pub fn thorough() -> Self { Self::new(1.0) }
+    pub fn cheap() -> Self {
+        Self::new(0.1)
+    }
+    pub fn balanced() -> Self {
+        Self::new(0.5)
+    }
+    pub fn thorough() -> Self {
+        Self::new(1.0)
+    }
 }
 
 impl Default for CmcConfig {
@@ -180,7 +186,11 @@ impl CmcController {
                 abandoned: false,
                 probe_count: 0,
                 disagree_rounds: 0,
-                confidence: if finished && answer.is_some() { 0.8 } else { 0.3 },
+                confidence: if finished && answer.is_some() {
+                    0.8
+                } else {
+                    0.3
+                },
             };
             if finished {
                 if let Some(ref a) = answer {
@@ -193,7 +203,13 @@ impl CmcController {
     }
 
     /// Add a new probe result for a branch.
-    pub fn probe_result(&mut self, branch_idx: usize, answer: Option<String>, finished: bool, confidence: f64) {
+    pub fn probe_result(
+        &mut self,
+        branch_idx: usize,
+        answer: Option<String>,
+        finished: bool,
+        confidence: f64,
+    ) {
         if let Some(br) = self.branches.get_mut(branch_idx) {
             br.latest_answer = answer.clone();
             br.finished = finished;
@@ -217,7 +233,11 @@ impl CmcController {
             abandoned: false,
             probe_count: 0,
             disagree_rounds: 0,
-            confidence: if finished && answer.is_some() { 0.8 } else { 0.3 },
+            confidence: if finished && answer.is_some() {
+                0.8
+            } else {
+                0.3
+            },
         };
         if finished {
             if let Some(ref a) = answer {
@@ -272,7 +292,8 @@ impl CmcController {
 
         // Update EMA
         self.ema_conf_prev = self.ema_conf;
-        self.ema_conf = self.config.ema_alpha * stats.confidence + (1.0 - self.config.ema_alpha) * self.ema_conf_prev;
+        self.ema_conf = self.config.ema_alpha * stats.confidence
+            + (1.0 - self.config.ema_alpha) * self.ema_conf_prev;
         self.ema_history.push(self.ema_conf);
         if self.ema_history.len() > self.config.ema_window {
             self.ema_history.remove(0);
@@ -311,10 +332,8 @@ impl CmcController {
         }
 
         // ── Check all branches resolved (only if branches exist) ──
-        let all_resolved = !self.branches.is_empty()
-            && self.branches
-            .iter()
-            .all(|br| br.finished || br.abandoned);
+        let all_resolved =
+            !self.branches.is_empty() && self.branches.iter().all(|br| br.finished || br.abandoned);
         if all_resolved {
             return CmcDecision::Exhausted {
                 answer: stats.winner.clone(),
@@ -339,12 +358,14 @@ impl CmcController {
 
         // ── Check abandonment ──
         if warm_enough && stats.winner.is_some() {
-            let n_alive = self.branches
+            let n_alive = self
+                .branches
                 .iter()
                 .filter(|br| !br.abandoned && !br.finished)
                 .count();
 
-            let mut to_abandon: Vec<usize> = self.branches
+            let mut to_abandon: Vec<usize> = self
+                .branches
                 .iter()
                 .filter(|br| {
                     !br.abandoned
@@ -371,8 +392,7 @@ impl CmcController {
         }
 
         // ── Check widening ──
-        let can_widen = self.total_spawned < self.config.max_branch_use
-            && self.total_spawned < 64;
+        let can_widen = self.total_spawned < self.config.max_branch_use && self.total_spawned < 64;
         let trend_weak = ema_delta <= self.config.trend_thresh;
         let want_widen = can_widen
             && trend_weak
@@ -521,9 +541,7 @@ mod tests {
     #[test]
     fn test_pool_stats_consensus() {
         let mut ctrl = CmcController::new(CmcConfig::balanced());
-        ctrl.completed_answers = vec![
-            "A".into(), "A".into(), "A".into(), "A".into(), "B".into(),
-        ];
+        ctrl.completed_answers = vec!["A".into(), "A".into(), "A".into(), "A".into(), "B".into()];
         let stats = ctrl.pool_stats();
         assert_eq!(stats.winner, Some("A".into()));
         assert_eq!(stats.top1_count, 4);
@@ -564,14 +582,22 @@ mod tests {
         let mut ctrl = CmcController::new(CmcConfig::new(0.5));
         // Add branches that are all finished
         ctrl.branches.push(BranchState {
-            index: 0, latest_answer: Some("A".into()), finished: true, abandoned: false,
-            probe_count: 1, disagree_rounds: 0, confidence: 0.9,
+            index: 0,
+            latest_answer: Some("A".into()),
+            finished: true,
+            abandoned: false,
+            probe_count: 1,
+            disagree_rounds: 0,
+            confidence: 0.9,
         });
         ctrl.completed_answers.push("A".into());
         // Need to go through enough steps to be warm
         ctrl.outer_step = 10;
         let decision = ctrl.step();
-        assert!(matches!(decision, CmcDecision::Stop { .. } | CmcDecision::Exhausted { .. }));
+        assert!(matches!(
+            decision,
+            CmcDecision::Stop { .. } | CmcDecision::Exhausted { .. }
+        ));
     }
 
     #[test]
@@ -580,12 +606,22 @@ mod tests {
         ctrl.completed_answers = vec!["A".into(), "A".into()];
         ctrl.branches = vec![
             BranchState {
-                index: 0, latest_answer: Some("A".into()), finished: false, abandoned: false,
-                probe_count: 5, disagree_rounds: 0, confidence: 0.8,
+                index: 0,
+                latest_answer: Some("A".into()),
+                finished: false,
+                abandoned: false,
+                probe_count: 5,
+                disagree_rounds: 0,
+                confidence: 0.8,
             },
             BranchState {
-                index: 1, latest_answer: Some("B".into()), finished: false, abandoned: false,
-                probe_count: 3, disagree_rounds: 1, confidence: 0.4,
+                index: 1,
+                latest_answer: Some("B".into()),
+                finished: false,
+                abandoned: false,
+                probe_count: 3,
+                disagree_rounds: 1,
+                confidence: 0.4,
             },
         ];
 

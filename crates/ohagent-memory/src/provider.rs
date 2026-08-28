@@ -41,10 +41,7 @@ pub trait MemoryProvider: Send + Sync {
     ) -> Result<Vec<MemoryEntry>>;
 
     /// Get all entries with embeddings (for vector search).
-    fn entries_with_embeddings(
-        &self,
-        tenant_id: &str,
-    ) -> Result<Vec<(MemoryEntry, Vec<f32>)>>;
+    fn entries_with_embeddings(&self, tenant_id: &str) -> Result<Vec<(MemoryEntry, Vec<f32>)>>;
 
     /// Number of entries for a tenant.
     fn count(&self, tenant_id: &str) -> Result<usize>;
@@ -58,11 +55,8 @@ pub trait MemoryProvider: Send + Sync {
     fn save_summary(&self, summary: &ConversationSummary) -> Result<()>;
 
     /// Retrieve a conversation summary.
-    fn get_summary(
-        &self,
-        tenant_id: &str,
-        session_id: &str,
-    ) -> Result<Option<ConversationSummary>>;
+    fn get_summary(&self, tenant_id: &str, session_id: &str)
+        -> Result<Option<ConversationSummary>>;
 
     // ── Rolling Summaries ──
 

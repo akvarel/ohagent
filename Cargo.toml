@@ -6,7 +6,6 @@ members = [
     "crates/ohagent-gateway",
     "crates/ohagent-memory",
     "crates/ohagent-skills",
-    "crates/ohagent-cron",
     "crates/ohagent-swarm",
     "crates/ohagent-reasoning",
     "crates/ohagent-desktop-mcp",

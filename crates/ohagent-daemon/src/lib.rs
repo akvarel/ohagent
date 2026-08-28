@@ -4,17 +4,17 @@
 //! Manages lifecycle, health checks, graceful shutdown,
 //! hosts the messaging gateway, and serves the REST API.
 
-mod security_guard;
 mod api;
 mod auth;
-mod health;
 mod context_compressor;
+mod health;
 mod metrics;
 mod migrations;
 mod openai_api;
 mod plugin_api;
 mod rate_limiter;
 mod reasoning;
+mod security_guard;
 mod system_prompt;
 mod webhooks;
 mod ws;
@@ -26,24 +26,24 @@ use tokio::signal;
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
+use crate::health::HealthRegistry;
+use crate::system_prompt::{PersistentInstructions, SkillPrompt, SystemPromptBuilder};
+use jcode_base::mcp::SharedMcpPool;
+use jcode_provider_core::Provider;
 use ohagent_core::config::OhAgentConfig;
 use ohagent_core::jcode_bridge::JcodeBridge;
 use ohagent_core::vault::{resolve_secret, VaultClient};
-use ohagent_gateway::platforms::telegram::TelegramAdapter;
-use ohagent_gateway::platforms::whatsapp::WhatsAppAdapter;
-use ohagent_gateway::platforms::slack::SlackAdapter;
-use ohagent_gateway::platforms::viber::ViberAdapter;
 use ohagent_gateway::adapter::PlatformAdapter;
+use ohagent_gateway::platforms::slack::SlackAdapter;
+use ohagent_gateway::platforms::telegram::TelegramAdapter;
+use ohagent_gateway::platforms::viber::ViberAdapter;
+use ohagent_gateway::platforms::whatsapp::WhatsAppAdapter;
 use ohagent_memory::engine::MemoryEngine;
 use ohagent_memory::models::MemoryConfig;
-use ohagent_skills::registry::SkillRegistry;
-use ohagent_skills::SkillConfig;
-use crate::health::HealthRegistry;
-use crate::system_prompt::{PersistentInstructions, SystemPromptBuilder, SkillPrompt};
-use jcode_provider_core::Provider;
-use jcode_base::mcp::SharedMcpPool;
 use ohagent_plugins::PluginManager;
 use ohagent_provider_metrics::{GeminiOcrClient, GeminiOcrConfig};
+use ohagent_skills::registry::SkillRegistry;
+use ohagent_skills::SkillConfig;
 use std::sync::Mutex as StdMutex;
 
 /// Register external provider runtimes (OpenRouter, OpenAI-compatible profiles).
@@ -143,11 +143,10 @@ struct Daemon {
 impl Daemon {
     fn new(health_port: u16, enable_telegram: bool, config_path: &str) -> Result<Self> {
         // ── Phase 0: Config + Logging ──
-        let config = OhAgentConfig::load(config_path)
-            .unwrap_or_else(|e| {
-                tracing::warn!(error = %e, "Config load failed — using defaults");
-                OhAgentConfig::default()
-            });
+        let config = OhAgentConfig::load(config_path).unwrap_or_else(|e| {
+            tracing::warn!(error = %e, "Config load failed — using defaults");
+            OhAgentConfig::default()
+        });
         let health = HealthRegistry::new();
 
         // Register all components so /health shows them immediately
@@ -224,69 +223,90 @@ impl Daemon {
 
         // Resolve provider API keys via Vault → env → keys.toml
         // Spawn a separate OS thread to avoid tokio runtime nesting
-        let (deepseek_key, anthropic_key, openai_key, siliconflow_key, zai_key, scaleway_key, scaleway_project, groq_key, google_key) = {
+        let (
+            deepseek_key,
+            anthropic_key,
+            openai_key,
+            siliconflow_key,
+            zai_key,
+            scaleway_key,
+            scaleway_project,
+            groq_key,
+            google_key,
+        ) = {
             let vault = vault.clone();
             let keys_config = keys_config.clone();
             std::thread::spawn(move || {
                 let rt = tokio::runtime::Runtime::new().expect("key resolution runtime");
                 rt.block_on(async {
-            let dk = resolve_secret(
-                &vault,
-                "providers/deepseek/api-key",
-                "DEEPSEEK_API_KEY",
-                &keys_config,
-            ).await;
-            let ak = resolve_secret(
-                &vault,
-                "providers/anthropic/api-key",
-                "ANTHROPIC_API_KEY",
-                &keys_config,
-            ).await;
-            let ok = resolve_secret(
-                &vault,
-                "providers/openai/api-key",
-                "OPENAI_API_KEY",
-                &keys_config,
-            ).await;
-            let sfk = resolve_secret(
-                &vault,
-                "providers/siliconflow/api-key",
-                "SF_API_KEY",
-                &keys_config,
-            ).await;
-            let swk = resolve_secret(
-                &vault,
-                "providers/scaleway/secret-key",
-                "SCW_SECRET_KEY",
-                &keys_config,
-            ).await;
-            let swp = resolve_secret(
-                &vault,
-                "providers/scaleway/project-id",
-                "SCW_PROJECT_ID",
-                &keys_config,
-            ).await;
-            let gqk = resolve_secret(
-                &vault,
-                "providers/groq/api-key",
-                "GROQ_API_KEY",
-                &keys_config,
-            ).await;
-            let zk = resolve_secret(
-                &vault,
-                "providers/zai/api-key",
-                "ZAI_API_KEY",
-                &keys_config,
-            ).await;
-            let gok = resolve_secret(
-                &vault,
-                "providers/google/api-key",
-                "GOOGLE_API_KEY",
-                &keys_config,
-            ).await;
-            (dk, ak, ok, sfk, zk, swk, swp, gqk, gok)
+                    let dk = resolve_secret(
+                        &vault,
+                        "providers/deepseek/api-key",
+                        "DEEPSEEK_API_KEY",
+                        &keys_config,
+                    )
+                    .await;
+                    let ak = resolve_secret(
+                        &vault,
+                        "providers/anthropic/api-key",
+                        "ANTHROPIC_API_KEY",
+                        &keys_config,
+                    )
+                    .await;
+                    let ok = resolve_secret(
+                        &vault,
+                        "providers/openai/api-key",
+                        "OPENAI_API_KEY",
+                        &keys_config,
+                    )
+                    .await;
+                    let sfk = resolve_secret(
+                        &vault,
+                        "providers/siliconflow/api-key",
+                        "SF_API_KEY",
+                        &keys_config,
+                    )
+                    .await;
+                    let swk = resolve_secret(
+                        &vault,
+                        "providers/scaleway/secret-key",
+                        "SCW_SECRET_KEY",
+                        &keys_config,
+                    )
+                    .await;
+                    let swp = resolve_secret(
+                        &vault,
+                        "providers/scaleway/project-id",
+                        "SCW_PROJECT_ID",
+                        &keys_config,
+                    )
+                    .await;
+                    let gqk = resolve_secret(
+                        &vault,
+                        "providers/groq/api-key",
+                        "GROQ_API_KEY",
+                        &keys_config,
+                    )
+                    .await;
+                    let zk = resolve_secret(
+                        &vault,
+                        "providers/zai/api-key",
+                        "ZAI_API_KEY",
+                        &keys_config,
+                    )
+                    .await;
+                    let gok = resolve_secret(
+                        &vault,
+                        "providers/google/api-key",
+                        "GOOGLE_API_KEY",
+                        &keys_config,
+                    )
+                    .await;
+                    (dk, ak, ok, sfk, zk, swk, swp, gqk, gok)
                 })
-            }).join().unwrap()
+            })
+            .join()
+            .unwrap()
         };
 
         // Set resolved keys into env for jcode provider resolution
@@ -316,12 +336,13 @@ impl Daemon {
         }
         if let Some(ref key) = google_key {
             std::env::set_var("GOOGLE_API_KEY", key);
-            std::env::set_var("GEMINI_API_KEY", key);  // Jcode's Gemini provider
+            std::env::set_var("GEMINI_API_KEY", key); // Jcode's Gemini provider
         }
 
         // Resolve TELEGRAM_BOT_TOKEN from keys.toml if not in env
         if std::env::var("TELEGRAM_BOT_TOKEN").is_err() {
-            let telegram_key = keys_config.get("TELEGRAM_BOT_TOKEN")
+            let telegram_key = keys_config
+                .get("TELEGRAM_BOT_TOKEN")
                 .or_else(|| keys_config.get("telegram_bot_token"))
                 .cloned();
             if let Some(key) = telegram_key {
@@ -340,14 +361,20 @@ impl Daemon {
                 match multi.set_model(provider_model) {
                     Ok(()) => {
                         info!(provider = %multi.display_name(), "Primary provider: configured from config");
-                        health.set_healthy("provider", &format!("Provider: {}", multi.display_name()));
+                        health.set_healthy(
+                            "provider",
+                            &format!("Provider: {}", multi.display_name()),
+                        );
                     }
                     Err(e) => {
                         // Try fallback
                         tracing::warn!(error = %e, "Failed to set primary model — trying fallback");
                         if let Ok(_) = multi.set_model(&config.providers.fallback_model) {
                             info!(provider = %multi.display_name(), "Fallback provider active");
-                            health.set_healthy("provider", &format!("Fallback provider: {}", multi.display_name()));
+                            health.set_healthy(
+                                "provider",
+                                &format!("Fallback provider: {}", multi.display_name()),
+                            );
                         } else {
                             tracing::warn!("No provider configured — may need /login");
                             health.set_degraded("provider", "No provider API key configured");
@@ -378,9 +405,9 @@ impl Daemon {
             Ok(log) => {
                 info!("Message log initialized");
                 // Apply migrations to message log DB
-                if let Err(e) = log.with_conn(|conn| {
-                    migrations::run(conn).map_err(|e| anyhow::anyhow!("{e}"))
-                }) {
+                if let Err(e) =
+                    log.with_conn(|conn| migrations::run(conn).map_err(|e| anyhow::anyhow!("{e}")))
+                {
                     tracing::warn!(error = %e, "Message log migrations failed");
                 }
                 health.set_healthy("message_log", "Message logging active");
@@ -419,7 +446,10 @@ impl Daemon {
         );
         let tool_registry = Arc::new(tool_registry);
         bridge = bridge.with_tools((*tool_registry).clone());
-        info!(tools = tool_registry.list().len(), "Built-in tools registered");
+        info!(
+            tools = tool_registry.list().len(),
+            "Built-in tools registered"
+        );
 
         // Initialize push notification service
         let push = match std::env::var("TELEGRAM_BOT_TOKEN") {
@@ -442,7 +472,9 @@ impl Daemon {
             let (connected, failures) = std::thread::spawn(move || {
                 let rt = tokio::runtime::Runtime::new().expect("mcp runtime");
                 rt.block_on(pool_clone.connect_all())
-            }).join().unwrap();
+            })
+            .join()
+            .unwrap();
             if !failures.is_empty() {
                 for (name, err) in &failures {
                     tracing::warn!(
@@ -469,7 +501,10 @@ impl Daemon {
                     failed = failures.len(),
                     "MCP pool: all server connections failed"
                 );
-                health.set_degraded("mcp_pool", &format!("All {} servers failed", failures.len()));
+                health.set_degraded(
+                    "mcp_pool",
+                    &format!("All {} servers failed", failures.len()),
+                );
                 None
             }
         };
@@ -511,7 +546,8 @@ impl Daemon {
         // Initialize usage tracker
         let usage_db_path = config.resolve_path(&config.paths.usage_db);
         let usage = match ohagent_core::usage_tracker::UsageTracker::open(
-            &usage_db_path.to_string_lossy(), None,
+            &usage_db_path.to_string_lossy(),
+            None,
         ) {
             Ok(t) => {
                 info!("Usage tracker initialized");
@@ -578,10 +614,8 @@ impl Daemon {
         ));
 
         // Initialize Prometheus metrics
-        let prom_metrics = Arc::new(
-            metrics::Metrics::new()
-                .expect("Failed to register Prometheus metrics"),
-        );
+        let prom_metrics =
+            Arc::new(metrics::Metrics::new().expect("Failed to register Prometheus metrics"));
 
         // Build system prompt with skills loaded once at startup.
         let system_prompt_builder = {
@@ -608,13 +642,19 @@ impl Daemon {
 
             if persistent.skills.is_empty() {
                 info!("SystemPromptBuilder: no skills loaded — rules-only mode");
-                Some(SystemPromptBuilder::new(persistent.skills, persistent.tenant_overrides))
+                Some(SystemPromptBuilder::new(
+                    persistent.skills,
+                    persistent.tenant_overrides,
+                ))
             } else {
                 info!(
                     skills = persistent.skills.len(),
                     "SystemPromptBuilder initialized"
                 );
-                Some(SystemPromptBuilder::new(persistent.skills, persistent.tenant_overrides))
+                Some(SystemPromptBuilder::new(
+                    persistent.skills,
+                    persistent.tenant_overrides,
+                ))
             }
         };
 
@@ -632,7 +672,10 @@ impl Daemon {
                     "Session store initialized"
                 );
                 let count = active.len();
-                health.set_healthy("session_store", &format!("{count} sessions, {cleaned} cleaned"));
+                health.set_healthy(
+                    "session_store",
+                    &format!("{count} sessions, {cleaned} cleaned"),
+                );
                 if !active.is_empty() {
                     for s in &active {
                         tracing::debug!(
@@ -682,7 +725,9 @@ impl Daemon {
         });
 
         // Initialize Scheduler
-        let scheduler = push.as_ref().map(|p| Arc::new(ohagent_core::scheduler::Scheduler::new(Some(Arc::clone(p)))));
+        let scheduler = push
+            .as_ref()
+            .map(|p| Arc::new(ohagent_core::scheduler::Scheduler::new(Some(Arc::clone(p)))));
         if scheduler.is_none() {
             health.set_degraded("scheduler", "Push not configured — scheduler disabled");
         }
@@ -907,7 +952,7 @@ impl Daemon {
             // Use two intervals: short for eval, longer for creation & curation
             let mut eval_tick = tokio::time::interval(std::time::Duration::from_secs(300)); // 5 min
             let mut create_tick = tokio::time::interval(std::time::Duration::from_secs(600)); // 10 min
-            // Curate every other eval cycle (≈10 min) for simplicity
+                                                                                              // Curate every other eval cycle (≈10 min) for simplicity
             let mut curate_tick = tokio::time::interval(std::time::Duration::from_secs(600));
 
             loop {
@@ -1033,8 +1078,7 @@ pub async fn run() -> Result<()> {
 
     tracing_subscriber::fmt()
         .with_env_filter(
-            EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new(&cli.log_level)),
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(&cli.log_level)),
         )
         .init();
 

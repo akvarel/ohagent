@@ -1,8 +1,8 @@
 //! Speed benchmark — measures real-world latency and throughput per provider.
 
+use crate::models::SpeedRecord;
 use chrono::Utc;
 use std::time::Instant;
-use crate::models::SpeedRecord;
 
 pub struct SpeedBenchmark {
     client: reqwest::Client,
@@ -20,10 +20,11 @@ pub struct BenchmarkConfig {
 
 impl SpeedBenchmark {
     pub fn new() -> Self {
-        Self { client: reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(60))
-            .build()
-            .unwrap_or_default()
+        Self {
+            client: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(60))
+                .build()
+                .unwrap_or_default(),
         }
     }
 
@@ -47,7 +48,8 @@ impl SpeedBenchmark {
             let mut first_token_time: Option<u64> = None;
             let mut token_count: u32 = 0;
 
-            let result = self.client
+            let result = self
+                .client
                 .post(&format!("{}/chat/completions", config.api_base))
                 .header("Authorization", format!("Bearer {}", config.api_key))
                 .header("Content-Type", "application/json")
@@ -72,11 +74,17 @@ impl SpeedBenchmark {
                             // Parse SSE data lines
                             for line in text.lines() {
                                 if let Some(data) = line.strip_prefix("data: ") {
-                                    if data == "[DONE]" { continue; }
-                                    if let Ok(obj) = serde_json::from_str::<serde_json::Value>(data) {
-                                        if let Some(content) = obj["choices"][0]["delta"]["content"].as_str() {
+                                    if data == "[DONE]" {
+                                        continue;
+                                    }
+                                    if let Ok(obj) = serde_json::from_str::<serde_json::Value>(data)
+                                    {
+                                        if let Some(content) =
+                                            obj["choices"][0]["delta"]["content"].as_str()
+                                        {
                                             if first_token_time.is_none() {
-                                                first_token_time = Some(start.elapsed().as_millis() as u64);
+                                                first_token_time =
+                                                    Some(start.elapsed().as_millis() as u64);
                                             }
                                             // Count approximate tokens (~4 chars per token)
                                             token_count += (content.len() as u32 / 4).max(1);
@@ -101,7 +109,9 @@ impl SpeedBenchmark {
                 total_latency_samples.push(elapsed.as_millis() as u64);
                 let tps = if elapsed.as_secs_f64() > 0.0 {
                     token_count as f64 / elapsed.as_secs_f64()
-                } else { 0.0 };
+                } else {
+                    0.0
+                };
                 tps_samples.push(tps);
             }
         }
@@ -109,7 +119,12 @@ impl SpeedBenchmark {
         let samples = ttf_samples.len() as u32;
 
         SpeedRecord {
-            id: format!("bench:{}:{}:{}", config.provider, config.model_id.replace('/', "_"), Utc::now().timestamp()),
+            id: format!(
+                "bench:{}:{}:{}",
+                config.provider,
+                config.model_id.replace('/', "_"),
+                Utc::now().timestamp()
+            ),
             provider: config.provider.clone(),
             model_id: config.model_id.clone(),
             ttf_ms: median(&ttf_samples),
@@ -120,25 +135,35 @@ impl SpeedBenchmark {
             completion_tokens: 500,
             samples,
             measured_at: Utc::now(),
-            error: if errors.is_empty() { None } else { Some(errors.join("; ")) },
+            error: if errors.is_empty() {
+                None
+            } else {
+                Some(errors.join("; "))
+            },
         }
     }
 }
 
 fn median(v: &[u64]) -> u64 {
-    if v.is_empty() { return 0; }
+    if v.is_empty() {
+        return 0;
+    }
     let mut sorted: Vec<u64> = v.to_vec();
     sorted.sort();
     sorted[sorted.len() / 2]
 }
 
 fn avg(v: &[f64]) -> f64 {
-    if v.is_empty() { return 0.0; }
+    if v.is_empty() {
+        return 0.0;
+    }
     v.iter().sum::<f64>() / v.len() as f64
 }
 
 fn p95(v: &[u64]) -> u64 {
-    if v.is_empty() { return 0; }
+    if v.is_empty() {
+        return 0;
+    }
     let mut sorted: Vec<u64> = v.to_vec();
     sorted.sort();
     let idx = ((sorted.len() as f64) * 0.95) as usize;

@@ -11,10 +11,10 @@ pub mod session;
 
 pub mod platforms {
     //! Platform-specific adapters.
+    pub mod slack;
     pub mod telegram;
     pub mod viber;
     pub mod whatsapp;
-    pub mod slack;
 }
 
 /// Gateway result type.

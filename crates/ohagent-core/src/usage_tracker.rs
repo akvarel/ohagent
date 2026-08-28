@@ -21,7 +21,7 @@ pub struct UsageRecord {
     pub session_id: String,
     pub model_id: String,
     pub model_display: String,
-    pub capabilities: String,      // JSON array
+    pub capabilities: String, // JSON array
     pub input_tokens: u32,
     pub output_tokens: u32,
     pub duration_ms: u64,
@@ -101,7 +101,7 @@ impl UsageTracker {
             );
 
             CREATE INDEX IF NOT EXISTS idx_usage_tenant ON usage_records(tenant_id, created_at);
-            CREATE INDEX IF NOT EXISTS idx_usage_model ON usage_records(model_id);"
+            CREATE INDEX IF NOT EXISTS idx_usage_model ON usage_records(model_id);",
         )?;
         Ok(())
     }
@@ -122,7 +122,7 @@ impl UsageTracker {
             "openai-o4-mini" => (1.10, 4.40),
             "claude-opus-4-5" => (15.00, 75.00),
             // Image
-            "dall-e-3" => (40.00, 0.0),  // flat rate per image
+            "dall-e-3" => (40.00, 0.0), // flat rate per image
             "flux-1.1-pro" => (4.00, 0.0),
             // Video
             "kling-v1-6" => (20.00, 0.0),
@@ -198,7 +198,7 @@ impl UsageTracker {
             "SELECT model_id, model_display, COUNT(*), COALESCE(SUM(input_tokens),0),
                     COALESCE(SUM(output_tokens),0), COALESCE(SUM(estimated_cost_usd),0)
              FROM usage_records WHERE tenant_id = ?1
-             GROUP BY model_id ORDER BY COUNT(*) DESC"
+             GROUP BY model_id ORDER BY COUNT(*) DESC",
         )?;
         let by_model = by_model_stmt
             .query_map(params![tenant_id], |row| {
@@ -218,7 +218,7 @@ impl UsageTracker {
             "SELECT DATE(created_at) as day, COUNT(*), COALESCE(SUM(estimated_cost_usd),0)
              FROM usage_records WHERE tenant_id = ?1
              AND created_at >= DATE('now', '-30 days')
-             GROUP BY day ORDER BY day DESC"
+             GROUP BY day ORDER BY day DESC",
         )?;
         let by_day = by_day_stmt
             .query_map(params![tenant_id], |row| {
@@ -248,7 +248,7 @@ impl UsageTracker {
                     capabilities, input_tokens, output_tokens, duration_ms,
                     estimated_cost_usd, created_at
              FROM usage_records WHERE tenant_id = ?1
-             ORDER BY created_at DESC LIMIT ?2"
+             ORDER BY created_at DESC LIMIT ?2",
         )?;
         let rows = stmt
             .query_map(params![tenant_id, limit], |row| {
@@ -281,8 +281,16 @@ mod tests {
     fn test_usage_tracker() {
         let tracker = UsageTracker::open(":memory:", None).unwrap();
         tracker
-            .record("t1", "s1", "deepseek-v4-flash", "DeepSeek V4 Flash",
-                     &["coding".into()], 1000, 500, 1200)
+            .record(
+                "t1",
+                "s1",
+                "deepseek-v4-flash",
+                "DeepSeek V4 Flash",
+                &["coding".into()],
+                1000,
+                500,
+                1200,
+            )
             .unwrap();
 
         let stats = tracker.stats("t1").unwrap();

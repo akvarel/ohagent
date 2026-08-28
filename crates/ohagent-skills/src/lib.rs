@@ -9,6 +9,13 @@
 //! 3. **Curator** periodically prunes, merges, and cleans up
 //!
 //! Skills are stored in SQLite alongside memory, scoped per tenant.
+//!
+//! ## Boundary with Jcode
+//!
+//! This is the ohAgent source of truth for the self-learning skill lifecycle
+//! (creator/evaluator/curator + daemon cron loop). Jcode ships a lower-level
+//! tool-invocation skill registry (`jcode-base` `skill`/`skill::invocation`) that
+//! serves a different purpose. Do NOT merge them; keep the ohAgent lifecycle here.
 
 pub mod creator;
 pub mod curator;

@@ -50,7 +50,9 @@ pub struct PluginEntry {
     pub config: serde_json::Value,
 }
 
-fn default_true() -> bool { true }
+fn default_true() -> bool {
+    true
+}
 
 impl PluginManager {
     /// Create a new plugin manager.
@@ -92,7 +94,13 @@ impl PluginManager {
         let mut loaded = 0;
 
         // Collect filenames first to avoid borrow conflict with self.load_one()
-        let entries: Vec<_> = self.config.plugins.iter().filter(|e| e.enabled).cloned().collect();
+        let entries: Vec<_> = self
+            .config
+            .plugins
+            .iter()
+            .filter(|e| e.enabled)
+            .cloned()
+            .collect();
 
         for entry in &entries {
             match self.load_one(&entry.file) {
@@ -186,7 +194,10 @@ impl PluginManager {
                         );
                     }
                 }
-                Ok(Err(PluginError { message, fatal: true })) => {
+                Ok(Err(PluginError {
+                    message,
+                    fatal: true,
+                })) => {
                     warn!(
                         plugin = %plugin_name,
                         error = %message,
@@ -194,7 +205,10 @@ impl PluginManager {
                     );
                     return Ok(None);
                 }
-                Ok(Err(PluginError { message, fatal: false })) => {
+                Ok(Err(PluginError {
+                    message,
+                    fatal: false,
+                })) => {
                     warn!(
                         plugin = %plugin_name,
                         error = %message,
@@ -258,10 +272,8 @@ mod tests {
 
     #[test]
     fn test_empty_pipeline() {
-        let mut mgr = PluginManager::new(
-            PathBuf::from("/tmp/nonexistent"),
-            PluginConfig::default(),
-        );
+        let mut mgr =
+            PluginManager::new(PathBuf::from("/tmp/nonexistent"), PluginConfig::default());
         mgr.load_all();
         let msg = PluginMessage::new("hello".into(), "t1".into(), "telegram".into());
         let result = mgr.run_pipeline(msg).unwrap();

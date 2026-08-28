@@ -124,7 +124,12 @@ impl HealthRegistry {
 
     /// Mark a component as disabled.
     pub fn set_disabled(&self, name: &str) {
-        self.update(name, HealthStatus::Disabled, "disabled by configuration", None);
+        self.update(
+            name,
+            HealthStatus::Disabled,
+            "disabled by configuration",
+            None,
+        );
     }
 
     /// Mark a component as unhealthy (fatal).
@@ -179,8 +184,15 @@ impl HealthRegistry {
     /// Returns `true` if no component is Unhealthy (Starting / Degraded is acceptable).
     pub fn is_operational(&self) -> bool {
         let map = self.inner.read().expect("health registry lock");
-        map.values()
-            .all(|c| matches!(c.status, HealthStatus::Healthy | HealthStatus::Starting | HealthStatus::Degraded | HealthStatus::Disabled))
+        map.values().all(|c| {
+            matches!(
+                c.status,
+                HealthStatus::Healthy
+                    | HealthStatus::Starting
+                    | HealthStatus::Degraded
+                    | HealthStatus::Disabled
+            )
+        })
     }
 
     /// Overall daemon health: all critical components healthy.
@@ -192,7 +204,10 @@ impl HealthRegistry {
         if map.values().any(|c| c.status == HealthStatus::Unhealthy) {
             return HealthStatus::Unhealthy;
         }
-        if map.values().all(|c| c.status == HealthStatus::Healthy || c.status == HealthStatus::Disabled) {
+        if map
+            .values()
+            .all(|c| c.status == HealthStatus::Healthy || c.status == HealthStatus::Disabled)
+        {
             return HealthStatus::Healthy;
         }
         if map.values().any(|c| c.status == HealthStatus::Degraded) {

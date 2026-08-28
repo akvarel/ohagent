@@ -25,7 +25,8 @@ fn bash_tool(workspace_dir: &str) -> Tool {
     Tool {
         name: "bash".into(),
         description: "Run a bash command in the workspace. Returns stdout + stderr + exit code. \
-                      Use for: building, testing, git, file operations, package management.".into(),
+                      Use for: building, testing, git, file operations, package management."
+            .into(),
         parameters_schema: serde_json::json!({
             "type": "object",
             "required": ["command"],
@@ -58,10 +59,9 @@ fn bash_tool(workspace_dir: &str) -> Tool {
                 .output()
             {
                 Ok(o) => o,
-                Err(e) => return ToolResult::err(
-                    format!("Failed to execute: {e}"),
-                    format!("{e}"),
-                ),
+                Err(e) => {
+                    return ToolResult::err(format!("Failed to execute: {e}"), format!("{e}"))
+                }
             };
 
             let stdout = String::from_utf8_lossy(&output.stdout);
@@ -108,8 +108,10 @@ fn write_tool(workspace_dir: &str) -> Tool {
     let dir = workspace_dir.to_string();
     Tool {
         name: "write".into(),
-        description: "Write content to a file in the workspace. Creates parent directories if needed. \
-                      Overwrites existing files.".into(),
+        description:
+            "Write content to a file in the workspace. Creates parent directories if needed. \
+                      Overwrites existing files."
+                .into(),
         parameters_schema: serde_json::json!({
             "type": "object",
             "required": ["file_path", "content"],
@@ -151,11 +153,12 @@ fn write_tool(workspace_dir: &str) -> Tool {
             }
 
             match std::fs::write(&full_path, &content) {
-                Ok(()) => ToolResult::ok(format!("Wrote {} bytes to {}", content.len(), full_path.display())),
-                Err(e) => ToolResult::err(
-                    format!("Failed to write file: {e}"),
-                    format!("{e}"),
-                ),
+                Ok(()) => ToolResult::ok(format!(
+                    "Wrote {} bytes to {}",
+                    content.len(),
+                    full_path.display()
+                )),
+                Err(e) => ToolResult::err(format!("Failed to write file: {e}"), format!("{e}")),
             }
         }),
     }
@@ -168,7 +171,8 @@ fn edit_tool(workspace_dir: &str) -> Tool {
     Tool {
         name: "edit".into(),
         description: "Replace text in a file. Finds old_string and replaces with new_string. \
-                      Use replace_all=true to replace all occurrences.".into(),
+                      Use replace_all=true to replace all occurrences."
+            .into(),
         parameters_schema: serde_json::json!({
             "type": "object",
             "required": ["file_path", "old_string", "new_string"],
@@ -204,7 +208,10 @@ fn edit_tool(workspace_dir: &str) -> Tool {
                 Some(s) => s.to_string(),
                 None => return ToolResult::err("Missing new_string", "new_string is required"),
             };
-            let replace_all = params.get("replace_all").and_then(|v| v.as_bool()).unwrap_or(false);
+            let replace_all = params
+                .get("replace_all")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
 
             let full_path = if std::path::Path::new(&file_path).is_absolute() {
                 std::path::PathBuf::from(&file_path)
@@ -228,7 +235,9 @@ fn edit_tool(workspace_dir: &str) -> Tool {
                 let updated = original.replace(&old_string, &new_string);
                 match std::fs::write(&full_path, &updated) {
                     Ok(()) => ToolResult::ok(format!(
-                        "Replaced {} occurrence(s) in {}", count, full_path.display()
+                        "Replaced {} occurrence(s) in {}",
+                        count,
+                        full_path.display()
                     )),
                     Err(e) => ToolResult::err(format!("Failed to write: {e}"), format!("{e}")),
                 }
@@ -256,7 +265,8 @@ fn read_tool(workspace_dir: &str) -> Tool {
     Tool {
         name: "read".into(),
         description: "Read the contents of a file. Optionally specify start_line and limit \
-                      for partial reads.".into(),
+                      for partial reads."
+            .into(),
         parameters_schema: serde_json::json!({
             "type": "object",
             "required": ["file_path"],
@@ -280,7 +290,10 @@ fn read_tool(workspace_dir: &str) -> Tool {
                 Some(p) => p.to_string(),
                 None => return ToolResult::err("Missing file_path", "file_path is required"),
             };
-            let start_line = params.get("start_line").and_then(|v| v.as_u64()).unwrap_or(1) as usize;
+            let start_line = params
+                .get("start_line")
+                .and_then(|v| v.as_u64())
+                .unwrap_or(1) as usize;
             let limit = params.get("limit").and_then(|v| v.as_u64()).unwrap_or(500) as usize;
 
             let full_path = if std::path::Path::new(&file_path).is_absolute() {
@@ -313,10 +326,13 @@ fn read_tool(workspace_dir: &str) -> Tool {
                 selected.join("\n"),
             );
 
-            ToolResult::ok_with_data(output, serde_json::json!({
-                "total_lines": total,
-                "read_lines": selected.len(),
-            }))
+            ToolResult::ok_with_data(
+                output,
+                serde_json::json!({
+                    "total_lines": total,
+                    "read_lines": selected.len(),
+                }),
+            )
         }),
     }
 }
@@ -338,10 +354,7 @@ fn ls_tool(workspace_dir: &str) -> Tool {
             }
         }),
         handler: Arc::new(move |params| {
-            let target = params
-                .get("path")
-                .and_then(|v| v.as_str())
-                .unwrap_or(".");
+            let target = params.get("path").and_then(|v| v.as_str()).unwrap_or(".");
 
             let full_path = if std::path::Path::new(target).is_absolute() {
                 std::path::PathBuf::from(target)
@@ -369,7 +382,10 @@ fn ls_tool(workspace_dir: &str) -> Tool {
             }
 
             ToolResult::ok_with_data(
-                format!("{full_path} ({count} entries):\n{result}", full_path = full_path.display()),
+                format!(
+                    "{full_path} ({count} entries):\n{result}",
+                    full_path = full_path.display()
+                ),
                 serde_json::json!({"entry_count": count}),
             )
         }),

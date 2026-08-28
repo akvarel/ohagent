@@ -29,7 +29,9 @@ use ohagent_plugins::*;
 const LICENSE_SECRET: &[u8] = &[0u8]; // Dev: no validation. Production: embedded via build.rs
 
 fn validate_license() -> Result<(), PluginError> {
-    if LICENSE_SECRET.len() <= 1 { return Ok(()); } // Dev mode
+    if LICENSE_SECRET.len() <= 1 {
+        return Ok(());
+    } // Dev mode
     let license = std::env::var("OHAGENT_AGGREGATOR_LICENSE")
         .map_err(|_| PluginError::fatal("OHAGENT_AGGREGATOR_LICENSE not set"))?;
     if !license.starts_with("OHAG-") {
@@ -40,7 +42,12 @@ fn validate_license() -> Result<(), PluginError> {
 
 // ── Cost estimation (proprietary pricing tables) ──
 
-fn estimate_cost_eur(provider: &str, _model: &str, prompt_tokens: u64, completion_tokens: u64) -> f64 {
+fn estimate_cost_eur(
+    provider: &str,
+    _model: &str,
+    prompt_tokens: u64,
+    completion_tokens: u64,
+) -> f64 {
     let (ip, op) = match provider {
         "deepseek" => (0.14, 0.28),
         "siliconflow" => (0.06, 0.15),
@@ -60,8 +67,7 @@ pub struct AggregatorPlugin {
 impl AggregatorPlugin {
     pub fn new() -> Self {
         let path = shellexpand::tilde("~/.ohagent/aggregator.db");
-        let store = AggregatorStore::open(path.as_ref())
-            .expect("Failed to open aggregator store");
+        let store = AggregatorStore::open(path.as_ref()).expect("Failed to open aggregator store");
         let db = store.db();
         Self {
             key_manager: ApiKeyManager::new(db.clone()),
@@ -71,8 +77,12 @@ impl AggregatorPlugin {
 }
 
 impl MessagePlugin for AggregatorPlugin {
-    fn name(&self) -> &str { "ohagent-aggregator" }
-    fn version(&self) -> (u32, u32) { (1, 0) }
+    fn name(&self) -> &str {
+        "ohagent-aggregator"
+    }
+    fn version(&self) -> (u32, u32) {
+        (1, 0)
+    }
 
     fn init(&mut self) -> Result<(), PluginError> {
         validate_license()?;
@@ -94,24 +104,39 @@ impl MessagePlugin for AggregatorPlugin {
         };
 
         // Validate key
-        let key = self.key_manager.validate(key_str)
+        let key = self
+            .key_manager
+            .validate(key_str)
             .map_err(|e| PluginError::fatal(&format!("API key error: {e}")))?;
 
         // Check quota
-        if !self.billing.check_quota(&key.id, key.monthly_token_limit)
+        if !self
+            .billing
+            .check_quota(&key.id, key.monthly_token_limit)
             .unwrap_or(false)
         {
-            return Err(PluginError::fatal("Daily token quota exceeded. Upgrade your plan at ohagent.dev"));
+            return Err(PluginError::fatal(
+                "Daily token quota exceeded. Upgrade your plan at ohagent.dev",
+            ));
         }
 
         // Record estimated cost (rough estimate before LLM call)
         let prompt_est = (actual_msg.len() as u64) / 4;
         let completion_est = 500; // rough estimate
         let cost = estimate_cost_eur("deepseek", "v4-flash", prompt_est, completion_est);
-        let customer_cost = self.billing.record(
-            &key.id, &key.customer_id, "deepseek", "v4-flash",
-            prompt_est, completion_est, cost, &key.tier,
-        ).unwrap_or(0.0);
+        let customer_cost = self
+            .billing
+            .record(
+                &key.id,
+                &key.customer_id,
+                "deepseek",
+                "v4-flash",
+                prompt_est,
+                completion_est,
+                cost,
+                &key.tier,
+            )
+            .unwrap_or(0.0);
 
         // Replace message text with clean version
         let tier_markup = (key.tier.markup() - 1.0) * 100.0;
@@ -146,7 +171,9 @@ impl MessagePlugin for AggregatorPlugin {
 // ── FFI ──
 
 #[no_mangle]
-pub extern "C" fn plugin_api_version() -> u32 { CURRENT_PLUGIN_API_VERSION }
+pub extern "C" fn plugin_api_version() -> u32 {
+    CURRENT_PLUGIN_API_VERSION
+}
 
 #[no_mangle]
 pub extern "C" fn create_plugin() -> PluginBox {

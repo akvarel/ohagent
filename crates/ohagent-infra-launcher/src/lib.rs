@@ -70,12 +70,24 @@ struct InfraConfig {
     default_provider: String,
 }
 
-fn default_hetzner_token() -> String { "env:HETZNER_API_TOKEN".into() }
-fn default_scw_secret() -> String { "env:SCW_SECRET_KEY".into() }
-fn default_scw_org() -> String { "env:SCW_DEFAULT_ORGANIZATION_ID".into() }
-fn default_scw_project() -> String { "env:SCW_DEFAULT_PROJECT_ID".into() }
-fn default_ttl() -> u64 { 3600 }
-fn default_provider() -> String { "scaleway-serverless".into() }
+fn default_hetzner_token() -> String {
+    "env:HETZNER_API_TOKEN".into()
+}
+fn default_scw_secret() -> String {
+    "env:SCW_SECRET_KEY".into()
+}
+fn default_scw_org() -> String {
+    "env:SCW_DEFAULT_ORGANIZATION_ID".into()
+}
+fn default_scw_project() -> String {
+    "env:SCW_DEFAULT_PROJECT_ID".into()
+}
+fn default_ttl() -> u64 {
+    3600
+}
+fn default_provider() -> String {
+    "scaleway-serverless".into()
+}
 
 // ── Scaleway Serverless Models ──
 
@@ -83,26 +95,91 @@ fn default_provider() -> String { "scaleway-serverless".into() }
 #[derive(Debug, Clone)]
 struct ServerlessModel {
     id: String,
-    input_price_per_mtok: f64,  // EUR per million tokens
+    input_price_per_mtok: f64, // EUR per million tokens
     output_price_per_mtok: f64,
     capabilities: Vec<String>,
 }
 
 fn scaleway_models() -> Vec<ServerlessModel> {
     vec![
-        ServerlessModel { id: "mistral-small-3.2-24b-instruct-2506".into(), input_price_per_mtok: 0.15, output_price_per_mtok: 0.35, capabilities: vec!["chat".into(), "vision".into()] },
-        ServerlessModel { id: "qwen3-coder-30b-a3b-instruct".into(),        input_price_per_mtok: 0.20, output_price_per_mtok: 0.80, capabilities: vec!["chat".into(), "code".into()] },
-        ServerlessModel { id: "gemma-4-26b-a4b-it".into(),                  input_price_per_mtok: 0.25, output_price_per_mtok: 0.50, capabilities: vec!["chat".into(), "vision".into()] },
-        ServerlessModel { id: "gemma-3-27b-it".into(),                      input_price_per_mtok: 0.25, output_price_per_mtok: 0.50, capabilities: vec!["chat".into(), "vision".into()] },
-        ServerlessModel { id: "qwen3.6-35b-a3b".into(),                     input_price_per_mtok: 0.25, output_price_per_mtok: 1.50, capabilities: vec!["chat".into(), "vision".into()] },
-        ServerlessModel { id: "devstral-2-123b-instruct-2512".into(),       input_price_per_mtok: 0.40, output_price_per_mtok: 2.00, capabilities: vec!["chat".into(), "code".into()] },
-        ServerlessModel { id: "qwen3.5-397b-a17b".into(),                   input_price_per_mtok: 0.60, output_price_per_mtok: 3.60, capabilities: vec!["chat".into(), "vision".into()] },
-        ServerlessModel { id: "qwen3-235b-a22b-instruct-2507".into(),       input_price_per_mtok: 0.75, output_price_per_mtok: 2.25, capabilities: vec!["chat".into()] },
-        ServerlessModel { id: "llama-3.3-70b-instruct".into(),              input_price_per_mtok: 0.90, output_price_per_mtok: 0.90, capabilities: vec!["chat".into()] },
-        ServerlessModel { id: "mistral-medium-3.5-128b".into(),             input_price_per_mtok: 1.50, output_price_per_mtok: 7.50, capabilities: vec!["chat".into(), "vision".into()] },
-        ServerlessModel { id: "glm-5.2".into(),                             input_price_per_mtok: 1.80, output_price_per_mtok: 5.50, capabilities: vec!["chat".into(), "code".into()] },
-        ServerlessModel { id: "pixtral-12b-2409".into(),                    input_price_per_mtok: 0.20, output_price_per_mtok: 0.20, capabilities: vec!["chat".into(), "vision".into()] },
-        ServerlessModel { id: "whisper-large-v3".into(),                    input_price_per_mtok: 0.0,  output_price_per_mtok: 0.0,  capabilities: vec!["audio".into()] }, // €0.003/audio minute
+        ServerlessModel {
+            id: "mistral-small-3.2-24b-instruct-2506".into(),
+            input_price_per_mtok: 0.15,
+            output_price_per_mtok: 0.35,
+            capabilities: vec!["chat".into(), "vision".into()],
+        },
+        ServerlessModel {
+            id: "qwen3-coder-30b-a3b-instruct".into(),
+            input_price_per_mtok: 0.20,
+            output_price_per_mtok: 0.80,
+            capabilities: vec!["chat".into(), "code".into()],
+        },
+        ServerlessModel {
+            id: "gemma-4-26b-a4b-it".into(),
+            input_price_per_mtok: 0.25,
+            output_price_per_mtok: 0.50,
+            capabilities: vec!["chat".into(), "vision".into()],
+        },
+        ServerlessModel {
+            id: "gemma-3-27b-it".into(),
+            input_price_per_mtok: 0.25,
+            output_price_per_mtok: 0.50,
+            capabilities: vec!["chat".into(), "vision".into()],
+        },
+        ServerlessModel {
+            id: "qwen3.6-35b-a3b".into(),
+            input_price_per_mtok: 0.25,
+            output_price_per_mtok: 1.50,
+            capabilities: vec!["chat".into(), "vision".into()],
+        },
+        ServerlessModel {
+            id: "devstral-2-123b-instruct-2512".into(),
+            input_price_per_mtok: 0.40,
+            output_price_per_mtok: 2.00,
+            capabilities: vec!["chat".into(), "code".into()],
+        },
+        ServerlessModel {
+            id: "qwen3.5-397b-a17b".into(),
+            input_price_per_mtok: 0.60,
+            output_price_per_mtok: 3.60,
+            capabilities: vec!["chat".into(), "vision".into()],
+        },
+        ServerlessModel {
+            id: "qwen3-235b-a22b-instruct-2507".into(),
+            input_price_per_mtok: 0.75,
+            output_price_per_mtok: 2.25,
+            capabilities: vec!["chat".into()],
+        },
+        ServerlessModel {
+            id: "llama-3.3-70b-instruct".into(),
+            input_price_per_mtok: 0.90,
+            output_price_per_mtok: 0.90,
+            capabilities: vec!["chat".into()],
+        },
+        ServerlessModel {
+            id: "mistral-medium-3.5-128b".into(),
+            input_price_per_mtok: 1.50,
+            output_price_per_mtok: 7.50,
+            capabilities: vec!["chat".into(), "vision".into()],
+        },
+        ServerlessModel {
+            id: "glm-5.2".into(),
+            input_price_per_mtok: 1.80,
+            output_price_per_mtok: 5.50,
+            capabilities: vec!["chat".into(), "code".into()],
+        },
+        ServerlessModel {
+            id: "pixtral-12b-2409".into(),
+            input_price_per_mtok: 0.20,
+            output_price_per_mtok: 0.20,
+            capabilities: vec!["chat".into(), "vision".into()],
+        },
+        ServerlessModel {
+            id: "whisper-large-v3".into(),
+            input_price_per_mtok: 0.0,
+            output_price_per_mtok: 0.0,
+            capabilities: vec!["audio".into()],
+        }, // €0.003/audio minute
     ]
 }
 
@@ -121,12 +198,47 @@ struct GpuType {
 fn gpu_types() -> Vec<GpuType> {
     vec![
         // Scaleway Dedicated
-        GpuType { name: "scw-l4",       provider: "scaleway", api_slug: "l4-1-24g",    price_per_hour: 0.93,  vram_gb: 24,  max_tokens_per_sec_est: 1500 },
-        GpuType { name: "scw-l40s",     provider: "scaleway", api_slug: "l40s-1-48g",  price_per_hour: 1.72,  vram_gb: 48,  max_tokens_per_sec_est: 3000 },
-        GpuType { name: "scw-h100",     provider: "scaleway", api_slug: "h100-1-80g",  price_per_hour: 3.40,  vram_gb: 80,  max_tokens_per_sec_est: 8000 },
+        GpuType {
+            name: "scw-l4",
+            provider: "scaleway",
+            api_slug: "l4-1-24g",
+            price_per_hour: 0.93,
+            vram_gb: 24,
+            max_tokens_per_sec_est: 1500,
+        },
+        GpuType {
+            name: "scw-l40s",
+            provider: "scaleway",
+            api_slug: "l40s-1-48g",
+            price_per_hour: 1.72,
+            vram_gb: 48,
+            max_tokens_per_sec_est: 3000,
+        },
+        GpuType {
+            name: "scw-h100",
+            provider: "scaleway",
+            api_slug: "h100-1-80g",
+            price_per_hour: 3.40,
+            vram_gb: 80,
+            max_tokens_per_sec_est: 8000,
+        },
         // Hetzner
-        GpuType { name: "hz-a100-40",   provider: "hetzner",  api_slug: "ccx13",       price_per_hour: 1.85,  vram_gb: 40,  max_tokens_per_sec_est: 4000 },
-        GpuType { name: "hz-a100-80",   provider: "hetzner",  api_slug: "ccx23",       price_per_hour: 2.50,  vram_gb: 80,  max_tokens_per_sec_est: 8000 },
+        GpuType {
+            name: "hz-a100-40",
+            provider: "hetzner",
+            api_slug: "ccx13",
+            price_per_hour: 1.85,
+            vram_gb: 40,
+            max_tokens_per_sec_est: 4000,
+        },
+        GpuType {
+            name: "hz-a100-80",
+            provider: "hetzner",
+            api_slug: "ccx23",
+            price_per_hour: 2.50,
+            vram_gb: 80,
+            max_tokens_per_sec_est: 8000,
+        },
     ]
 }
 
@@ -168,7 +280,9 @@ impl InfraLauncherPlugin {
     }
 
     fn resolve_env(&self, val: &str) -> String {
-        val.strip_prefix("env:").and_then(|v| std::env::var(v).ok()).unwrap_or_else(|| val.to_string())
+        val.strip_prefix("env:")
+            .and_then(|v| std::env::var(v).ok())
+            .unwrap_or_else(|| val.to_string())
     }
 
     /// Parse a deployment request from message text.
@@ -179,48 +293,67 @@ impl InfraLauncherPlugin {
     ///   "/deploy mixtral gpu=A100 provider=hetzner ttl=2h"       → hetzner cloud
     fn parse_request(&self, text: &str) -> Option<DeployRequest> {
         let text_lower = text.to_lowercase();
-        if !text_lower.contains("/deploy") && !text_lower.contains("/infra") && !text_lower.contains("spawn gpu") {
+        if !text_lower.contains("/deploy")
+            && !text_lower.contains("/infra")
+            && !text_lower.contains("spawn gpu")
+        {
             return None;
         }
 
         // Determine provider
-        let provider = text_lower.split_whitespace()
+        let provider = text_lower
+            .split_whitespace()
             .find(|w| w.starts_with("provider="))
             .map(|w| w.trim_start_matches("provider=").to_string())
             .or_else(|| {
-                if text_lower.contains("zai:") || text_lower.contains("zhipu:") { Some("zai".into()) }
-                else if text_lower.contains("siliconflow:") || text_lower.contains("sf:") { Some("siliconflow".into()) }
-                else if text_lower.contains("scaleway:") || text_lower.contains("scw:") { Some("scaleway".into()) }
-                else if text_lower.contains("hetzner:") || text_lower.contains("hz:") { Some("hetzner".into()) }
-                else { None }
+                if text_lower.contains("zai:") || text_lower.contains("zhipu:") {
+                    Some("zai".into())
+                } else if text_lower.contains("siliconflow:") || text_lower.contains("sf:") {
+                    Some("siliconflow".into())
+                } else if text_lower.contains("scaleway:") || text_lower.contains("scw:") {
+                    Some("scaleway".into())
+                } else if text_lower.contains("hetzner:") || text_lower.contains("hz:") {
+                    Some("hetzner".into())
+                } else {
+                    None
+                }
             })
             .unwrap_or_else(|| self.config.default_provider.clone());
 
         // Extract model
-        let model = text_lower.split_whitespace()
+        let model = text_lower
+            .split_whitespace()
             .find(|w| w.starts_with("model="))
             .map(|w| w.trim_start_matches("model=").to_string())
             .or_else(|| {
                 // Try "scaleway:model-name" or "hetzner:model-name" prefix
-                text_lower.split_whitespace()
+                text_lower
+                    .split_whitespace()
                     .find(|w| w.contains(':'))
                     .map(|w| w.split(':').nth(1).unwrap_or(w).to_string())
             })
             .or_else(|| {
-                text_lower.split_whitespace()
+                text_lower
+                    .split_whitespace()
                     .skip_while(|w| *w != "/deploy" && *w != "/infra")
                     .nth(1)
-                    .filter(|w| !w.starts_with("ttl=") && !w.starts_with("gpu=") && !w.starts_with("provider="))
+                    .filter(|w| {
+                        !w.starts_with("ttl=")
+                            && !w.starts_with("gpu=")
+                            && !w.starts_with("provider=")
+                    })
                     .map(|s| s.to_string())
             })
             .unwrap_or_else(|| "mistral-small-3.2-24b".to_string());
 
         // Extract TTL
-        let ttl = text_lower.split_whitespace()
+        let ttl = text_lower
+            .split_whitespace()
             .find(|w| w.starts_with("ttl="))
             .and_then(|w| parse_duration(w.trim_start_matches("ttl=")))
             .or_else(|| {
-                text_lower.split_whitespace()
+                text_lower
+                    .split_whitespace()
                     .find(|w| w.starts_with("hours="))
                     .and_then(|w| w.trim_start_matches("hours=").parse::<u64>().ok())
                     .map(|h| h * 3600)
@@ -228,11 +361,17 @@ impl InfraLauncherPlugin {
             .unwrap_or(self.config.default_ttl_secs);
 
         // Extract GPU type
-        let gpu = text_lower.split_whitespace()
+        let gpu = text_lower
+            .split_whitespace()
             .find(|w| w.starts_with("gpu="))
             .map(|w| w.trim_start_matches("gpu=").to_string());
 
-        Some(DeployRequest { model, ttl, gpu: gpu.unwrap_or_else(|| "auto".into()), provider })
+        Some(DeployRequest {
+            model,
+            ttl,
+            gpu: gpu.unwrap_or_else(|| "auto".into()),
+            provider,
+        })
     }
 }
 
@@ -247,22 +386,38 @@ struct DeployRequest {
 }
 
 fn parse_duration(s: &str) -> Option<u64> {
-    if let Ok(n) = s.parse::<u64>() { return Some(n); }
-    if s.ends_with('h') { return s[..s.len()-1].parse::<u64>().ok().map(|h| h * 3600); }
-    if s.ends_with('m') { return s[..s.len()-1].parse::<u64>().ok().map(|m| m * 60); }
-    if s.ends_with('s') { return s[..s.len()-1].parse::<u64>().ok(); }
+    if let Ok(n) = s.parse::<u64>() {
+        return Some(n);
+    }
+    if s.ends_with('h') {
+        return s[..s.len() - 1].parse::<u64>().ok().map(|h| h * 3600);
+    }
+    if s.ends_with('m') {
+        return s[..s.len() - 1].parse::<u64>().ok().map(|m| m * 60);
+    }
+    if s.ends_with('s') {
+        return s[..s.len() - 1].parse::<u64>().ok();
+    }
     None
 }
 
 impl MessagePlugin for InfraLauncherPlugin {
-    fn name(&self) -> &str { "ohagent-infra-launcher" }
-    fn version(&self) -> (u32, u32) { (1, 1) }
+    fn name(&self) -> &str {
+        "ohagent-infra-launcher"
+    }
+    fn version(&self) -> (u32, u32) {
+        (1, 1)
+    }
 
     fn init(&mut self) -> Result<(), PluginError> {
         let hz = self.resolve_env(&self.config.hetzner_api_token);
         let scw = self.resolve_env(&self.config.scaleway_secret_key);
         let providers = [(!hz.is_empty(), "Hetzner"), (!scw.is_empty(), "Scaleway")];
-        let available: Vec<&str> = providers.iter().filter(|(ok, _)| *ok).map(|(_, n)| *n).collect();
+        let available: Vec<&str> = providers
+            .iter()
+            .filter(|(ok, _)| *ok)
+            .map(|(_, n)| *n)
+            .collect();
         if available.is_empty() {
             tracing::warn!("No cloud provider tokens set — infra launcher in simulation mode");
         } else {
@@ -282,9 +437,16 @@ impl MessagePlugin for InfraLauncherPlugin {
         {
             let instances = self.instances.lock().unwrap();
             if let Some(inst) = instances.get(&key) {
-                message.text = format!("{}\n[INFRA] Using existing instance: {} (provider: {}, endpoint: {})",
-                    message.text, inst.id, inst.provider, inst.endpoint);
-                message.log_redaction("infra-launcher", "deploy-request", "existing-instance", "infra_redirect");
+                message.text = format!(
+                    "{}\n[INFRA] Using existing instance: {} (provider: {}, endpoint: {})",
+                    message.text, inst.id, inst.provider, inst.endpoint
+                );
+                message.log_redaction(
+                    "infra-launcher",
+                    "deploy-request",
+                    "existing-instance",
+                    "infra_redirect",
+                );
                 return Ok(());
             }
         }
@@ -293,7 +455,12 @@ impl MessagePlugin for InfraLauncherPlugin {
         let plan = self.build_deploy_plan(&req, &message.tenant_id);
 
         message.text = format!("{}\n{}", message.text, plan);
-        message.log_redaction("infra-launcher", "deploy-request", "provisioning-plan", "infra_deploy");
+        message.log_redaction(
+            "infra-launcher",
+            "deploy-request",
+            "provisioning-plan",
+            "infra_deploy",
+        );
         Ok(())
     }
 
@@ -502,7 +669,9 @@ impl InfraLauncherPlugin {
 // ── FFI ──
 
 #[no_mangle]
-pub extern "C" fn plugin_api_version() -> u32 { CURRENT_PLUGIN_API_VERSION }
+pub extern "C" fn plugin_api_version() -> u32 {
+    CURRENT_PLUGIN_API_VERSION
+}
 
 #[no_mangle]
 pub extern "C" fn create_plugin() -> PluginBox {

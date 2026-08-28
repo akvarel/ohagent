@@ -143,9 +143,7 @@ impl MemoryStore {
             "SELECT id, tenant_id, session_id, content, source, importance, tags, created_at, last_accessed_at, access_count FROM memory_entries WHERE id = ?1"
         )?;
 
-        let result = stmt.query_row(params![id], |row| {
-            Ok(Self::row_to_entry(row))
-        });
+        let result = stmt.query_row(params![id], |row| Ok(Self::row_to_entry(row)));
 
         match result {
             Ok(entry) => {
@@ -198,10 +196,7 @@ impl MemoryStore {
     }
 
     /// Get all entries that have embeddings (for vector search).
-    pub fn entries_with_embeddings(
-        &self,
-        tenant_id: &str,
-    ) -> Result<Vec<(MemoryEntry, Vec<f32>)>> {
+    pub fn entries_with_embeddings(&self, tenant_id: &str) -> Result<Vec<(MemoryEntry, Vec<f32>)>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
             "SELECT e.id, e.tenant_id, e.session_id, e.content, e.source, e.importance, e.tags, e.created_at, e.last_accessed_at, e.access_count, m.embedding
@@ -406,9 +401,7 @@ impl MemoryStore {
         })
     }
 
-    fn row_to_entry_ref(
-        row: &rusqlite::Row,
-    ) -> rusqlite::Result<MemoryEntry> {
+    fn row_to_entry_ref(row: &rusqlite::Row) -> rusqlite::Result<MemoryEntry> {
         let tags_str: String = row.get(5).unwrap_or_else(|_| "[]".into());
         Ok(MemoryEntry {
             id: row.get(0).unwrap_or_default(),
@@ -462,10 +455,7 @@ impl MemoryProvider for MemoryStore {
         self.list_by_tenant(tenant_id, session_id, limit)
     }
 
-    fn entries_with_embeddings(
-        &self,
-        tenant_id: &str,
-    ) -> Result<Vec<(MemoryEntry, Vec<f32>)>> {
+    fn entries_with_embeddings(&self, tenant_id: &str) -> Result<Vec<(MemoryEntry, Vec<f32>)>> {
         self.entries_with_embeddings(tenant_id)
     }
 
@@ -509,9 +499,7 @@ impl MemoryProvider for MemoryStore {
 // ── Embedding serialization helpers ──
 
 fn serialize_embedding(vec: &[f32]) -> Vec<u8> {
-    vec.iter()
-        .flat_map(|v| v.to_le_bytes())
-        .collect()
+    vec.iter().flat_map(|v| v.to_le_bytes()).collect()
 }
 
 fn deserialize_embedding(bytes: &[u8]) -> Vec<f32> {

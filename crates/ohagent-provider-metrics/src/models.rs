@@ -3,7 +3,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-
 // ── Pricing ──
 
 /// How many documents were detected in an image by the pre-classifier.
@@ -93,18 +92,22 @@ impl PriceRecord {
     /// Estimated cost in EUR for an API call.
     pub fn estimated_cost_eur(&self, prompt_tokens: u64, completion_tokens: u64) -> f64 {
         let rate = match self.currency.as_str() {
-            "USD" => 0.92, "CNY" => 0.13, _ => 1.0,
+            "USD" => 0.92,
+            "CNY" => 0.13,
+            _ => 1.0,
         };
         match self.pricing_model {
             PricingModel::PerMillionTokens => {
                 let input_cost = (prompt_tokens as f64 / 1_000_000.0) * self.input_price_per_unit;
-                let output_cost = (completion_tokens as f64 / 1_000_000.0) * self.output_price_per_unit;
+                let output_cost =
+                    (completion_tokens as f64 / 1_000_000.0) * self.output_price_per_unit;
                 (input_cost + output_cost) * rate
             }
             // Non-token models: return input_price as flat per-unit cost
-            PricingModel::PerImage | PricingModel::PerVideo | PricingModel::PerAudioMinute | PricingModel::PerMillionBytes => {
-                self.input_price_per_unit * rate
-            }
+            PricingModel::PerImage
+            | PricingModel::PerVideo
+            | PricingModel::PerAudioMinute
+            | PricingModel::PerMillionBytes => self.input_price_per_unit * rate,
         }
     }
 }
@@ -151,7 +154,12 @@ pub struct RoutingAlternative {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum QualityTier { Budget, Balanced, Performance, Quality }
+pub enum QualityTier {
+    Budget,
+    Balanced,
+    Performance,
+    Quality,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RouterConfig {
@@ -163,7 +171,12 @@ pub struct RouterConfig {
 
 impl Default for RouterConfig {
     fn default() -> Self {
-        Self { quality_tier: QualityTier::Balanced, max_budget_eur_per_1k: None, prefer_eu: false, prefer_open_source: false }
+        Self {
+            quality_tier: QualityTier::Balanced,
+            max_budget_eur_per_1k: None,
+            prefer_eu: false,
+            prefer_open_source: false,
+        }
     }
 }
 
@@ -182,17 +195,79 @@ pub struct ProviderInfo {
 /// Known providers with metadata — validated July 2026.
 pub fn known_providers() -> Vec<ProviderInfo> {
     vec![
-        ProviderInfo { name: "siliconflow".into(), api_base_url: Some("https://api.siliconflow.com/v1".into()), pricing_url: Some("https://siliconflow.com/models".into()), currency: "USD".into(), is_eu: false },
-        ProviderInfo { name: "scaleway".into(),    api_base_url: None, /* per-project: https://api.scaleway.ai/<id>/v1 */ pricing_url: Some("https://www.scaleway.com/en/pricing/model-as-a-service/".into()), currency: "EUR".into(), is_eu: true },
-        ProviderInfo { name: "deepseek".into(),    api_base_url: Some("https://api.deepseek.com/v1".into()), pricing_url: Some("https://api-docs.deepseek.com/quick_start/pricing".into()), currency: "EUR".into(), is_eu: false },
-        ProviderInfo { name: "zai".into(),         api_base_url: Some("https://api.z.ai/api/paas/v4".into()), pricing_url: Some("https://docs.z.ai/api-reference/introduction".into()), currency: "CNY".into(), is_eu: false },
+        ProviderInfo {
+            name: "siliconflow".into(),
+            api_base_url: Some("https://api.siliconflow.com/v1".into()),
+            pricing_url: Some("https://siliconflow.com/models".into()),
+            currency: "USD".into(),
+            is_eu: false,
+        },
+        ProviderInfo {
+            name: "scaleway".into(),
+            api_base_url: None,
+            /* per-project: https://api.scaleway.ai/<id>/v1 */
+            pricing_url: Some("https://www.scaleway.com/en/pricing/model-as-a-service/".into()),
+            currency: "EUR".into(),
+            is_eu: true,
+        },
+        ProviderInfo {
+            name: "deepseek".into(),
+            api_base_url: Some("https://api.deepseek.com/v1".into()),
+            pricing_url: Some("https://api-docs.deepseek.com/quick_start/pricing".into()),
+            currency: "EUR".into(),
+            is_eu: false,
+        },
+        ProviderInfo {
+            name: "zai".into(),
+            api_base_url: Some("https://api.z.ai/api/paas/v4".into()),
+            pricing_url: Some("https://docs.z.ai/api-reference/introduction".into()),
+            currency: "CNY".into(),
+            is_eu: false,
+        },
         // GLM-4.6V has its own provider alias — same API as Z.ai but dedicated to vision
-        ProviderInfo { name: "glm4v".into(),       api_base_url: Some("https://api.z.ai/api/paas/v4".into()), pricing_url: Some("https://docs.z.ai/guides/vlm/glm-4.6v".into()), currency: "CNY".into(), is_eu: false },
-        ProviderInfo { name: "openai".into(),      api_base_url: Some("https://api.openai.com/v1".into()), pricing_url: Some("https://openai.com/api/pricing/".into()), currency: "USD".into(), is_eu: false },
-        ProviderInfo { name: "anthropic".into(),   api_base_url: Some("https://api.anthropic.com/v1".into()), pricing_url: Some("https://www.anthropic.com/pricing".into()), currency: "USD".into(), is_eu: false },
-        ProviderInfo { name: "groq".into(),        api_base_url: Some("https://api.groq.com/openai/v1".into()), pricing_url: Some("https://groq.com/pricing/".into()), currency: "USD".into(), is_eu: false },
-        ProviderInfo { name: "hetzner".into(),     api_base_url: None, /* GPU only, not a chat API */ pricing_url: Some("https://www.hetzner.com/cloud".into()), currency: "EUR".into(), is_eu: true },
+        ProviderInfo {
+            name: "glm4v".into(),
+            api_base_url: Some("https://api.z.ai/api/paas/v4".into()),
+            pricing_url: Some("https://docs.z.ai/guides/vlm/glm-4.6v".into()),
+            currency: "CNY".into(),
+            is_eu: false,
+        },
+        ProviderInfo {
+            name: "openai".into(),
+            api_base_url: Some("https://api.openai.com/v1".into()),
+            pricing_url: Some("https://openai.com/api/pricing/".into()),
+            currency: "USD".into(),
+            is_eu: false,
+        },
+        ProviderInfo {
+            name: "anthropic".into(),
+            api_base_url: Some("https://api.anthropic.com/v1".into()),
+            pricing_url: Some("https://www.anthropic.com/pricing".into()),
+            currency: "USD".into(),
+            is_eu: false,
+        },
+        ProviderInfo {
+            name: "groq".into(),
+            api_base_url: Some("https://api.groq.com/openai/v1".into()),
+            pricing_url: Some("https://groq.com/pricing/".into()),
+            currency: "USD".into(),
+            is_eu: false,
+        },
+        ProviderInfo {
+            name: "hetzner".into(),
+            api_base_url: None,
+            /* GPU only, not a chat API */
+            pricing_url: Some("https://www.hetzner.com/cloud".into()),
+            currency: "EUR".into(),
+            is_eu: true,
+        },
         // Google Gemini — best vision/OCR for Latvian receipts. Free tier available.
-        ProviderInfo { name: "google".into(),      api_base_url: Some("https://generativelanguage.googleapis.com/v1beta".into()), pricing_url: Some("https://ai.google.dev/pricing".into()), currency: "USD".into(), is_eu: false },
+        ProviderInfo {
+            name: "google".into(),
+            api_base_url: Some("https://generativelanguage.googleapis.com/v1beta".into()),
+            pricing_url: Some("https://ai.google.dev/pricing".into()),
+            currency: "USD".into(),
+            is_eu: false,
+        },
     ]
 }

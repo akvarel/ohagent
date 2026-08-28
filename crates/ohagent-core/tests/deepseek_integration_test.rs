@@ -43,9 +43,18 @@ mod deepseek_integration {
     /// cargo test -p ohagent-core -- deepseek_headless_e2e --nocapture
     /// ```
     #[tokio::test]
+    #[ignore = "requires a live DeepSeek credential and network access"]
     async fn deepseek_headless_e2e() {
-        let _ = std::env::var("DEEPSEEK_API_KEY")
-            .expect("DEEPSEEK_API_KEY must be set");
+        let _ = std::env::var("DEEPSEEK_API_KEY").expect("DEEPSEEK_API_KEY must be set");
+        let workspace = std::env::temp_dir().join(format!(
+            "ohagent-sdk-workspace-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        assert!(!workspace.exists());
 
         register_runtimes();
 
@@ -64,8 +73,9 @@ mod deepseek_integration {
         // Create headless session
         let session = bridge
             .create_session(ohagent_core::jcode_bridge::SessionConfig {
+                tenant_id: "deepseek-integration".into(),
                 model: Some("deepseek-v4-flash".into()),
-                working_dir: Some(std::env::current_dir().unwrap().to_string_lossy().into()),
+                working_dir: Some(workspace.to_string_lossy().into()),
                 selfdev: false,
                 report_back_to: None,
             })
@@ -73,13 +83,28 @@ mod deepseek_integration {
             .expect("create headless session");
 
         eprintln!("Session created: {}", session.session_id());
+        assert!(workspace.is_dir());
+
+        assert!(bridge
+            .get_session("deepseek-integration", session.session_id())
+            .await
+            .is_some());
+        assert!(bridge
+            .get_session("another-tenant", session.session_id())
+            .await
+            .is_none());
+        assert!(bridge.list_sessions("another-tenant").await.is_empty());
+        assert!(bridge
+            .archive_session("another-tenant", session.session_id())
+            .await
+            .is_err());
 
         // Send prompt
-        session
-            .send_message("Reply with exactly one word: OK")
+        let response = session
+            .send_message_with_images("Reply with exactly one word: OK", Vec::new())
             .await
             .expect("send_message should succeed");
 
-        eprintln!("✅ DeepSeek headless session works!");
+        assert_eq!(response.trim(), "OK");
     }
 }

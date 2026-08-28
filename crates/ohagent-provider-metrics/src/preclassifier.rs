@@ -21,7 +21,7 @@
 //! - 7/16 VLMs returned empty content despite having vision — can't count documents.
 
 use crate::models::DocumentCount;
-use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use reqwest::Client;
 use serde_json::Value;
 
@@ -108,7 +108,8 @@ impl PreClassifier {
             image_bytes,
             mime_type,
             false, // Scaleway doesn't have thinking mode
-        ).await
+        )
+        .await
     }
 
     async fn try_zai(&self, image_bytes: &[u8], mime_type: &str) -> DocumentCount {
@@ -118,7 +119,8 @@ impl PreClassifier {
             "glm-4.6v-flashx",
             image_bytes,
             mime_type,
-        ).await
+        )
+        .await
     }
 
     async fn try_openai(&self, image_bytes: &[u8], mime_type: &str) -> DocumentCount {
@@ -129,13 +131,19 @@ impl PreClassifier {
             image_bytes,
             mime_type,
             false,
-        ).await
+        )
+        .await
     }
 
     /// Standard OpenAI-compatible call (no thinking).
     async fn call_count(
-        &self, base_url: &str, api_key: &str, model: &str,
-        image_bytes: &[u8], mime_type: &str, _disable_thinking: bool,
+        &self,
+        base_url: &str,
+        api_key: &str,
+        model: &str,
+        image_bytes: &[u8],
+        mime_type: &str,
+        _disable_thinking: bool,
     ) -> DocumentCount {
         let base64_image = BASE64.encode(image_bytes);
         let data_uri = format!("data:{mime_type};base64,{base64_image}");
@@ -153,7 +161,8 @@ impl PreClassifier {
             "temperature": 0.0
         });
 
-        let resp = match self.client
+        let resp = match self
+            .client
             .post(format!("{base_url}/chat/completions"))
             .header("Authorization", format!("Bearer {api_key}"))
             .header("Content-Type", "application/json")
@@ -169,8 +178,11 @@ impl PreClassifier {
         };
 
         if !resp.status().is_success() {
-            log::warn!("Pre-classifier {model}: HTTP {}: {:?}", resp.status(),
-                resp.text().await.unwrap_or_default());
+            log::warn!(
+                "Pre-classifier {model}: HTTP {}: {:?}",
+                resp.status(),
+                resp.text().await.unwrap_or_default()
+            );
             return DocumentCount::Unknown;
         }
 
@@ -199,8 +211,12 @@ impl PreClassifier {
     /// GLM-4.6V models use thinking tokens from the max_tokens budget.
     /// With max_tokens=10 and thinking=enabled, all 10 tokens go to thinking → empty answer.
     async fn call_count_with_thinking_disabled(
-        &self, base_url: &str, api_key: &str, model: &str,
-        image_bytes: &[u8], mime_type: &str,
+        &self,
+        base_url: &str,
+        api_key: &str,
+        model: &str,
+        image_bytes: &[u8],
+        mime_type: &str,
     ) -> DocumentCount {
         let base64_image = BASE64.encode(image_bytes);
         let data_uri = format!("data:{mime_type};base64,{base64_image}");
@@ -219,7 +235,8 @@ impl PreClassifier {
             "thinking": {"type": "disabled"}
         });
 
-        let resp = match self.client
+        let resp = match self
+            .client
             .post(format!("{base_url}/chat/completions"))
             .header("Authorization", format!("Bearer {api_key}"))
             .header("Content-Type", "application/json")
@@ -235,8 +252,11 @@ impl PreClassifier {
         };
 
         if !resp.status().is_success() {
-            log::warn!("Pre-classifier {model}: HTTP {}: {:?}", resp.status(),
-                resp.text().await.unwrap_or_default());
+            log::warn!(
+                "Pre-classifier {model}: HTTP {}: {:?}",
+                resp.status(),
+                resp.text().await.unwrap_or_default()
+            );
             return DocumentCount::Unknown;
         }
 
@@ -296,7 +316,10 @@ mod tests {
     #[test]
     fn test_parse_count_in_sentence() {
         assert_eq!(PreClassifier::parse_count("There are 4 documents"), 4);
-        assert_eq!(PreClassifier::parse_count("I see 3 distinct receipts in this image"), 3);
+        assert_eq!(
+            PreClassifier::parse_count("I see 3 distinct receipts in this image"),
+            3
+        );
         assert_eq!(PreClassifier::parse_count("4 receipts total"), 4);
     }
 

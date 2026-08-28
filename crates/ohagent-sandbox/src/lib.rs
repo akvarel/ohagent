@@ -55,9 +55,15 @@ pub struct SandboxConfig {
     pub callback_url: String,
 }
 
-fn default_vm_type() -> String { "hetzner-cpx41".into() }
-fn default_ttl() -> u64 { 1800 }        // 30 min
-fn default_max_ttl() -> u64 { 21600 }    // 6 hours
+fn default_vm_type() -> String {
+    "hetzner-cpx41".into()
+}
+fn default_ttl() -> u64 {
+    1800
+} // 30 min
+fn default_max_ttl() -> u64 {
+    21600
+} // 6 hours
 
 impl Default for SandboxConfig {
     fn default() -> Self {
@@ -100,7 +106,9 @@ pub fn available_vm_types() -> Vec<VmType> {
             name: "hetzner-cpx41".into(),
             provider: "hetzner".into(),
             api_slug: "cpx41".into(),
-            vcpu: 8, ram_mb: 16384, disk_gb: 240,
+            vcpu: 8,
+            ram_mb: 16384,
+            disk_gb: 240,
             price_per_hour_eur: 0.022,
             location: "nbg1".into(),
             image: "ubuntu-24.04".into(),
@@ -109,7 +117,9 @@ pub fn available_vm_types() -> Vec<VmType> {
             name: "hetzner-cpx51".into(),
             provider: "hetzner".into(),
             api_slug: "cpx51".into(),
-            vcpu: 16, ram_mb: 32768, disk_gb: 360,
+            vcpu: 16,
+            ram_mb: 32768,
+            disk_gb: 360,
             price_per_hour_eur: 0.048,
             location: "nbg1".into(),
             image: "ubuntu-24.04".into(),
@@ -119,7 +129,9 @@ pub fn available_vm_types() -> Vec<VmType> {
             name: "scaleway-dev1-l".into(),
             provider: "scaleway".into(),
             api_slug: "DEV1-L".into(),
-            vcpu: 4, ram_mb: 8192, disk_gb: 80,
+            vcpu: 4,
+            ram_mb: 8192,
+            disk_gb: 80,
             price_per_hour_eur: 0.016,
             location: "fr-par-1".into(),
             image: "ubuntu-noble".into(),
@@ -128,7 +140,9 @@ pub fn available_vm_types() -> Vec<VmType> {
             name: "scaleway-gp1-l".into(),
             provider: "scaleway".into(),
             api_slug: "GP1-L".into(),
-            vcpu: 4, ram_mb: 16384, disk_gb: 200,
+            vcpu: 4,
+            ram_mb: 16384,
+            disk_gb: 200,
             price_per_hour_eur: 0.029,
             location: "fr-par-1".into(),
             image: "ubuntu-noble".into(),
@@ -161,7 +175,7 @@ pub struct SandboxJob {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ActiveSandbox {
     pub job_id: String,
-    pub server_id: Option<String>,    // cloud provider server ID
+    pub server_id: Option<String>, // cloud provider server ID
     pub ip: Option<String>,
     pub provider: String,
     pub vm_type: String,
@@ -270,7 +284,9 @@ impl SandboxProvisioner {
 
     /// Get status of a sandbox by job ID.
     pub fn status(&self, job_id: &str) -> Option<ActiveSandbox> {
-        self.active.get(job_id).map(|entry| entry.lock().unwrap().clone())
+        self.active
+            .get(job_id)
+            .map(|entry| entry.lock().unwrap().clone())
     }
 
     /// Destroy a sandbox immediately.
@@ -286,7 +302,9 @@ impl SandboxProvisioner {
 
         if let Some(ref sid) = server_id {
             let vms = available_vm_types();
-            let vm = vms.iter().find(|v| v.name == vm_type_name)
+            let vm = vms
+                .iter()
+                .find(|v| v.name == vm_type_name)
                 .ok_or("Unknown VM type")?;
             destroy_vm(&self.client, &self.config, vm, sid).await?;
         }
@@ -315,7 +333,10 @@ impl SandboxProvisioner {
 
     /// Total cost of all sandboxes this month.
     pub fn total_cost(&self) -> f64 {
-        self.active.iter().map(|entry| entry.lock().unwrap().estimated_cost_eur).sum()
+        self.active
+            .iter()
+            .map(|entry| entry.lock().unwrap().estimated_cost_eur)
+            .sum()
     }
 }
 
@@ -379,14 +400,19 @@ async fn provision_hetzner(
     }
 
     let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
-    let server_id = json["server"]["id"].as_i64().map(|i| i.to_string())
+    let server_id = json["server"]["id"]
+        .as_i64()
+        .map(|i| i.to_string())
         .unwrap_or_else(|| "unknown".into());
 
     // Poll for IP (can take 5-15 seconds)
     for _ in 0..30 {
         sleep(Duration::from_secs(2)).await;
         let status_resp = client
-            .get(format!("https://api.hetzner.cloud/v1/servers/{}", server_id))
+            .get(format!(
+                "https://api.hetzner.cloud/v1/servers/{}",
+                server_id
+            ))
             .header("Authorization", format!("Bearer {}", config.hetzner_token))
             .send()
             .await
@@ -444,7 +470,10 @@ async fn provision_scaleway(
     }
 
     let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
-    let server_id = json["server"]["id"].as_str().unwrap_or("unknown").to_string();
+    let server_id = json["server"]["id"]
+        .as_str()
+        .unwrap_or("unknown")
+        .to_string();
 
     // Poll for IP
     for _ in 0..30 {
@@ -478,7 +507,10 @@ async fn destroy_vm(
     match vm.provider.as_str() {
         "hetzner" => {
             client
-                .delete(format!("https://api.hetzner.cloud/v1/servers/{}", server_id))
+                .delete(format!(
+                    "https://api.hetzner.cloud/v1/servers/{}",
+                    server_id
+                ))
                 .header("Authorization", format!("Bearer {}", config.hetzner_token))
                 .send()
                 .await
@@ -642,7 +674,11 @@ mod tests {
         assert!(!vms.is_empty());
         for vm in &vms {
             assert!(vm.price_per_hour_eur > 0.0);
-            assert!(vm.ram_mb >= 4096, "{} needs at least 4GB RAM for GraalVM", vm.name);
+            assert!(
+                vm.ram_mb >= 4096,
+                "{} needs at least 4GB RAM for GraalVM",
+                vm.name
+            );
         }
     }
 

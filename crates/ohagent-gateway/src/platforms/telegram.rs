@@ -12,7 +12,9 @@ use teloxide::{
 };
 use tracing::{info, warn};
 
-use crate::adapter::{FileAttachment, IncomingMessage, InlineButton, OutgoingMessage, PlatformAdapter};
+use crate::adapter::{
+    FileAttachment, IncomingMessage, InlineButton, OutgoingMessage, PlatformAdapter,
+};
 use crate::dispatch::Dispatcher;
 use crate::i18n::Lang;
 use crate::pairing::PairingManager;
@@ -25,22 +27,21 @@ use ohagent_core::session_store::SessionStore;
 use ohagent_core::usage_tracker::UsageTracker;
 use ohagent_memory::engine::MemoryEngine;
 use ohagent_plugins::PluginManager;
-use std::sync::Mutex as StdMutex;
-use ohagent_skills::registry::SkillRegistry;
 use ohagent_provider_metrics::{GeminiOcrClient, GeminiOcrConfig};
+use ohagent_skills::registry::SkillRegistry;
+use std::sync::Mutex as StdMutex;
 
 /// Helper: parse a string chat_id to teloxide's ChatId.
 fn to_chat_id(s: &str) -> Result<ChatId, Box<dyn std::error::Error + Send + Sync>> {
-    let id: i64 = s.parse().map_err(|e| format!("Invalid chat ID '{s}': {e}"))?;
+    let id: i64 = s
+        .parse()
+        .map_err(|e| format!("Invalid chat ID '{s}': {e}"))?;
     Ok(ChatId(id))
 }
 
 /// Telegram bot commands.
 #[derive(BotCommands, Debug, Clone)]
-#[command(
-    rename_rule = "lowercase",
-    description = "Available commands:"
-)]
+#[command(rename_rule = "lowercase", description = "Available commands:")]
 enum Command {
     #[command(description = "Start the bot")]
     Start,
@@ -210,8 +211,8 @@ impl PlatformAdapter for TelegramAdapter {
     ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let bot = Bot::new(&self.bot_token);
 
-        let admin_user_id = std::env::var("OHAGENT_ADMIN_USER_ID")
-            .unwrap_or_else(|_| String::new());
+        let admin_user_id =
+            std::env::var("OHAGENT_ADMIN_USER_ID").unwrap_or_else(|_| String::new());
         let pairing_manager = Arc::new(PairingManager::new(admin_user_id));
         let session_manager = Arc::new(SessionManager::new(bridge));
         let mut dispatcher_builder = Dispatcher::new(session_manager, pairing_manager);
@@ -254,13 +255,18 @@ impl PlatformAdapter for TelegramAdapter {
             let wh_url = format!("{}/webhooks/telegram", webhook_url.trim_end_matches('/'));
 
             // Set webhook via direct API call
-            let set_url = format!("https://api.telegram.org/bot{}/setWebhook?url={}",
-                self.bot_token, wh_url);
+            let set_url = format!(
+                "https://api.telegram.org/bot{}/setWebhook?url={}",
+                self.bot_token, wh_url
+            );
             reqwest::get(&set_url).await?;
             info!("Webhook set to {wh_url}");
 
             let _ = tokio::signal::ctrl_c().await;
-            let del_url = format!("https://api.telegram.org/bot{}/deleteWebhook", self.bot_token);
+            let del_url = format!(
+                "https://api.telegram.org/bot{}/deleteWebhook",
+                self.bot_token
+            );
             reqwest::get(&del_url).await?;
             info!("Webhook removed");
         } else {
@@ -302,14 +308,19 @@ impl PlatformAdapter for TelegramAdapter {
             req = req.parse_mode(ParseMode::Markdown);
         }
         if let Some(ref keyboard) = msg.inline_keyboard {
-            let rows: Vec<Vec<teloxide::types::InlineKeyboardButton>> = keyboard.iter().map(|row| {
-                row.iter().map(|btn| {
-                    teloxide::types::InlineKeyboardButton::callback(
-                        &btn.text,
-                        &btn.callback_data,
-                    )
-                }).collect()
-            }).collect();
+            let rows: Vec<Vec<teloxide::types::InlineKeyboardButton>> = keyboard
+                .iter()
+                .map(|row| {
+                    row.iter()
+                        .map(|btn| {
+                            teloxide::types::InlineKeyboardButton::callback(
+                                &btn.text,
+                                &btn.callback_data,
+                            )
+                        })
+                        .collect()
+                })
+                .collect();
             req = req.reply_markup(teloxide::types::InlineKeyboardMarkup::new(rows));
         }
 
@@ -341,37 +352,36 @@ async fn handle_message(
         .unwrap_or_else(|| "unknown".to_string());
     let chat_id = msg.chat.id.to_string();
 
-    let lang = Lang::from_code(
-        user.and_then(|u| u.language_code.as_deref()),
-    );
+    let lang = Lang::from_code(user.and_then(|u| u.language_code.as_deref()));
 
     // ── Handle photo messages ──
     let attachment = if let Some(photos) = msg.photo() {
         // Take the largest photo (last in array)
         let largest = photos.last();
         match largest {
-            Some(photo) => {
-                match download_telegram_file(&bot, &photo.file.id, "photo.jpg").await {
-                    Ok(local_path) => {
-                        info!(chat_id = %chat_id, path = %local_path, "Photo received and saved");
-                        Some(FileAttachment {
-                            local_path,
-                            file_name: Some("photo.jpg".into()),
-                            mime_type: Some("image/jpeg".into()),
-                            size_bytes: photo.file.size as u64,
-                        })
-                    }
-                    Err(e) => {
-                        warn!(error = %e, "Failed to download photo");
-                        None
-                    }
+            Some(photo) => match download_telegram_file(&bot, &photo.file.id, "photo.jpg").await {
+                Ok(local_path) => {
+                    info!(chat_id = %chat_id, path = %local_path, "Photo received and saved");
+                    Some(FileAttachment {
+                        local_path,
+                        file_name: Some("photo.jpg".into()),
+                        mime_type: Some("image/jpeg".into()),
+                        size_bytes: photo.file.size as u64,
+                    })
                 }
-            }
+                Err(e) => {
+                    warn!(error = %e, "Failed to download photo");
+                    None
+                }
+            },
             None => None,
         }
     // ── Handle document messages ──
     } else if let Some(doc) = msg.document() {
-        let file_name = doc.file_name.clone().unwrap_or_else(|| "document.bin".into());
+        let file_name = doc
+            .file_name
+            .clone()
+            .unwrap_or_else(|| "document.bin".into());
         match download_telegram_file(&bot, &doc.file.id, &file_name).await {
             Ok(local_path) => {
                 info!(chat_id = %chat_id, path = %local_path, name = %file_name, "Document received and saved");
@@ -424,16 +434,12 @@ async fn handle_message(
 
     // Send typing indicator
     let _ = bot
-        .send_chat_action(
-            to_chat_id(&chat_id)?,
-            teloxide::types::ChatAction::Typing,
-        )
+        .send_chat_action(to_chat_id(&chat_id)?, teloxide::types::ChatAction::Typing)
         .await;
 
     // Dispatch
     if let Some(response) = state.dispatcher.handle_message(incoming).await {
-        let mut req = bot
-            .send_message(to_chat_id(&chat_id)?, response.text);
+        let mut req = bot.send_message(to_chat_id(&chat_id)?, response.text);
         if response.markdown {
             req = req.parse_mode(ParseMode::Markdown);
         }
@@ -449,8 +455,8 @@ async fn download_telegram_file(
     file_id: &str,
     file_name: &str,
 ) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
-    use teloxide::net::Download;
     use std::io::Write as _;
+    use teloxide::net::Download;
 
     let file = bot.get_file(file_id).await?;
     let upload_dir = shellexpand::tilde("~/.ohagent/uploads").to_string();
@@ -485,9 +491,7 @@ async fn handle_command(
         .map(|u| u.id.to_string())
         .unwrap_or_else(|| "unknown".to_string());
     let chat_id = msg.chat.id.to_string();
-    let lang = Lang::from_code(
-        user.and_then(|u| u.language_code.as_deref()),
-    );
+    let lang = Lang::from_code(user.and_then(|u| u.language_code.as_deref()));
 
     info!(
         user_id = %user_id,
@@ -530,8 +534,7 @@ async fn handle_command(
         .handle_command(incoming, command, args)
         .await
     {
-        let mut req = bot
-            .send_message(to_chat_id(&chat_id)?, response.text);
+        let mut req = bot.send_message(to_chat_id(&chat_id)?, response.text);
         if response.markdown {
             req = req.parse_mode(ParseMode::Markdown);
         }

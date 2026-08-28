@@ -11,6 +11,7 @@
 
 use std::sync::Arc;
 
+use crate::api::ApiState;
 use axum::{
     extract::State,
     response::{
@@ -21,9 +22,8 @@ use axum::{
 };
 use futures::StreamExt;
 use jcode_message_types::{ContentBlock, Message, Role, StreamEvent, ToolDefinition};
-use serde::{Deserialize, Serialize};
-use crate::api::ApiState;
 use ohagent_core::agent_runner::{self, AgentEvent};
+use serde::{Deserialize, Serialize};
 
 // ── /v1/models handler ──
 
@@ -88,7 +88,10 @@ pub async fn get_model_prefs(
     State(state): State<ApiState>,
     axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
 ) -> Json<ModelPrefs> {
-    let tenant = params.get("tenant").map(|t| t.as_str()).unwrap_or("default");
+    let tenant = params
+        .get("tenant")
+        .map(|t| t.as_str())
+        .unwrap_or("default");
 
     let prefs = if let Some(ref router) = state.model_router {
         match router.lock() {
@@ -120,14 +123,12 @@ pub async fn set_model_pref(
     Json(body): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, (axum::http::StatusCode, Json<serde_json::Value>)> {
     let tenant = body["tenant"].as_str().unwrap_or("default");
-    let capability = body["capability"]
-        .as_str()
-        .ok_or_else(|| {
-            (
-                axum::http::StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({"error": "capability required"})),
-            )
-        })?;
+    let capability = body["capability"].as_str().ok_or_else(|| {
+        (
+            axum::http::StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "capability required"})),
+        )
+    })?;
     let model_id = body["model_id"].as_str().ok_or_else(|| {
         (
             axum::http::StatusCode::BAD_REQUEST,
@@ -177,13 +178,16 @@ pub async fn model_status_handler(
 
     match router.lock() {
         Ok(r) => {
-            let statuses: Vec<serde_json::Value> = r.model_statuses()
+            let statuses: Vec<serde_json::Value> = r
+                .model_statuses()
                 .iter()
-                .map(|s| serde_json::json!({
-                    "id": s.id, "display": s.display,
-                    "provider": s.provider, "cost_tier": s.cost_tier,
-                    "enabled": s.enabled, "has_api_key": s.has_api_key,
-                }))
+                .map(|s| {
+                    serde_json::json!({
+                        "id": s.id, "display": s.display,
+                        "provider": s.provider, "cost_tier": s.cost_tier,
+                        "enabled": s.enabled, "has_api_key": s.has_api_key,
+                    })
+                })
                 .collect();
             Ok(Json(serde_json::json!({"models": statuses})))
         }
@@ -376,27 +380,31 @@ pub async fn chat_completions_handler(
         .as_secs();
 
     let (messages, system) = convert_messages(&req.messages);
-    let input_tokens = ohagent_core::context_estimator::estimate_conversation_tokens(
-        &messages, &system,
-    );
+    let input_tokens =
+        ohagent_core::context_estimator::estimate_conversation_tokens(&messages, &system);
 
     // ── Build layered system prompt (rules + skills + compressed history) ──
     let system = if let Some(ref builder) = state.system_prompt_builder {
         let budget = crate::system_prompt::PromptBudget::from_window(128_000);
-        let project_dir = std::env::current_dir()
-            .unwrap_or_else(|_| std::path::PathBuf::from("."));
+        let project_dir = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
 
         // User's last message — for skills-on-demand + memory RAG
-        let user_message = req.messages.last()
+        let user_message = req
+            .messages
+            .last()
             .map(|m| m.content.as_str())
             .unwrap_or("");
 
         let compressed = state.memory.as_ref().and_then(|mem| {
-            ohagent_memory::rolling_summary::load_or_create(
-                mem.store(), "default", "default",
-            )
-            .ok()
-            .and_then(|rs| if rs.compressed_history.is_empty() { None } else { Some(rs.compressed_history) })
+            ohagent_memory::rolling_summary::load_or_create(mem.store(), "default", "default")
+                .ok()
+                .and_then(|rs| {
+                    if rs.compressed_history.is_empty() {
+                        None
+                    } else {
+                        Some(rs.compressed_history)
+                    }
+                })
         });
 
         // ── Memory RAG: search for relevant facts ──
@@ -409,10 +417,7 @@ pub async fn chat_completions_handler(
                         .take(5) // top 5
                         .map(|r| format!("[{}] {}", r.entry.id, r.entry.content))
                         .collect();
-                    tracing::info!(
-                        rag_results = count,
-                        "Memory RAG retrieved relevant facts"
-                    );
+                    tracing::info!(rag_results = count, "Memory RAG retrieved relevant facts");
                     strings
                 }
                 _ => Vec::new(),
@@ -446,7 +451,9 @@ pub async fn chat_completions_handler(
 
     // ── Plugin pipeline: redact PII/secrets before reaching the LLM ──
     let (messages, system) = if let Some(ref pm) = state.plugin_manager {
-        let user_msg = req.messages.last()
+        let user_msg = req
+            .messages
+            .last()
             .map(|m| m.content.as_str())
             .unwrap_or("");
         let plugin_msg = ohagent_plugins::PluginMessage::new(
@@ -468,7 +475,10 @@ pub async fn chat_completions_handler(
                     // Rebuild messages with redacted text
                     let mut new_messages = messages;
                     if let Some(last) = new_messages.last_mut() {
-                        if let Some(jcode_message_types::ContentBlock::Text { ref mut text, .. }) = last.content.first_mut() {
+                        if let Some(jcode_message_types::ContentBlock::Text {
+                            ref mut text, ..
+                        }) = last.content.first_mut()
+                        {
                             *text = processed.text;
                         }
                     }
@@ -491,32 +501,34 @@ pub async fn chat_completions_handler(
     };
 
     // ── Context-aware model routing when ModelRouter is available ──
-    let routed: Option<ohagent_core::model_router::RoutedModel> = if let Some(ref router) = state.model_router {
-        let msg = req.messages.last()
+    let routed: Option<ohagent_core::model_router::RoutedModel> = if let Some(ref router) =
+        state.model_router
+    {
+        let msg = req
+            .messages
+            .last()
             .map(|m| m.content.clone())
             .unwrap_or_default();
         let tenant = "default"; // todo: extract from headers or user prefs
         match router.lock() {
-            Ok(r) => {
-                match r.route_with_messages(tenant, &msg, Some(&messages), Some(&system)) {
-                    Ok(rm) => {
-                        tracing::info!(
-                            model = %rm.display_name,
-                            context = %rm.model_id,
-                            tokens_est = input_tokens,
-                            "Context-aware routing selected model"
-                        );
-                        Some(rm)
-                    }
-                    Err(e) => {
-                        tracing::warn!(
-                            error = %e,
-                            "route_with_messages failed — falling back to direct provider"
-                        );
-                        None
-                    }
+            Ok(r) => match r.route_with_messages(tenant, &msg, Some(&messages), Some(&system)) {
+                Ok(rm) => {
+                    tracing::info!(
+                        model = %rm.display_name,
+                        context = %rm.model_id,
+                        tokens_est = input_tokens,
+                        "Context-aware routing selected model"
+                    );
+                    Some(rm)
                 }
-            }
+                Err(e) => {
+                    tracing::warn!(
+                        error = %e,
+                        "route_with_messages failed — falling back to direct provider"
+                    );
+                    None
+                }
+            },
             Err(_) => None,
         }
     } else {
@@ -527,7 +539,9 @@ pub async fn chat_completions_handler(
     if let Some(ref ss) = state.session_store {
         let tenant = "default";
         // Derive stable session_hash from first user message
-        let session_hash = &req.messages.first()
+        let session_hash = &req
+            .messages
+            .first()
             .map(|m| {
                 use std::hash::{Hash, Hasher};
                 let mut h = std::collections::hash_map::DefaultHasher::new();
@@ -536,12 +550,19 @@ pub async fn chat_completions_handler(
             })
             .unwrap_or_else(|| "default".into());
         let total_messages = req.messages.len() as u32;
-        let _ = ss.heartbeat(tenant, session_hash, total_messages, input_tokens as u64, ".");
+        let _ = ss.heartbeat(
+            tenant,
+            session_hash,
+            total_messages,
+            input_tokens as u64,
+            ".",
+        );
     }
 
     // ── Tool-augmented path: use agent_runner when tools are registered ──
     let tool_registry = state.tool_registry.clone();
-    let has_tools = tool_registry.as_ref()
+    let has_tools = tool_registry
+        .as_ref()
         .map(|tr| !tr.list().is_empty())
         .unwrap_or(false);
 
@@ -560,10 +581,29 @@ pub async fn chat_completions_handler(
         // Uses multi-branch confidence-momentum controller to reduce tokens.
         handle_cmc_reasoning(state, req, messages, system, request_id, created).await
     } else if req.stream {
-        handle_streaming(state, req, messages, system, request_id, created, input_tokens, routed).await
+        handle_streaming(
+            state,
+            req,
+            messages,
+            system,
+            request_id,
+            created,
+            input_tokens,
+            routed,
+        )
+        .await
     } else {
-        handle_non_streaming(state, req, messages, system, request_id, created, input_tokens, routed)
-            .await
+        handle_non_streaming(
+            state,
+            req,
+            messages,
+            system,
+            request_id,
+            created,
+            input_tokens,
+            routed,
+        )
+        .await
     }
 }
 
@@ -699,11 +739,7 @@ fn error_response(msg: &str) -> Response {
             "type": "server_error",
         }
     });
-    (
-        axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-        Json(body),
-    )
-        .into_response()
+    (axum::http::StatusCode::INTERNAL_SERVER_ERROR, Json(body)).into_response()
 }
 
 // ── CMC reasoning handler ──
@@ -736,7 +772,9 @@ async fn handle_cmc_reasoning(
     };
 
     let budget = crate::reasoning::default_cmc_budget();
-    let user_message = req.messages.last()
+    let user_message = req
+        .messages
+        .last()
         .map(|m| m.content.clone())
         .unwrap_or_default();
 
@@ -810,13 +848,20 @@ async fn handle_non_streaming_with_tools(
         None => return error_response("Tool registry not available"),
     };
 
-    let provider: Arc<dyn jcode_provider_core::Provider> = if let Some(ref router) = state.model_router {
+    let provider: Arc<dyn jcode_provider_core::Provider> = if let Some(ref router) =
+        state.model_router
+    {
         match router.lock() {
             Ok(r) => {
-                let msg = req.messages.last().map(|m| m.content.as_str()).unwrap_or("");
+                let msg = req
+                    .messages
+                    .last()
+                    .map(|m| m.content.as_str())
+                    .unwrap_or("");
                 match r.route_with_messages("default", msg, Some(&messages), Some(&system)) {
                     Ok(rm) => rm.provider,
-                    Err(_) => Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>,
+                    Err(_) => Arc::clone(state.bridge.provider())
+                        as Arc<dyn jcode_provider_core::Provider>,
                 }
             }
             Err(_) => Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>,
@@ -825,19 +870,34 @@ async fn handle_non_streaming_with_tools(
         Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>
     };
 
-    let tool_defs: Vec<ToolDefinition> = tr.list().into_iter().map(|(name, desc)| {
-        let tool = tr.get(&name);
-        ToolDefinition {
-            name,
-            description: desc,
-            input_schema: tool.map(|t| t.parameters_schema.clone()).unwrap_or_default(),
-        }
-    }).collect();
+    let tool_defs: Vec<ToolDefinition> = tr
+        .list()
+        .into_iter()
+        .map(|(name, desc)| {
+            let tool = tr.get(&name);
+            ToolDefinition {
+                name,
+                description: desc,
+                input_schema: tool
+                    .map(|t| t.parameters_schema.clone())
+                    .unwrap_or_default(),
+            }
+        })
+        .collect();
 
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
     let _handle = tokio::spawn(async move {
-        agent_runner::run_agent_turn(provider, messages, system, tool_defs, tr, tx, agent_runner::ToolProgressMode::All).await
+        agent_runner::run_agent_turn(
+            provider,
+            messages,
+            system,
+            tool_defs,
+            tr,
+            tx,
+            agent_runner::ToolProgressMode::All,
+        )
+        .await
     });
 
     let mut content = String::new();
@@ -847,7 +907,12 @@ async fn handle_non_streaming_with_tools(
             AgentEvent::ToolCallStart { name, .. } => {
                 tracing::info!(tool = %name, "Agent calling tool");
             }
-            AgentEvent::ToolResult { name, output, success, .. } => {
+            AgentEvent::ToolResult {
+                name,
+                output,
+                success,
+                ..
+            } => {
                 tracing::info!(tool = %name, success, "Tool result ({} bytes)", output.len());
             }
             AgentEvent::Error(msg) => {
@@ -865,10 +930,17 @@ async fn handle_non_streaming_with_tools(
         model: req.model.clone(),
         choices: vec![Choice {
             index: 0,
-            message: ChoiceMessage { role: "assistant".into(), content },
+            message: ChoiceMessage {
+                role: "assistant".into(),
+                content,
+            },
             finish_reason: "stop".into(),
         }],
-        usage: Usage { prompt_tokens: 0, completion_tokens: output_tokens, total_tokens: output_tokens },
+        usage: Usage {
+            prompt_tokens: 0,
+            completion_tokens: output_tokens,
+            total_tokens: output_tokens,
+        },
     };
 
     (axum::http::StatusCode::OK, Json(response)).into_response()
@@ -888,13 +960,20 @@ async fn handle_streaming_with_tools(
         None => return error_response("Tool registry not available"),
     };
 
-    let provider: Arc<dyn jcode_provider_core::Provider> = if let Some(ref router) = state.model_router {
+    let provider: Arc<dyn jcode_provider_core::Provider> = if let Some(ref router) =
+        state.model_router
+    {
         match router.lock() {
             Ok(r) => {
-                let msg = req.messages.last().map(|m| m.content.as_str()).unwrap_or("");
+                let msg = req
+                    .messages
+                    .last()
+                    .map(|m| m.content.as_str())
+                    .unwrap_or("");
                 match r.route_with_messages("default", msg, Some(&messages), Some(&system)) {
                     Ok(rm) => rm.provider,
-                    Err(_) => Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>,
+                    Err(_) => Arc::clone(state.bridge.provider())
+                        as Arc<dyn jcode_provider_core::Provider>,
                 }
             }
             Err(_) => Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>,
@@ -903,19 +982,34 @@ async fn handle_streaming_with_tools(
         Arc::clone(state.bridge.provider()) as Arc<dyn jcode_provider_core::Provider>
     };
 
-    let tool_defs: Vec<ToolDefinition> = tr.list().into_iter().map(|(name, desc)| {
-        let tool = tr.get(&name);
-        ToolDefinition {
-            name,
-            description: desc,
-            input_schema: tool.map(|t| t.parameters_schema.clone()).unwrap_or_default(),
-        }
-    }).collect();
+    let tool_defs: Vec<ToolDefinition> = tr
+        .list()
+        .into_iter()
+        .map(|(name, desc)| {
+            let tool = tr.get(&name);
+            ToolDefinition {
+                name,
+                description: desc,
+                input_schema: tool
+                    .map(|t| t.parameters_schema.clone())
+                    .unwrap_or_default(),
+            }
+        })
+        .collect();
 
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
 
     tokio::spawn(async move {
-        let _ = agent_runner::run_agent_turn(provider, messages, system, tool_defs, tr, tx, agent_runner::ToolProgressMode::All).await;
+        let _ = agent_runner::run_agent_turn(
+            provider,
+            messages,
+            system,
+            tool_defs,
+            tr,
+            tx,
+            agent_runner::ToolProgressMode::All,
+        )
+        .await;
     });
 
     let id_clone = id.clone();

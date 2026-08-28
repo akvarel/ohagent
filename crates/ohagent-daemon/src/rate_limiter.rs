@@ -105,13 +105,14 @@ impl RateLimiter {
         let window_ms = self.config.window.as_millis() as i64;
 
         // Get or create bucket
-        let mut entry = self.buckets.entry(tenant_id.to_string()).or_insert_with(|| {
-            TenantBucket {
+        let mut entry = self
+            .buckets
+            .entry(tenant_id.to_string())
+            .or_insert_with(|| TenantBucket {
                 window_start: now_ms,
                 count: 0,
                 banned_until: None,
-            }
-        });
+            });
 
         let bucket = entry.value_mut();
 

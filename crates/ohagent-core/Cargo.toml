@@ -16,12 +16,11 @@ uuid = { workspace = true }
 async-trait = { workspace = true }
 ohagent-reasoning = { workspace = true }
 
-# Jcode integration — path deps into git submodule
-jcode-app-core = { path = "../../jcode/crates/jcode-app-core" }
+# Jcode integration — public SDK plus provider access for existing direct OpenAI/ws paths
+jcode-sdk = { path = "../../jcode/crates/jcode-sdk" }
 jcode-base = { path = "../../jcode/crates/jcode-base", features = ["embeddings"] }
 jcode-provider-core = { path = "../../jcode/crates/jcode-provider-core" }
 jcode-message-types = { path = "../../jcode/crates/jcode-message-types" }
-jcode-agent-runtime = { path = "../../jcode/crates/jcode-agent-runtime" }
 toml = "0.8"
 rusqlite = { workspace = true }
 shellexpand = { workspace = true }
@@ -29,6 +28,7 @@ chrono = { workspace = true }
 flate2 = { workspace = true }
 reqwest = { workspace = true }
 futures = { workspace = true }
+sha2 = "0.10"
 tokio-stream = "0.1"
 ohagent-swarm = { workspace = true }
 

@@ -34,7 +34,7 @@ use async_trait::async_trait;
 use futures::Stream;
 use jcode_message_types::{ContentBlock, Message, Role, StreamEvent, ToolDefinition};
 use jcode_provider_core::{EventStream, Provider};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::io::{BufRead, BufReader, Write};
 use std::pin::Pin;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
@@ -72,12 +72,14 @@ fn jsonrpc_notification(method: &str, params: Value) -> Value {
 
 /// Parse a JSON-RPC response line. Returns (id, result_or_error).
 fn parse_jsonrpc_response(line: &str) -> Result<(Option<u64>, Value)> {
-    let v: Value = serde_json::from_str(line)
-        .context("ACP: failed to parse JSON-RPC response")?;
+    let v: Value = serde_json::from_str(line).context("ACP: failed to parse JSON-RPC response")?;
     let id = v.get("id").and_then(|i| i.as_u64());
     if let Some(error) = v.get("error") {
         let code = error.get("code").and_then(|c| c.as_i64()).unwrap_or(-1);
-        let msg = error.get("message").and_then(|m| m.as_str()).unwrap_or("unknown");
+        let msg = error
+            .get("message")
+            .and_then(|m| m.as_str())
+            .unwrap_or("unknown");
         return Err(anyhow::anyhow!("ACP error {}: {}", code, msg));
     }
     let result = v.get("result").cloned().unwrap_or(Value::Null);
@@ -99,8 +101,7 @@ struct AcpSession {
 impl AcpSession {
     /// Spawn `copilot --acp --stdio` and initialize.
     fn spawn(model: &str) -> Result<Self> {
-        let copilot_path = std::env::var(COPILOT_CLI_ENV)
-            .unwrap_or_else(|_| "copilot".to_string());
+        let copilot_path = std::env::var(COPILOT_CLI_ENV).unwrap_or_else(|_| "copilot".to_string());
         let copilot_path = shellexpand::tilde(&copilot_path).to_string();
 
         info!(
@@ -115,12 +116,23 @@ impl AcpSession {
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit())
             .spawn()
-            .with_context(|| format!("Failed to spawn '{} --acp --stdio'. Is copilot CLI installed?", copilot_path))?;
+            .with_context(|| {
+                format!(
+                    "Failed to spawn '{} --acp --stdio'. Is copilot CLI installed?",
+                    copilot_path
+                )
+            })?;
 
-        let stdin = child.stdin.take()
+        let stdin = child
+            .stdin
+            .take()
             .context("ACP: failed to take stdin of child process")?;
-        let stdout = std::io::BufReader::new(child.stdout.take()
-            .context("ACP: failed to take stdout of child process")?);
+        let stdout = std::io::BufReader::new(
+            child
+                .stdout
+                .take()
+                .context("ACP: failed to take stdout of child process")?,
+        );
 
         let mut session = Self {
             stdin,
@@ -141,14 +153,18 @@ impl AcpSession {
 
     /// ACP initialize handshake.
     fn initialize(&mut self) -> Result<()> {
-        let req = jsonrpc_request("initialize", json!({
-            "protocolVersion": "0.9.0",
-            "clientInfo": {
-                "name": "ohagent",
-                "version": env!("CARGO_PKG_VERSION"),
-            },
-            "capabilities": {}
-        }), self.next_id());
+        let req = jsonrpc_request(
+            "initialize",
+            json!({
+                "protocolVersion": "0.9.0",
+                "clientInfo": {
+                    "name": "ohagent",
+                    "version": env!("CARGO_PKG_VERSION"),
+                },
+                "capabilities": {}
+            }),
+            self.next_id(),
+        );
         self.send(&req)?;
         let line = self.read_line()?;
         let (_id, result) = parse_jsonrpc_response(&line)?;
@@ -163,14 +179,19 @@ impl AcpSession {
 
     /// Create a new ACP session.
     fn new_session(&mut self) -> Result<()> {
-        let req = jsonrpc_request("sessions/new", json!({
-            "model": self.model,
-            "mode": "chat"
-        }), self.next_id());
+        let req = jsonrpc_request(
+            "sessions/new",
+            json!({
+                "model": self.model,
+                "mode": "chat"
+            }),
+            self.next_id(),
+        );
         self.send(&req)?;
         let line = self.read_line()?;
         let (_id, result) = parse_jsonrpc_response(&line)?;
-        let sid = result.get("sessionId")
+        let sid = result
+            .get("sessionId")
             .and_then(|v| v.as_str())
             .map(|s| s.to_string())
             .context("ACP: no sessionId in new_session response")?;
@@ -181,16 +202,19 @@ impl AcpSession {
 
     /// Send a chat message and return stream of content chunks.
     fn send_message(&mut self, user_message: &str) -> Result<AcpMessageStream> {
-        let sid = self.session_id.as_ref()
-            .context("ACP: no active session")?;
+        let sid = self.session_id.as_ref().context("ACP: no active session")?;
 
-        let req = jsonrpc_request("messages/send", json!({
-            "sessionId": sid,
-            "message": {
-                "role": "user",
-                "content": [{"type": "text", "text": user_message}]
-            }
-        }), self.next_id());
+        let req = jsonrpc_request(
+            "messages/send",
+            json!({
+                "sessionId": sid,
+                "message": {
+                    "role": "user",
+                    "content": [{"type": "text", "text": user_message}]
+                }
+            }),
+            self.next_id(),
+        );
         self.send(&req)?;
 
         // Read streaming response lines until we get the final result
@@ -202,9 +226,13 @@ impl AcpSession {
     /// Close the ACP session.
     fn close_session(&mut self) {
         if let Some(ref sid) = self.session_id {
-            let req = jsonrpc_request("sessions/close", json!({
-                "sessionId": sid
-            }), self.next_id());
+            let req = jsonrpc_request(
+                "sessions/close",
+                json!({
+                    "sessionId": sid
+                }),
+                self.next_id(),
+            );
             let _ = self.send(&req);
             let _ = self.read_line(); // drain response
         }
@@ -221,7 +249,10 @@ impl AcpSession {
         use std::io::Write;
         writeln!(self.stdin, "{line}")?;
         self.stdin.flush()?;
-        debug!(method = value.get("method").and_then(|v| v.as_str()), "ACP request sent");
+        debug!(
+            method = value.get("method").and_then(|v| v.as_str()),
+            "ACP request sent"
+        );
         Ok(())
     }
 
@@ -230,7 +261,9 @@ impl AcpSession {
         self.stdout.read_line(&mut line)?;
         let trimmed = line.trim();
         if trimmed.is_empty() {
-            return Err(anyhow::anyhow!("ACP: empty response (child process may have exited)"));
+            return Err(anyhow::anyhow!(
+                "ACP: empty response (child process may have exited)"
+            ));
         }
         Ok(trimmed.to_string())
     }
@@ -259,7 +292,11 @@ impl CopilotAcpProvider {
     /// The `copilot` binary must be available in PATH (or set `COPILOT_CLI_PATH`).
     pub fn new(model: &str) -> Self {
         Self {
-            model: if model.is_empty() { DEFAULT_ACP_MODEL.into() } else { model.into() },
+            model: if model.is_empty() {
+                DEFAULT_ACP_MODEL.into()
+            } else {
+                model.into()
+            },
         }
     }
 
@@ -293,7 +330,8 @@ impl Provider for CopilotAcpProvider {
             .rev()
             .find(|m| m.role == Role::User)
             .map(|m| {
-                m.content.iter()
+                m.content
+                    .iter()
                     .filter_map(|block| match block {
                         ContentBlock::Text { text, .. } => Some(text.as_str()),
                         _ => None,
@@ -360,7 +398,9 @@ impl CopilotAcpProvider {
             };
 
             // Check for text delta events
-            if let Some(chunk) = v.get("params").and_then(|p| p.get("delta"))
+            if let Some(chunk) = v
+                .get("params")
+                .and_then(|p| p.get("delta"))
                 .and_then(|d| d.get("content"))
                 .and_then(|c| c.as_str())
             {
@@ -369,15 +409,19 @@ impl CopilotAcpProvider {
             }
 
             // Check for tool call events
-            if let Some(tool_calls) = v.pointer("/params/delta/toolCalls")
+            if let Some(tool_calls) = v
+                .pointer("/params/delta/toolCalls")
                 .and_then(|t| t.as_array())
             {
                 for tc in tool_calls {
                     if let (Some(id), Some(name)) = (
                         tc.get("id").and_then(|v| v.as_str()),
-                        tc.get("function").and_then(|f| f.get("name")).and_then(|v| v.as_str()),
+                        tc.get("function")
+                            .and_then(|f| f.get("name"))
+                            .and_then(|v| v.as_str()),
                     ) {
-                        let args = tc.pointer("/function/arguments")
+                        let args = tc
+                            .pointer("/function/arguments")
                             .and_then(|v| v.as_str())
                             .unwrap_or("{}");
                         let _ = tx.send(Ok(StreamEvent::ToolUseStart {
@@ -399,7 +443,8 @@ impl CopilotAcpProvider {
 
             // Check for final result in JSON-RPC response
             if v.get("result").is_some() && v.get("id").is_some() {
-                if let Some(content_blocks) = v.pointer("/result/message/content")
+                if let Some(content_blocks) = v
+                    .pointer("/result/message/content")
                     .and_then(|c| c.as_array())
                 {
                     for block in content_blocks {
@@ -416,9 +461,7 @@ impl CopilotAcpProvider {
         }
 
         // Send done event
-        let _ = tx.send(Ok(StreamEvent::MessageEnd {
-            stop_reason: None,
-        }));
+        let _ = tx.send(Ok(StreamEvent::MessageEnd { stop_reason: None }));
 
         info!(
             model = %model,
@@ -465,7 +508,8 @@ mod tests {
 
     #[test]
     fn test_parse_jsonrpc_response_error() {
-        let line = r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32601,"message":"Method not found"}}"#;
+        let line =
+            r#"{"jsonrpc":"2.0","id":1,"error":{"code":-32601,"message":"Method not found"}}"#;
         let err = parse_jsonrpc_response(line).unwrap_err();
         assert!(err.to_string().contains("Method not found"));
     }

@@ -49,12 +49,11 @@ pub struct WhatsAppAdapter {
 impl WhatsAppAdapter {
     /// Create from environment variables.
     pub fn from_env() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        let token = std::env::var("WHATSAPP_TOKEN")
-            .map_err(|_| "WHATSAPP_TOKEN not set")?;
-        let phone_id = std::env::var("WHATSAPP_PHONE_ID")
-            .map_err(|_| "WHATSAPP_PHONE_ID not set")?;
-        let verify_token = std::env::var("WHATSAPP_VERIFY_TOKEN")
-            .map_err(|_| "WHATSAPP_VERIFY_TOKEN not set")?;
+        let token = std::env::var("WHATSAPP_TOKEN").map_err(|_| "WHATSAPP_TOKEN not set")?;
+        let phone_id =
+            std::env::var("WHATSAPP_PHONE_ID").map_err(|_| "WHATSAPP_PHONE_ID not set")?;
+        let verify_token =
+            std::env::var("WHATSAPP_VERIFY_TOKEN").map_err(|_| "WHATSAPP_VERIFY_TOKEN not set")?;
 
         Ok(Self {
             token,
@@ -138,9 +137,12 @@ impl WhatsAppAdapter {
                                     .button_reply
                                     .as_ref()
                                     .map(|b| b.title.clone())
-                                    .unwrap_or_else(|| i.list_reply.as_ref()
-                                        .map(|l| l.title.clone())
-                                        .unwrap_or_default()),
+                                    .unwrap_or_else(|| {
+                                        i.list_reply
+                                            .as_ref()
+                                            .map(|l| l.title.clone())
+                                            .unwrap_or_default()
+                                    }),
                                 None => {
                                     warn!("Unsupported WhatsApp message type");
                                     continue;
@@ -192,7 +194,11 @@ impl WhatsAppAdapter {
     }
 
     /// Send a text message via WhatsApp Cloud API.
-    async fn send_wa_text(&self, to: &str, text: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn send_wa_text(
+        &self,
+        to: &str,
+        text: &str,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let url = format!(
             "https://graph.facebook.com/v21.0/{}/messages",
             self.phone_id
