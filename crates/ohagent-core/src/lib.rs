@@ -13,6 +13,7 @@ pub mod jcode_bridge;
 pub mod llm_classifier;
 pub mod logging_provider;
 pub mod message_log;
+pub mod consolidation;
 pub mod model_router;
 pub mod pricing;
 pub mod push;
