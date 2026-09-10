@@ -56,7 +56,8 @@ impl MessageLog {
                 content_gz      BLOB NOT NULL,
                 token_estimate  INTEGER NOT NULL DEFAULT 0,
                 archived        INTEGER NOT NULL DEFAULT 0,
-                created_at      TEXT NOT NULL
+                created_at      TEXT NOT NULL,
+                seq             INTEGER NOT NULL DEFAULT 0
             );
             CREATE INDEX IF NOT EXISTS idx_msglog_tenant ON message_log(tenant_id, archived);
             CREATE INDEX IF NOT EXISTS idx_msglog_session ON message_log(session_hash, turn_seq);
@@ -115,7 +116,7 @@ impl MessageLog {
     }
 
     /// Gzip-decompress.
-    fn gunzip(data: &[u8]) -> Result<String> {
+    pub(crate) fn gunzip(data: &[u8]) -> Result<String> {
         let mut d = GzDecoder::new(data);
         use std::io::Read;
         let mut s = String::new();
@@ -144,8 +145,9 @@ impl MessageLog {
         let db = self.db.lock().unwrap();
         db.execute(
             "INSERT INTO message_log
-             (id, tenant_id, session_hash, role, turn_seq, content_gz, token_estimate, archived, created_at)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,0,?8)",
+             (id, tenant_id, session_hash, role, turn_seq, content_gz, token_estimate, archived, created_at, seq)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,0,?8,
+                     (SELECT IFNULL(MAX(seq), 0) + 1 FROM message_log))",
             params![id, tenant_id, session_hash, role, turn_seq, gz, tokens, now],
         )?;
 

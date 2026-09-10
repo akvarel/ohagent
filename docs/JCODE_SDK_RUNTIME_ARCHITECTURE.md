@@ -104,11 +104,15 @@ A future permission integration requires an end-to-end Jcode prompt source, adve
 
 The SDK does not expose private MCP pool control. Jcode discovers MCP configuration from the tenant workspace using its supported project-local configuration files. This preserves the engine boundary and ensures MCP processes live inside the same tenant runtime domain.
 
-The private fork retains a generic reconnect fix that replaces dead pooled MCP processes instead of returning stale handles. No ohAgent-specific product behavior is added to Jcode.
+Large catalogs remain inside Jcode rather than being copied into every model prompt. In `auto` mode, Jcode switches oversized catalogs to the fixed `mcp_search` and `mcp_call` interface. `mcp_search` performs deterministic weighted lexical ranking across permitted server names, tool names, and descriptions, then returns a compact page of metadata. Pages default to 10 tools and are capped at 50. Input schemas are omitted by default and explicit schema expansion is capped at five shortlisted tools. The model can narrow by query, server, and offset before calling the selected tool.
+
+This is an engine capability inherited through the pinned Jcode submodule. ohAgent must not duplicate catalog ranking or bypass tenant-scoped MCP permissions. The current ranker is lexical, so semantic synonym and multilingual retrieval remain future improvements.
+
+The private fork also retains a generic reconnect fix that replaces dead pooled MCP processes instead of returning stale handles. No ohAgent-specific product behavior is added to Jcode.
 
 ## Maintained Jcode fork
 
-The ohAgent-compatible fork is based on upstream Jcode v0.81.1. It carries generic platform fixes and capabilities required by the product boundary:
+The ohAgent-compatible fork is based on upstream Jcode v0.81.3. It carries generic platform fixes and capabilities required by the product boundary:
 
 1. reconnect a pooled MCP server after its child process dies;
 2. preserve and report the effective working directory on SDK session attach/create;
@@ -116,7 +120,8 @@ The ohAgent-compatible fork is based on upstream Jcode v0.81.1. It carries gener
 4. expose the public headless session and interrupt APIs used by the SDK boundary;
 5. retain external memory enrichment hooks and configurable vault integration;
 6. provide durable orchestration-watchdog reconciliation for background and swarm work;
-7. keep fork-compatible CI and quality guardrails.
+7. provide bounded, ranked, schema-lazy MCP discovery for very large tool catalogs;
+8. keep fork-compatible CI and quality guardrails.
 
 The fork remains engine-focused. ohAgent tenancy, gateway policy, product memory, skills, and deployment ownership stay in the parent repository. Every submodule advance must reference a commit already pushed to the Jcode fork before the parent gitlink is committed.
 

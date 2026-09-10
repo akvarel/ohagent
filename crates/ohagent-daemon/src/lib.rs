@@ -912,6 +912,10 @@ impl Daemon {
         // Start Jcode version checker (daily check for updates)
         self.start_version_checker().await;
 
+        // Start durable consolidation cron (advance-only cursor over the
+        // message log; never silently loses events).
+        self.start_consolidation_cron().await;
+
         info!("ohAgent daemon ready");
 
         // Wait for shutdown signal
@@ -1047,6 +1051,66 @@ impl Daemon {
 
     /// Start the Jcode version checker background task.
     /// Broadcasts update notifications to ALL paired users.
+    /// Spawn a periodic background task that consolidates the message log
+    /// into durable memory with an advance-only cursor (see
+    /// `ohagent_core::consolidation`). Runs periodically so events are
+    /// distilled before retention can remove raw evidence.
+    async fn start_consolidation_cron(&self) {
+        use ohagent_core::consolidation::{ConsolidationEngine, DigestConsolidator};
+
+        let message_log = match &self.message_log {
+            Some(log) => Arc::clone(log),
+            None => {
+                tracing::info!("Consolidation cron disabled — message log not available");
+                return;
+            }
+        };
+        let state_path = std::env::var("OHAGENT_CONSOLIDATION_STATE_DB")
+            .unwrap_or_else(|_| "~/.ohagent/consolidation_state.db".into());
+        let shutdown = Arc::clone(&self.shutdown);
+
+        tokio::spawn(async move {
+            // Blocking SQLite work stays on the blocking pool.
+            let run = move || -> anyhow::Result<()> { // sync closure; sleeps between ticks
+
+                let engine = ConsolidationEngine::new(message_log.clone(), &state_path)?;
+                loop {
+                    // Drain pending batches (bounded per tick).
+                    for _ in 0..10 {
+                        let out = engine.run_cycle(&DigestConsolidator)?;
+                        if out.events_consumed == 0 && out.gaps_created == 0 {
+                            break;
+                        }
+                    }
+                    let flagged = engine.verify_provenance()?;
+                    if let Ok(gaps) = engine.list_gaps() {
+                        for gap in gaps.iter().take(5) {
+                            tracing::warn!(
+                                id = %gap.id,
+                                missing = ?(gap.missing_from, gap.missing_to),
+                                reason = %gap.reason,
+                                "consolidation GAP recorded: source history is missing"
+                            );
+                        }
+                    }
+                    tracing::debug!(flagged, "consolidation provenance recheck done");
+                    // Sync closure: block the worker thread between ticks.
+                    std::thread::sleep(std::time::Duration::from_secs(15 * 60));
+                }
+            };
+            tokio::select! {
+                res = tokio::task::spawn_blocking(run) => {
+                    if let Err(e) = res.unwrap_or_else(|e| Err(anyhow::anyhow!("{e}"))) {
+                        tracing::error!(error = %e, "Consolidation cron crashed");
+                    }
+                }
+                _ = shutdown.notified() => {
+                    info!("Consolidation cron shutting down");
+                }
+            }
+        });
+    }
+
     async fn start_version_checker(&self) {
         let current = ohagent_core::version_check::detect_version();
         let checker = ohagent_core::version_check::VersionChecker::new(current, "system");
