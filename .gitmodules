@@ -1,4 +1,4 @@
 [submodule "jcode"]
 	path = jcode
 	url = git@github.com:akvarel/jcode.git
-	branch = update/external-memory-enrichment-upstream-20260918
+	branch = update/jcode-v0.88.0-20260924
