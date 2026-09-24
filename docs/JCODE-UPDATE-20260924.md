@@ -29,3 +29,17 @@ with an enforced 40-second deadline completed in 5 seconds with
 This occurs before interactive sign-in. Authentication and Figma tool access are
 not complete. No credentials were reset, fabricated or embedded, and unrelated
 MCP configurations were left unchanged.
+
+### Follow-up diagnosis
+
+Figma staff publicly confirm that remote OAuth dynamic registration allowlists
+`client_name` and gates `mcp:connect` to supported clients during beta:
+https://forum.figma.com/report-a-problem-6/figma-s-approach-breaks-the-core-promise-of-mcp-52507
+
+This is consistent with the observed rejection of the bridge's `MCP CLI Client`
+registration, rather than a local Jcode version failure. No client-name spoofing
+or extraction of another application's tokens was attempted. The documented
+local Desktop MCP alternative was checked: no TCP listener exists on port 3845
+on this host. Remote authentication still requires a supported client or Figma
+approval of this integration; the local alternative requires a running Desktop
+MCP server. Neither prerequisite is currently available to this agent.
