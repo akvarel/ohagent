@@ -42,4 +42,22 @@ or extraction of another application's tokens was attempted. The documented
 local Desktop MCP alternative was checked: no TCP listener exists on port 3845
 on this host. Remote authentication still requires a supported client or Figma
 approval of this integration; the local alternative requires a running Desktop
-MCP server. Neither prerequisite is currently available to this agent.
+MCP server. Neither prerequisite was available at that checkpoint.
+
+### User-approved Codex route, verified later on 2026-09-24
+
+The user requested a Codex subagent and completed ChatGPT sign-in. The official
+npm CLI (`0.156.1`), outside the older third-party Snap, confirmed authentication.
+A `gpt-6-sol` subagent completed its investigation. The coordinator then ran
+`codex mcp add figma --url https://mcp.figma.com/mcp`; native OAuth completed with
+`Successfully logged in` (16 seconds).
+
+A fresh `gpt-6-luna` Codex subagent successfully called the real read-only
+`mcp__codex_apps__figma_whoami` tool (14-second acceptance run). This verifies
+Figma access through Codex's authenticated connector. The observed tool namespace
+was `codex_apps`, so it does not independently prove a tool call through the newly
+added local `figma` server entry. No credentials were copied into Jcode, and
+Jcode's direct mcp-remote client remains distinct. Designs were not read or
+modified during this acceptance check. Codex shell execution is separately
+limited by the host's bubblewrap/user-namespace configuration; MCP tool access
+succeeded without disabling that sandbox.
