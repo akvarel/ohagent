@@ -239,6 +239,7 @@ checksum = "1b180a3c8b55960db3426d8964b8745e652466a1a49fe1a2eda828046d30b5e4"
 dependencies = [
  "aws-credential-types",
  "aws-runtime",
+ "aws-sdk-signin",
  "aws-sdk-sso",
  "aws-sdk-ssooidc",
  "aws-sdk-sts",
@@ -250,15 +251,20 @@ dependencies = [
  "aws-smithy-schema",
  "aws-smithy-types",
  "aws-types",
+ "base64-simd",
  "bytes",
  "fastrand",
  "hex",
  "http 1.4.2",
+ "p256",
+ "rand 0.8.6",
  "sha1",
+ "sha2 0.10.9",
  "time",
  "tokio",
  "tracing",
  "url",
+ "uuid",
  "zeroize",
 ]
 
@@ -374,6 +380,32 @@ dependencies = [
  "http 0.2.12",
  "http 1.4.2",
  "http-body-util",
+ "regex-lite",
+ "tracing",
+]
+
+[[package]]
+name = "aws-sdk-signin"
+version = "1.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f0104425a9128bd65dc0a33f837ac02efc78b5761474b2b18708b6d1b18d0b0"
+dependencies = [
+ "arc-swap",
+ "aws-credential-types",
+ "aws-runtime",
+ "aws-smithy-async",
+ "aws-smithy-http",
+ "aws-smithy-json",
+ "aws-smithy-observability",
+ "aws-smithy-runtime",
+ "aws-smithy-runtime-api",
+ "aws-smithy-schema",
+ "aws-smithy-types",
+ "aws-types",
+ "bytes",
+ "fastrand",
+ "http 0.2.12",
+ "http 1.4.2",
  "regex-lite",
  "tracing",
 ]
@@ -3099,6 +3131,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "jcode-applet-types"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "jcode-auth-types"
 version = "0.1.0"
 dependencies = [
@@ -3132,11 +3172,13 @@ dependencies = [
  "cpal",
  "crossterm 0.29.0",
  "dirs",
+ "flate2",
  "futures",
  "global-hotkey",
  "hex",
  "image",
  "jcode-agent-runtime",
+ "jcode-applet-types",
  "jcode-auth-types",
  "jcode-azure-auth",
  "jcode-background-types",
@@ -3184,6 +3226,7 @@ dependencies = [
  "regex",
  "reqwest 0.12.28",
  "rusqlite",
+ "rustls 0.23.41",
  "serde",
  "serde_json",
  "serde_yaml",
@@ -3262,6 +3305,9 @@ dependencies = [
 name = "jcode-harness-api"
 version = "0.1.0"
 dependencies = [
+ "jcode-applet-types",
+ "jcode-session-types",
+ "jcode-side-panel-types",
  "jcode-usage-types",
  "serde",
  "serde_json",
@@ -3322,6 +3368,7 @@ name = "jcode-protocol"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "jcode-applet-types",
  "jcode-batch-types",
  "jcode-config-types",
  "jcode-message-types",
@@ -3518,6 +3565,7 @@ name = "jcode-sdk"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "jcode-applet-types",
  "jcode-harness-api",
  "jcode-provider-metadata",
  "jcode-transport",
