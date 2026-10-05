@@ -5,7 +5,9 @@
 
 use crate::model_router::ModelRouter;
 use crate::tools::ToolRegistry;
-use crate::verified_context::{ContextReconcileOutcome, VerifiedContextConfig, VerifiedContextRuntime};
+use crate::verified_context::{
+    ContextReconcileOutcome, VerifiedContextConfig, VerifiedContextRuntime,
+};
 use jcode_base::mcp::SharedMcpPool;
 use jcode_provider_core::Provider as ProviderTrait;
 use jcode_sdk::{JcodeClient, LaunchOptions, LaunchedInstance, RunOptions, SessionInfo};
@@ -93,7 +95,9 @@ impl SessionHandle {
 
     /// Agent-visible live context path, when the verified runtime is active.
     pub fn live_context_path(&self) -> Option<&Path> {
-        self.verified_context.as_ref().map(|runtime| runtime.live_path())
+        self.verified_context
+            .as_ref()
+            .map(|runtime| runtime.live_path())
     }
 
     /// Send a soft interrupt signal to stop the current agent operation.
@@ -292,9 +296,7 @@ impl JcodeBridge {
 
         let session_id = session.session_id;
         let scoped_key = self.session_scope_key(&config.tenant_id, &session_id)?;
-        let verified_context = self
-            .initialize_verified_context(&config, &session_id)
-            .await;
+        let verified_context = self.initialize_verified_context(&config, &session_id).await;
 
         self.sessions.write().await.insert(
             scoped_key.clone(),
@@ -538,7 +540,6 @@ fn stable_hash_hex(value: &str) -> String {
     format!("rt-{}", &digest[..24])
 }
 
-
 fn run_session_turn(
     client: Arc<JcodeClient>,
     session_id: String,
@@ -552,8 +553,7 @@ fn run_session_turn(
                 Ok(snapshot) => {
                     let pressure = current_input_tokens(&client, &session_id)
                         .is_some_and(|tokens| tokens >= verified_context_nudge_tokens());
-                    let decorated =
-                        runtime.decorate_user_message(&content, &snapshot, pressure);
+                    let decorated = runtime.decorate_user_message(&content, &snapshot, pressure);
                     let turn = client
                         .run(
                             &session_id,

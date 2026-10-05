@@ -157,19 +157,25 @@ impl VerifiedContextRuntime {
             return Err(anyhow!("session_id must be explicit"));
         }
         if config.max_live_bytes < 1024 {
-            return Err(anyhow!("verified context max_live_bytes must be at least 1024"));
+            return Err(anyhow!(
+                "verified context max_live_bytes must be at least 1024"
+            ));
         }
 
         let tenant_hash = short_hash(tenant_id);
         let session_hash = short_hash(session_id);
         let live_dir = workspace_dir.join(".ohagent-context").join(&session_hash);
         let live_path = live_dir.join(LIVE_CONTEXT_FILE);
-        let state_dir = protected_state_root.join("verified-context").join(&session_hash);
+        let state_dir = protected_state_root
+            .join("verified-context")
+            .join(&session_hash);
         let accepted_path = state_dir.join(ACCEPTED_FILE);
         let ledger_path = state_dir.join(LEDGER_FILE);
         let manifest_path = state_dir.join(MANIFEST_FILE);
-        let expected_header =
-            format!("<!-- OHAGENT_VERIFIED_LIVE_CONTEXT v1 session={} -->", session_hash);
+        let expected_header = format!(
+            "<!-- OHAGENT_VERIFIED_LIVE_CONTEXT v1 session={} -->",
+            session_hash
+        );
 
         secure_dir(&live_dir)?;
         secure_dir(&state_dir)?;
@@ -370,10 +376,14 @@ impl VerifiedContextRuntime {
             ));
         }
         if candidate.lines().next() != Some(self.expected_header.as_str()) {
-            return Err(anyhow!("live context protected header changed or is missing"));
+            return Err(anyhow!(
+                "live context protected header changed or is missing"
+            ));
         }
         if let Some(kind) = likely_secret_kind(candidate) {
-            return Err(anyhow!("live context contains likely secret material: {kind}"));
+            return Err(anyhow!(
+                "live context contains likely secret material: {kind}"
+            ));
         }
         Ok(())
     }
@@ -418,8 +428,8 @@ fn sha256(value: &[u8]) -> String {
 }
 
 fn read_regular_utf8(path: &Path) -> Result<String> {
-    let metadata = fs::symlink_metadata(path)
-        .with_context(|| format!("stat {}", path.display()))?;
+    let metadata =
+        fs::symlink_metadata(path).with_context(|| format!("stat {}", path.display()))?;
     if metadata.file_type().is_symlink() {
         return Err(anyhow!("{} is a symlink", path.display()));
     }
@@ -453,7 +463,13 @@ fn likely_secret_kind(content: &str) -> Option<&'static str> {
         return Some("private-key");
     }
 
-    for token in content.split(|ch: char| ch.is_whitespace() || matches!(ch, '"' | '\'' | ',' | ';' | '(' | ')' | '[' | ']' | '{' | '}')) {
+    for token in content.split(|ch: char| {
+        ch.is_whitespace()
+            || matches!(
+                ch,
+                '"' | '\'' | ',' | ';' | '(' | ')' | '[' | ']' | '{' | '}'
+            )
+    }) {
         let trimmed = token.trim_matches(|ch: char| matches!(ch, ':' | '=' | '\x60'));
         if trimmed.len() == 20
             && trimmed.starts_with("AKIA")
@@ -463,7 +479,9 @@ fn likely_secret_kind(content: &str) -> Option<&'static str> {
         }
         if (trimmed.starts_with("sk-") || trimmed.starts_with("ghp_"))
             && trimmed.len() >= 24
-            && trimmed.chars().all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_'))
+            && trimmed
+                .chars()
+                .all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_'))
         {
             return Some("api-token");
         }
