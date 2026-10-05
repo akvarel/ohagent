@@ -372,6 +372,9 @@ impl VerifiedContextRuntime {
         if candidate.lines().next() != Some(self.expected_header.as_str()) {
             return Err(anyhow!("live context protected header changed or is missing"));
         }
+        if let Some(kind) = likely_secret_kind(candidate) {
+            return Err(anyhow!("live context contains likely secret material: {kind}"));
+        }
         Ok(())
     }
 
@@ -428,11 +431,57 @@ fn read_regular_utf8(path: &Path) -> Result<String> {
 
 fn replace_regular_file(path: &Path, content: &str) -> Result<()> {
     if let Ok(metadata) = fs::symlink_metadata(path) {
-        if metadata.file_type().is_symlink() || !metadata.is_file() {
-            fs::remove_file(path).with_context(|| format!("remove invalid {}", path.display()))?;
+        if metadata.file_type().is_symlink() {
+            fs::remove_file(path).with_context(|| format!("remove symlink {}", path.display()))?;
+        } else if metadata.is_dir() {
+            fs::remove_dir_all(path)
+                .with_context(|| format!("remove invalid directory {}", path.display()))?;
+        } else if !metadata.is_file() {
+            fs::remove_file(path)
+                .with_context(|| format!("remove invalid file {}", path.display()))?;
         }
     }
     atomic_write(path, content)
+}
+
+fn likely_secret_kind(content: &str) -> Option<&'static str> {
+    let upper = content.to_ascii_uppercase();
+    if upper.contains("-----BEGIN PRIVATE KEY-----")
+        || upper.contains("-----BEGIN RSA PRIVATE KEY-----")
+        || upper.contains("-----BEGIN OPENSSH PRIVATE KEY-----")
+    {
+        return Some("private-key");
+    }
+
+    for token in content.split(|ch: char| ch.is_whitespace() || matches!(ch, '"' | '\'' | ',' | ';' | '(' | ')' | '[' | ']' | '{' | '}')) {
+        let trimmed = token.trim_matches(|ch: char| matches!(ch, ':' | '=' | '\x60'));
+        if trimmed.len() == 20
+            && trimmed.starts_with("AKIA")
+            && trimmed.chars().all(|ch| ch.is_ascii_alphanumeric())
+        {
+            return Some("aws-access-key");
+        }
+        if (trimmed.starts_with("sk-") || trimmed.starts_with("ghp_"))
+            && trimmed.len() >= 24
+            && trimmed.chars().all(|ch| ch.is_ascii_alphanumeric() || matches!(ch, '-' | '_'))
+        {
+            return Some("api-token");
+        }
+    }
+
+    let lower = content.to_ascii_lowercase();
+    if let Some(index) = lower.find("bearer ") {
+        let value = content[index + "bearer ".len()..]
+            .split_whitespace()
+            .next()
+            .unwrap_or("")
+            .trim_matches(|ch: char| matches!(ch, '"' | '\'' | ',' | ';'));
+        if value.len() >= 16 && value.chars().any(|ch| ch.is_ascii_digit()) {
+            return Some("bearer-token");
+        }
+    }
+
+    None
 }
 
 fn atomic_write(path: &Path, content: &str) -> Result<()> {
@@ -575,6 +624,37 @@ mod tests {
         assert!(notice.ends_with("hello"));
         assert!(!notice.contains("tenant-secret-name"));
         assert!(!notice.contains("top secret user task"));
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn likely_secret_edit_is_rejected_and_rolled_back() {
+        let (root, _workspace, runtime) = fixture(ContextEditMode::Fit);
+        let _guard = runtime.lock_turn().unwrap();
+        let before = runtime.begin_turn("task").unwrap();
+        let mut content = fs::read_to_string(runtime.live_path()).unwrap();
+        content.push_str("\ncredential: sk-abcdefghijklmnopqrstuvwxyz123456\n");
+        fs::write(runtime.live_path(), content).unwrap();
+
+        let outcome = runtime.reconcile_after_turn(&before).unwrap();
+        assert!(!outcome.accepted);
+        assert!(outcome.reason.contains("likely secret"));
+        let restored = fs::read_to_string(runtime.live_path()).unwrap();
+        assert_eq!(sha256(restored.as_bytes()), before.before_sha256);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn directory_replacement_is_repaired_on_next_turn() {
+        let (root, _workspace, runtime) = fixture(ContextEditMode::Fit);
+        fs::remove_file(runtime.live_path()).unwrap();
+        fs::create_dir(runtime.live_path()).unwrap();
+
+        let before = runtime.begin_turn("task").unwrap();
+        let metadata = fs::symlink_metadata(runtime.live_path()).unwrap();
+        assert!(metadata.is_file());
+        let restored = fs::read_to_string(runtime.live_path()).unwrap();
+        assert_eq!(sha256(restored.as_bytes()), before.before_sha256);
         let _ = fs::remove_dir_all(root);
     }
 
