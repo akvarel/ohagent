@@ -1,6 +1,7 @@
 # Verified Context Runtime
 
 Status: experimental, feature branch only  
+Validation workflow: `.github/workflows/verified-context-runtime.yml`  
 Branch: `feature/verified-context-runtime`  
 Base: `update/jcode-v0.90.1-20261005`
 
