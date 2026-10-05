@@ -5,6 +5,7 @@
 
 use crate::model_router::ModelRouter;
 use crate::tools::ToolRegistry;
+use crate::verified_context::{ContextReconcileOutcome, VerifiedContextConfig, VerifiedContextRuntime};
 use jcode_base::mcp::SharedMcpPool;
 use jcode_provider_core::Provider as ProviderTrait;
 use jcode_sdk::{JcodeClient, LaunchOptions, LaunchedInstance, RunOptions, SessionInfo};
@@ -13,7 +14,7 @@ use std::collections::HashMap;
 use std::path::{Component, Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tokio::sync::RwLock;
-use tracing::info;
+use tracing::{info, warn};
 
 /// Error type for Jcode bridge operations.
 #[derive(Debug, thiserror::Error)]
@@ -33,6 +34,8 @@ pub struct JcodeBridgeConfig {
     pub runtime_root: Option<PathBuf>,
     /// Jcode binary used for private SDK runtimes. Env fallback: OHAGENT_JCODE_BINARY.
     pub jcode_binary: Option<PathBuf>,
+    /// Enable the verified live-context sidecar. None uses env/default (enabled).
+    pub verified_context: Option<bool>,
 }
 
 /// Configuration for creating a new agent session.
@@ -56,6 +59,7 @@ pub struct SessionHandle {
     pub session_id: String,
     tenant_id: String,
     client: Arc<JcodeClient>,
+    verified_context: Option<Arc<VerifiedContextRuntime>>,
 }
 
 impl SessionHandle {
@@ -66,6 +70,10 @@ impl SessionHandle {
     }
 
     /// Send a text message with images and return assistant text collected by the SDK.
+    ///
+    /// When Verified Context Runtime is active, each turn is wrapped in:
+    /// accepted snapshot -> agent run -> edit reconciliation. Context-runtime
+    /// failures degrade to the ordinary Jcode path; they never block chat.
     pub async fn send_message_with_images(
         &self,
         content: &str,
@@ -74,21 +82,18 @@ impl SessionHandle {
         let client = Arc::clone(&self.client);
         let session_id = self.session_id.clone();
         let content = content.to_string();
+        let verified_context = self.verified_context.clone();
         tokio::task::spawn_blocking(move || {
-            client.run(
-                &session_id,
-                &content,
-                RunOptions {
-                    images,
-                    on_event: None,
-                    auto_approve: false,
-                },
-            )
+            run_session_turn(client, session_id, content, images, verified_context)
         })
         .await
         .map_err(|e| BridgeError::Message(e.to_string()))?
-        .map(|turn| turn.text)
-        .map_err(|e| BridgeError::Message(e.to_string()))
+        .map_err(BridgeError::Message)
+    }
+
+    /// Agent-visible live context path, when the verified runtime is active.
+    pub fn live_context_path(&self) -> Option<&Path> {
+        self.verified_context.as_ref().map(|runtime| runtime.live_path())
     }
 
     /// Send a soft interrupt signal to stop the current agent operation.
@@ -135,6 +140,7 @@ struct TenantRuntime {
 /// Main bridge between ohAgent and Jcode.
 pub struct JcodeBridge {
     sessions: Arc<RwLock<HashMap<String, (String, Arc<JcodeClient>)>>>,
+    verified_contexts: Arc<RwLock<HashMap<String, Arc<VerifiedContextRuntime>>>>,
     runtimes: Arc<RwLock<HashMap<String, Arc<TenantRuntime>>>>,
     provider: Arc<dyn ProviderTrait>,
     router: Option<Arc<Mutex<ModelRouter>>>,
@@ -148,6 +154,7 @@ impl JcodeBridge {
         info!("Initializing Jcode SDK bridge");
         Self {
             sessions: Arc::new(RwLock::new(HashMap::new())),
+            verified_contexts: Arc::new(RwLock::new(HashMap::new())),
             runtimes: Arc::new(RwLock::new(HashMap::new())),
             provider,
             router: None,
@@ -285,26 +292,41 @@ impl JcodeBridge {
 
         let session_id = session.session_id;
         let scoped_key = self.session_scope_key(&config.tenant_id, &session_id)?;
+        let verified_context = self
+            .initialize_verified_context(&config, &session_id)
+            .await;
+
         self.sessions.write().await.insert(
-            scoped_key,
+            scoped_key.clone(),
             (config.tenant_id.clone(), Arc::clone(&runtime.client)),
         );
+        if let Some(context) = verified_context.as_ref() {
+            self.verified_contexts
+                .write()
+                .await
+                .insert(scoped_key, Arc::clone(context));
+        }
 
         Ok(SessionHandle {
             session_id,
             tenant_id: config.tenant_id,
             client: Arc::clone(&runtime.client),
+            verified_context,
         })
     }
 
     pub async fn get_session(&self, tenant_id: &str, session_id: &str) -> Option<SessionHandle> {
         let key = self.session_scope_key(tenant_id, session_id).ok()?;
-        let sessions = self.sessions.read().await;
-        let (stored_tenant_id, client) = sessions.get(&key)?.clone();
+        let (stored_tenant_id, client) = {
+            let sessions = self.sessions.read().await;
+            sessions.get(&key)?.clone()
+        };
+        let verified_context = self.verified_contexts.read().await.get(&key).cloned();
         Some(SessionHandle {
             session_id: session_id.to_string(),
             tenant_id: stored_tenant_id,
             client,
+            verified_context,
         })
     }
 
@@ -354,7 +376,68 @@ impl JcodeBridge {
     pub async fn drop_session(&self, tenant_id: &str, session_id: &str) -> Result<(), BridgeError> {
         let key = self.session_scope_key(tenant_id, session_id)?;
         self.sessions.write().await.remove(&key);
+        self.verified_contexts.write().await.remove(&key);
         Ok(())
+    }
+
+    fn verified_context_enabled(&self) -> bool {
+        if let Some(enabled) = self.config.verified_context {
+            return enabled;
+        }
+        match std::env::var("OHAGENT_VERIFIED_CONTEXT_ENABLED") {
+            Ok(value) => !matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "0" | "false" | "off" | "no"
+            ),
+            Err(_) => true,
+        }
+    }
+
+    async fn initialize_verified_context(
+        &self,
+        config: &SessionConfig,
+        session_id: &str,
+    ) -> Option<Arc<VerifiedContextRuntime>> {
+        if !self.verified_context_enabled() {
+            return None;
+        }
+        let workspace = config.working_dir.as_ref().map(PathBuf::from)?;
+        let protected_root = match self.runtime_home_for_tenant(&config.tenant_id) {
+            Ok(home) => home.join("ohagent-state"),
+            Err(error) => {
+                warn!(error = %error, "Verified context disabled for session: state root unavailable");
+                return None;
+            }
+        };
+        let tenant_id = config.tenant_id.clone();
+        let session_id = session_id.to_string();
+        match tokio::task::spawn_blocking(move || {
+            VerifiedContextRuntime::initialize(
+                &tenant_id,
+                &session_id,
+                &workspace,
+                &protected_root,
+                VerifiedContextConfig::from_env(),
+            )
+        })
+        .await
+        {
+            Ok(Ok(runtime)) => {
+                info!(
+                    path = %runtime.live_path().display(),
+                    "Verified live context initialized"
+                );
+                Some(Arc::new(runtime))
+            }
+            Ok(Err(error)) => {
+                warn!(error = %error, "Verified context initialization failed; continuing without it");
+                None
+            }
+            Err(error) => {
+                warn!(error = %error, "Verified context initialization task failed; continuing without it");
+                None
+            }
+        }
     }
 
     async fn runtime_for_tenant(
@@ -453,4 +536,154 @@ async fn prepare_workspace(path: &Path) -> Result<(), BridgeError> {
 fn stable_hash_hex(value: &str) -> String {
     let digest = format!("{:x}", Sha256::digest(value.as_bytes()));
     format!("rt-{}", &digest[..24])
+}
+
+
+fn run_session_turn(
+    client: Arc<JcodeClient>,
+    session_id: String,
+    content: String,
+    images: Vec<(String, String)>,
+    verified_context: Option<Arc<VerifiedContextRuntime>>,
+) -> Result<String, String> {
+    if let Some(runtime) = verified_context.as_ref() {
+        match runtime.lock_turn() {
+            Ok(_guard) => match runtime.begin_turn(&content) {
+                Ok(snapshot) => {
+                    let pressure = current_input_tokens(&client, &session_id)
+                        .is_some_and(|tokens| tokens >= verified_context_nudge_tokens());
+                    let decorated =
+                        runtime.decorate_user_message(&content, &snapshot, pressure);
+                    let turn = client
+                        .run(
+                            &session_id,
+                            &decorated,
+                            RunOptions {
+                                images: images.clone(),
+                                on_event: None,
+                                auto_approve: false,
+                            },
+                        )
+                        .map_err(|error| error.to_string())?;
+
+                    match runtime.reconcile_after_turn(&snapshot) {
+                        Ok(outcome) => {
+                            log_context_outcome(&outcome);
+                            maybe_request_compaction(&client, &session_id, &outcome);
+                        }
+                        Err(error) => {
+                            warn!(
+                                error = %error,
+                                "Verified context reconciliation failed after turn"
+                            );
+                        }
+                    }
+                    return Ok(turn.text);
+                }
+                Err(error) => {
+                    warn!(
+                        error = %error,
+                        "Verified context snapshot failed; using ordinary Jcode turn"
+                    );
+                }
+            },
+            Err(error) => {
+                warn!(
+                    error = %error,
+                    "Verified context turn lock failed; using ordinary Jcode turn"
+                );
+            }
+        }
+    }
+
+    client
+        .run(
+            &session_id,
+            &content,
+            RunOptions {
+                images,
+                on_event: None,
+                auto_approve: false,
+            },
+        )
+        .map(|turn| turn.text)
+        .map_err(|error| error.to_string())
+}
+
+fn current_input_tokens(client: &JcodeClient, session_id: &str) -> Option<u64> {
+    client.get_history(session_id).ok().and_then(|history| {
+        history
+            .iter()
+            .rev()
+            .find_map(|message| message.response_stats.as_ref()?.input_tokens)
+    })
+}
+
+fn verified_context_nudge_tokens() -> u64 {
+    std::env::var("OHAGENT_VERIFIED_CONTEXT_NUDGE_TOKENS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|value| *value >= 1_000)
+        .unwrap_or(48_000)
+}
+
+fn verified_context_compact_tokens() -> Option<u64> {
+    std::env::var("OHAGENT_VERIFIED_CONTEXT_COMPACT_TOKENS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|value| *value >= 1_000)
+}
+
+fn maybe_request_compaction(
+    client: &JcodeClient,
+    session_id: &str,
+    outcome: &ContextReconcileOutcome,
+) {
+    if !outcome.accepted || !outcome.changed {
+        return;
+    }
+    let Some(trigger) = verified_context_compact_tokens() else {
+        return;
+    };
+    let Some(tokens) = current_input_tokens(client, session_id) else {
+        return;
+    };
+    if tokens < trigger {
+        return;
+    }
+
+    match client.compact(session_id) {
+        Ok(message) => info!(
+            input_tokens = tokens,
+            trigger_tokens = trigger,
+            message = %message,
+            "Requested Jcode compaction after accepted live-context edit"
+        ),
+        Err(error) => warn!(
+            error = %error,
+            input_tokens = tokens,
+            trigger_tokens = trigger,
+            "Jcode compaction request failed"
+        ),
+    }
+}
+
+fn log_context_outcome(outcome: &ContextReconcileOutcome) {
+    if !outcome.changed {
+        return;
+    }
+    if outcome.accepted {
+        info!(
+            before_bytes = outcome.before_bytes,
+            after_bytes = outcome.after_bytes,
+            "Verified live-context edit accepted"
+        );
+    } else {
+        warn!(
+            reason = %outcome.reason,
+            before_bytes = outcome.before_bytes,
+            after_bytes = outcome.after_bytes,
+            "Verified live-context edit rejected and rolled back"
+        );
+    }
 }
