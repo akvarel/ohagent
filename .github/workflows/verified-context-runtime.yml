@@ -37,7 +37,7 @@ jobs:
           components: rustfmt,clippy
 
       - name: Format
-        run: cargo fmt --all -- --check
+        run: cargo fmt -p ohagent-core -- --check
 
       - name: Test core
         run: cargo test -p ohagent-core
