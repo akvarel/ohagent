@@ -1,0 +1,46 @@
+name: Verified Context Runtime CI
+
+on:
+  push:
+    branches:
+      - feature/verified-context-runtime
+  pull_request:
+    paths:
+      - "crates/ohagent-core/**"
+      - "docs/VERIFIED_CONTEXT_RUNTIME.md"
+      - ".github/workflows/verified-context-runtime.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: verified-context-runtime-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ohagent-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: false
+
+      - name: Configure public submodule transport
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+          git submodule sync --recursive
+          git submodule update --init --recursive --depth 1
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt,clippy
+
+      - name: Format
+        run: cargo fmt --all -- --check
+
+      - name: Test core
+        run: cargo test -p ohagent-core
+
+      - name: Clippy core
+        run: cargo clippy -p ohagent-core --all-targets -- -D warnings
