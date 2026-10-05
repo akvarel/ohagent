@@ -36,8 +36,6 @@ pub struct JcodeBridgeConfig {
     pub runtime_root: Option<PathBuf>,
     /// Jcode binary used for private SDK runtimes. Env fallback: OHAGENT_JCODE_BINARY.
     pub jcode_binary: Option<PathBuf>,
-    /// Enable the verified live-context sidecar. None uses env/default (enabled).
-    pub verified_context: Option<bool>,
 }
 
 /// Configuration for creating a new agent session.
@@ -383,9 +381,6 @@ impl JcodeBridge {
     }
 
     fn verified_context_enabled(&self) -> bool {
-        if let Some(enabled) = self.config.verified_context {
-            return enabled;
-        }
         match std::env::var("OHAGENT_VERIFIED_CONTEXT_ENABLED") {
             Ok(value) => !matches!(
                 value.trim().to_ascii_lowercase().as_str(),

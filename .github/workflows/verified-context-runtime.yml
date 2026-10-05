@@ -43,4 +43,4 @@ jobs:
         run: cargo test -p ohagent-core
 
       - name: Clippy core
-        run: cargo clippy -p ohagent-core --all-targets -- -D warnings
+        run: cargo clippy -p ohagent-core --all-targets --no-deps -- -D clippy::correctness

@@ -23,6 +23,10 @@ unresolved hypotheses, swarm status, and next actions in a normal file that it c
 The design is influenced by *Context Language Models* (arXiv:2609.37725), but does not copy the paper's
 "unrestricted context write" boundary. In ohAgent, editable context is a cache of working state, not authority.
 
+The reference implementation is CC BY-NC 4.0. ohAgent does not copy its source code; this is an independent
+implementation of the published architectural idea so the reference repository's non-commercial code license
+does not become an ohAgent runtime dependency.
+
 Reference:
 https://arxiv.org/abs/2609.37725
 https://github.com/facebookresearch/context-language-models
@@ -200,7 +204,9 @@ Fail-open here means the optional context optimization may disappear. It does **
 - repair/rollback;
 - secret-material heuristic;
 - JcodeBridge integration;
-- context-pressure nudge;
+- context-pressure nudge from both Jcode input tokens and live-file occupancy;
+- durable previous-rejection notice to prevent rollback/retry livelocks;
+- root/coordinator context ownership rule for delegated workers;
 - optional Jcode native compaction trigger;
 - unit tests for edit acceptance, tamper, shrink gate, secret rejection, directory/symlink repair and metadata leakage.
 
