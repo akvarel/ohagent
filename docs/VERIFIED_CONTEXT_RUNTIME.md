@@ -210,9 +210,19 @@ Fail-open here means the optional context optimization may disappear. It does **
 - optional Jcode native compaction trigger;
 - unit tests for edit acceptance, tamper, shrink gate, secret rejection, directory/symlink repair and metadata leakage.
 
-## Next phase: semantic context decisions
+## Semantic context decisions
 
-Add a provider-neutral `ContextDecisionEngine`, using deterministic rules first and System One decisions only for
+A provider-neutral `ContextDecisionEngine` is included in phase 2. It provides:
+
+- deterministic bullet extraction with stable item IDs;
+- a conservative baseline that never recommends deletion;
+- advisory actions `keep_exact / keep / summarize / drop_candidate`;
+- a generic System One HTTP adapter for local or explicitly opted-in external providers;
+- a hard rule preventing lossy provider actions for exact-preserve evidence items.
+
+The adapter is not wired to automatic mutation. Provider advice must be benchmarked/calibrated before it can influence edits.
+
+Use deterministic rules first and System One decisions only for
 bounded semantic questions such as:
 
 - is this item still needed for an open goal?

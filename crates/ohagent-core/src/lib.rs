@@ -8,6 +8,7 @@ pub mod agent_runner;
 pub mod builtin_tools;
 pub mod config;
 pub mod consolidation;
+pub mod context_decision;
 pub mod context_estimator;
 pub mod copilot_acp;
 pub mod jcode_bridge;
