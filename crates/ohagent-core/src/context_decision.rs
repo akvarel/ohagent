@@ -67,8 +67,7 @@ pub struct ContextItemDecision {
 pub trait ContextDecisionEngine: Send + Sync {
     fn provider_id(&self) -> &str;
 
-    async fn evaluate(&self, request: &ContextDecisionRequest)
-        -> Result<Vec<ContextItemDecision>>;
+    async fn evaluate(&self, request: &ContextDecisionRequest) -> Result<Vec<ContextItemDecision>>;
 }
 
 /// Extract bullet-level working-state items from the canonical live-context file.
@@ -129,10 +128,7 @@ impl ContextDecisionEngine for ConservativeContextDecisionEngine {
         "deterministic-conservative"
     }
 
-    async fn evaluate(
-        &self,
-        request: &ContextDecisionRequest,
-    ) -> Result<Vec<ContextItemDecision>> {
+    async fn evaluate(&self, request: &ContextDecisionRequest) -> Result<Vec<ContextItemDecision>> {
         Ok(request
             .items
             .iter()
@@ -277,10 +273,7 @@ impl ContextDecisionEngine for SystemOneContextDecisionEngine {
         &self.provider_id
     }
 
-    async fn evaluate(
-        &self,
-        request: &ContextDecisionRequest,
-    ) -> Result<Vec<ContextItemDecision>> {
+    async fn evaluate(&self, request: &ContextDecisionRequest) -> Result<Vec<ContextItemDecision>> {
         if request.items.is_empty() {
             return Ok(Vec::new());
         }
@@ -333,8 +326,11 @@ fn parse_system_one_response(
         .and_then(Value::as_object)
         .ok_or_else(|| anyhow!("System One response missing answers"))?;
 
-    let by_id: HashMap<&str, &ContextItem> =
-        request.items.iter().map(|item| (item.id.as_str(), item)).collect();
+    let by_id: HashMap<&str, &ContextItem> = request
+        .items
+        .iter()
+        .map(|item| (item.id.as_str(), item))
+        .collect();
     let mut decisions = Vec::with_capacity(request.items.len());
 
     for item in &request.items {
@@ -361,7 +357,10 @@ fn parse_system_one_response(
             .get(item.id.as_str())
             .ok_or_else(|| anyhow!("context decision item identity mismatch"))?;
         if source.must_preserve_exact
-            && !matches!(choice, ContextItemAction::KeepExact | ContextItemAction::Keep)
+            && !matches!(
+                choice,
+                ContextItemAction::KeepExact | ContextItemAction::Keep
+            )
         {
             return Err(anyhow!(
                 "System One attempted lossy action for exact-preserve item {}",
@@ -419,7 +418,10 @@ mod tests {
         assert!(!items[0].must_preserve_exact);
         assert_eq!(items[1].section, "Evidence references still in use");
         assert!(items[1].must_preserve_exact);
-        assert_eq!(items[0].id, context_item_id("Current goals", "finish incident review"));
+        assert_eq!(
+            items[0].id,
+            context_item_id("Current goals", "finish incident review")
+        );
     }
 
     #[tokio::test]
