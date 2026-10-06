@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "crates/ohagent-core",
+    "crates/ohagent-eloop",
     "crates/ohagent-daemon",
     "crates/ohagent-gateway",
     "crates/ohagent-memory",
