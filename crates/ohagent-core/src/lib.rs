@@ -7,13 +7,14 @@ pub mod agent;
 pub mod agent_runner;
 pub mod builtin_tools;
 pub mod config;
+pub mod consolidation;
+pub mod context_decision;
 pub mod context_estimator;
 pub mod copilot_acp;
 pub mod jcode_bridge;
 pub mod llm_classifier;
 pub mod logging_provider;
 pub mod message_log;
-pub mod consolidation;
 pub mod model_router;
 pub mod pricing;
 pub mod push;
@@ -24,6 +25,7 @@ pub mod session_store;
 pub mod tools;
 pub mod usage_tracker;
 pub mod vault;
+pub mod verified_context;
 pub mod version_check;
 
 /// Core error type for ohAgent.
