@@ -875,13 +875,12 @@ async fn handle_non_streaming_with_tools(
         .into_iter()
         .map(|(name, desc)| {
             let tool = tr.get(&name);
-            ToolDefinition {
+            ToolDefinition::new(
                 name,
-                description: desc,
-                input_schema: tool
-                    .map(|t| t.parameters_schema.clone())
+                desc,
+                tool.map(|t| t.parameters_schema.clone())
                     .unwrap_or_default(),
-            }
+            )
         })
         .collect();
 
@@ -987,13 +986,12 @@ async fn handle_streaming_with_tools(
         .into_iter()
         .map(|(name, desc)| {
             let tool = tr.get(&name);
-            ToolDefinition {
+            ToolDefinition::new(
                 name,
-                description: desc,
-                input_schema: tool
-                    .map(|t| t.parameters_schema.clone())
+                desc,
+                tool.map(|t| t.parameters_schema.clone())
                     .unwrap_or_default(),
-            }
+            )
         })
         .collect();
 

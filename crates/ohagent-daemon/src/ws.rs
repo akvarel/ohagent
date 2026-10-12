@@ -297,11 +297,7 @@ async fn handle_chat(
                     .get(&name)
                     .map(|t| t.parameters_schema.clone())
                     .unwrap_or(serde_json::Value::Null);
-                ToolDefinition {
-                    name,
-                    description: desc,
-                    input_schema: schema,
-                }
+                ToolDefinition::new(name, desc, schema)
             })
             .collect()
     } else {

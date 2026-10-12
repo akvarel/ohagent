@@ -23,9 +23,13 @@
 - Campaign state machine and automatic next-task continuation.
 - Telegram command integration.
 
-## Build limitation of the supplied archive
+## Master integration, 2026-10-12
 
-The uploaded source archive does not include the `jcode/` git submodule contents, while existing `ohagent-core` dependencies refer to paths inside that submodule. The execution environment also has no Rust toolchain. Therefore a real Cargo build could not be run here.
+The crate is now integrated into ohAgent `master` with the Jcode submodule present. Its tests, strict Clippy check, binary build, and real `context`/`plan` CLI checks passed. See `docs/BRANCH-CONSOLIDATION-2026-10-12.md` for workspace evidence and the separate Jcode test limitation. The unimplemented capabilities listed above remain unchanged.
+
+## Historical build limitation of the supplied archive
+
+The original uploaded source archive did not include the `jcode/` git submodule contents, while existing `ohagent-core` dependencies refer to paths inside that submodule. The original archive execution environment also had no Rust toolchain, so a real Cargo build could not be run there.
 
 The new crate intentionally has no direct dependency on `ohagent-core` yet and can be tested independently. Before integrating `JcodeTaskExecutor`, restore the Jcode submodule and run:
 

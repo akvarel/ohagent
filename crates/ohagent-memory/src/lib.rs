@@ -9,9 +9,9 @@
 //! - Automatic conversation summarization
 //! - Proactive memory nudges
 
+pub mod backlog;
 pub mod embeddings;
 pub mod engine;
-pub mod backlog;
 pub mod manager;
 pub mod models;
 pub mod nudge;

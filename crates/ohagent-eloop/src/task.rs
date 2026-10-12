@@ -58,8 +58,14 @@ impl CompiledTask {
         output.push_str(&self.background);
         output.push_str("\n\n## Repository context\n\n");
         output.push_str(&format!("- Repository: `{}`\n", self.repository.display()));
-        output.push_str(&format!("- Languages: {}\n", context.detected_languages.join(", ")));
-        output.push_str(&format!("- Build systems: {}\n", context.build_systems.join(", ")));
+        output.push_str(&format!(
+            "- Languages: {}\n",
+            context.detected_languages.join(", ")
+        ));
+        output.push_str(&format!(
+            "- Build systems: {}\n",
+            context.build_systems.join(", ")
+        ));
         if context.git.available {
             output.push_str(&format!(
                 "- Git branch: `{}`\n",

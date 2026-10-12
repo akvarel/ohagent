@@ -68,16 +68,10 @@ impl RunStore for FileRunStore {
         write_json(&temp_path.join("goal.json"), &goal_document)?;
         write_json(&temp_path.join("context.json"), context)?;
         write_json(&temp_path.join("task.json"), task)?;
-        write_text(
-            &temp_path.join("task.md"),
-            &task.render_markdown(context),
-        )?;
+        write_text(&temp_path.join("task.md"), &task.render_markdown(context))?;
         write_json(&temp_path.join("critic.json"), critique)?;
         write_json(&temp_path.join("token-usage.json"), usage)?;
-        write_text(
-            &temp_path.join("token-usage.md"),
-            &usage.render_markdown(),
-        )?;
+        write_text(&temp_path.join("token-usage.md"), &usage.render_markdown())?;
 
         fs::rename(&temp_path, &final_path).map_err(|source| io_error(&final_path, source))?;
         Ok(final_path)

@@ -187,10 +187,7 @@ fn detect_builds(root: &Path) -> (Vec<String>, Vec<String>) {
     }
     if root.join("gradlew").is_file() {
         systems.push("gradle".to_string());
-        commands.extend([
-            "./gradlew test".to_string(),
-            "./gradlew build".to_string(),
-        ]);
+        commands.extend(["./gradlew test".to_string(), "./gradlew build".to_string()]);
     } else if root.join("build.gradle").is_file() || root.join("build.gradle.kts").is_file() {
         systems.push("gradle".to_string());
         commands.extend(["gradle test".to_string(), "gradle build".to_string()]);
@@ -270,13 +267,10 @@ mod tests {
     #[test]
     fn detects_rust_repository_and_instructions() {
         let dir = tempdir().expect("tempdir");
-        fs::write(dir.path().join("Cargo.toml"), "[package]\nname='demo'\n")
-            .expect("write cargo");
-        fs::write(dir.path().join("AGENTS.md"), "# Rules\nUse tests.")
-            .expect("write agents");
+        fs::write(dir.path().join("Cargo.toml"), "[package]\nname='demo'\n").expect("write cargo");
+        fs::write(dir.path().join("AGENTS.md"), "# Rules\nUse tests.").expect("write agents");
         fs::create_dir(dir.path().join("src")).expect("create src");
-        fs::write(dir.path().join("src/lib.rs"), "pub fn demo() {}")
-            .expect("write lib");
+        fs::write(dir.path().join("src/lib.rs"), "pub fn demo() {}").expect("write lib");
 
         let context = FilesystemRepositoryContextCollector
             .collect(dir.path())

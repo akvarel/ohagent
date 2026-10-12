@@ -1071,7 +1071,8 @@ impl Daemon {
 
         tokio::spawn(async move {
             // Blocking SQLite work stays on the blocking pool.
-            let run = move || -> anyhow::Result<()> { // sync closure; sleeps between ticks
+            let run = move || -> anyhow::Result<()> {
+                // sync closure; sleeps between ticks
 
                 let engine = ConsolidationEngine::new(message_log.clone(), &state_path)?;
                 loop {

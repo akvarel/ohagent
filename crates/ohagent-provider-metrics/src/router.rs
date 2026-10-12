@@ -1,7 +1,7 @@
 //! Dynamic routing optimizer — selects the best provider+model for a task.
 //!
 //! Scoring formula:
-//! ```
+//! ```text
 //! score = α * price_score + β * speed_score + γ * quality_score
 //!
 //! price_score  = 1 - (price / max_price)        // cheaper = better

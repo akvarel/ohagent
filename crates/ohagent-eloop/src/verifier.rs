@@ -23,11 +23,7 @@ impl TaskVerifier for ContractVerifier {
             ));
         }
         if task.allowed_paths.is_empty() {
-            issues.push(issue(
-                "NO_SCOPE",
-                "Task has no allowed path scope",
-                true,
-            ));
+            issues.push(issue("NO_SCOPE", "Task has no allowed path scope", true));
         }
         if task.verification_commands.is_empty() {
             issues.push(issue(

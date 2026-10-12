@@ -54,23 +54,23 @@ impl UsageReport {
             entry.input_cached_tokens += call.input_cached_tokens;
             entry.cache_write_tokens += call.cache_write_tokens;
             entry.output_tokens += call.output_tokens;
-            entry.estimated_cost_usd = sum_optional(
-                entry.estimated_cost_usd,
-                call.estimated_cost_usd,
-            );
+            entry.estimated_cost_usd =
+                sum_optional(entry.estimated_cost_usd, call.estimated_cost_usd);
         }
 
         let by_model = grouped.into_values().collect::<Vec<_>>();
-        let total = by_model.iter().fold(UsageTotals::default(), |mut total, usage| {
-            total.requests += usage.requests;
-            total.input_missed_tokens += usage.input_missed_tokens;
-            total.input_cached_tokens += usage.input_cached_tokens;
-            total.cache_write_tokens += usage.cache_write_tokens;
-            total.output_tokens += usage.output_tokens;
-            total.estimated_cost_usd =
-                sum_optional(total.estimated_cost_usd, usage.estimated_cost_usd);
-            total
-        });
+        let total = by_model
+            .iter()
+            .fold(UsageTotals::default(), |mut total, usage| {
+                total.requests += usage.requests;
+                total.input_missed_tokens += usage.input_missed_tokens;
+                total.input_cached_tokens += usage.input_cached_tokens;
+                total.cache_write_tokens += usage.cache_write_tokens;
+                total.output_tokens += usage.output_tokens;
+                total.estimated_cost_usd =
+                    sum_optional(total.estimated_cost_usd, usage.estimated_cost_usd);
+                total
+            });
 
         Self { total, by_model }
     }
@@ -113,7 +113,8 @@ fn sum_optional(left: Option<f64>, right: Option<f64>) -> Option<f64> {
 }
 
 fn format_cost(cost: Option<f64>) -> String {
-    cost.map(|value| format!("{value:.6}")).unwrap_or_else(|| "n/a".into())
+    cost.map(|value| format!("{value:.6}"))
+        .unwrap_or_else(|| "n/a".into())
 }
 
 #[cfg(test)]

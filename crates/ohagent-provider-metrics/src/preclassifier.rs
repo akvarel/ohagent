@@ -6,7 +6,7 @@
 //! 3. GPT-4o-mini —          2.4s, €0.00352, 100% accurate (expensive)
 //!
 //! Architecture:
-//! ```
+//! ```text
 //! photo → PreClassifier::count_documents() → DocumentCount::Multiple(4)
 //!           ↓ first: Scaleway (0.7s, €0.00017)
 //!           ↓ fallback: GLM-4.6V (2.7s, €0.00014)

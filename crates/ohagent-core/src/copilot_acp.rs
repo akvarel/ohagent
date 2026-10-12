@@ -303,7 +303,11 @@ impl CopilotAcpProvider {
     /// Check whether the `copilot` CLI is available on this system.
     pub fn is_available() -> bool {
         let path = std::env::var(COPILOT_CLI_ENV).unwrap_or_else(|_| "copilot".to_string());
-        std::process::Command::new(&path)
+        Self::is_available_at(std::path::Path::new(&path))
+    }
+
+    fn is_available_at(path: &std::path::Path) -> bool {
+        std::process::Command::new(path)
             .arg("--version")
             .stdout(Stdio::null())
             .stderr(Stdio::null())
@@ -516,10 +520,8 @@ mod tests {
 
     #[test]
     fn test_is_available_returns_false_when_no_copilot() {
-        // On systems without `copilot`, this returns false
-        // On systems with `copilot`, it returns true
-        let available = CopilotAcpProvider::is_available();
-        // We just verify it doesn't panic
-        assert!(!available || available);
+        // An executable file cannot contain a child executable.
+        let missing_cli = std::env::current_exe().unwrap().join("missing-copilot");
+        assert!(!CopilotAcpProvider::is_available_at(&missing_cli));
     }
 }

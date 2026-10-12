@@ -1,9 +1,9 @@
 # Verified Context Runtime
 
-Status: experimental, feature branch only  
-Validation workflow: `.github/workflows/verified-context-runtime.yml`  
-Branch: `feature/verified-context-runtime`  
-Base: `update/jcode-v0.90.1-20261005`
+- Status: experimental, integrated into `master` on 2026-10-12
+- Validation workflow: `.github/workflows/verified-context-runtime.yml`
+- Original branch: `feature/verified-context-runtime`
+- Original base: `update/jcode-v0.90.1-20261005`
 
 ## Purpose
 
@@ -274,10 +274,10 @@ Add:
 
 Compare on real long-running ohAgent/Jcode tasks:
 
-A. Jcode native compaction only  
-B. current ohAgent rolling summary + Jcode  
-C. editable CLM-style live context  
-D. Verified Context Runtime  
+A. Jcode native compaction only
+B. current ohAgent rolling summary + Jcode
+C. editable CLM-style live context
+D. Verified Context Runtime
 E. Verified Context Runtime + System One semantic decisions
 
 Measure:

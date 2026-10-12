@@ -3,6 +3,7 @@ name: Verified Context Runtime CI
 on:
   push:
     branches:
+      - master
       - feature/verified-context-runtime
   pull_request:
     paths:

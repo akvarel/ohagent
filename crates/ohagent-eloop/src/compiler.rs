@@ -1,10 +1,8 @@
 use crate::context::RepositoryContext;
-use async_trait::async_trait;
 use crate::error::{EloopError, Result};
 use crate::policy::ExecutionPolicy;
-use crate::task::{
-    AcceptanceCriterion, CompiledTask, RiskLevel, VerificationCommand,
-};
+use crate::task::{AcceptanceCriterion, CompiledTask, RiskLevel, VerificationCommand};
+use async_trait::async_trait;
 use chrono::Utc;
 use std::path::PathBuf;
 use uuid::Uuid;
@@ -125,7 +123,9 @@ impl TaskCompiler for TemplateTaskCompiler {
 
 fn title_from_goal(goal: &str) -> String {
     let first_line = goal.lines().next().unwrap_or(goal).trim();
-    let mut title = first_line.trim_end_matches(&['.', '!', '?'][..]).to_string();
+    let mut title = first_line
+        .trim_end_matches(&['.', '!', '?'][..])
+        .to_string();
     if title.chars().count() > 96 {
         title = title.chars().take(93).collect::<String>() + "...";
     }
@@ -189,9 +189,15 @@ fn infer_risk(goal: &str) -> RiskLevel {
         .any(|word| lower.contains(word))
     {
         RiskLevel::High
-    } else if ["refactor", "architecture", "concurrency", "redis", "network"]
-        .iter()
-        .any(|word| lower.contains(word))
+    } else if [
+        "refactor",
+        "architecture",
+        "concurrency",
+        "redis",
+        "network",
+    ]
+    .iter()
+    .any(|word| lower.contains(word))
     {
         RiskLevel::Medium
     } else {

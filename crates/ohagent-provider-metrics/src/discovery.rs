@@ -101,7 +101,7 @@ pub fn known_prices() -> Vec<PriceRecord> {
             "deepseek-v4-pro",
             PricingModel::PerMillionTokens,
             1.60,
-            3.14,
+            314.0 / 100.0, // 314 euro cents, not an approximation of pi.
             Some(0.135),
             "EUR",
             1_049_000,
