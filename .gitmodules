@@ -1,4 +1,4 @@
 [submodule "jcode"]
 	path = jcode
 	url = git@github.com:akvarel/jcode.git
-	branch = update/jcode-v0.97.0-20261014
+	branch = update/jcode-v0.99.1-20261028
