@@ -18,6 +18,8 @@ from pathlib import Path
 import socket
 import signal
 import subprocess
+import tempfile
+from comparison_fixture import ComparisonFixture
 import time
 import urllib.error
 import urllib.request
@@ -42,12 +44,14 @@ def wait_ready(process, address):
     raise RuntimeError("Synthetic acceptance readiness timeout")
 
 
-def token(secret, tenant):
+def token(secret, tenant, role="member", scope=None):
     def encode(value):
         return base64.urlsafe_b64encode(json.dumps(value, separators=(",", ":")).encode()).rstrip(b"=")
-    message = encode({"alg": "HS256", "typ": "JWT"}) + b"." + encode({
-        "sub": "artificial-acceptance-reviewer", "email": "fixture@example.invalid",
-        "tenant_id": tenant, "role": "member", "iat": int(time.time()), "exp": int(time.time()) + 600})
+    claims = {"sub": "00000000-0000-4000-8000-000000000031", "email": "fixture@example.invalid",
+        "tenant_id": tenant, "role": role, "iat": int(time.time()), "exp": int(time.time()) + 600}
+    if scope is not None:
+        claims["scope"] = scope
+    message = encode({"alg": "HS256", "typ": "JWT"}) + b"." + encode(claims)
     signature = base64.urlsafe_b64encode(hmac.new(secret.encode(), message, hashlib.sha256).digest()).rstrip(b"=")
     return (message + b"." + signature).decode()
 
@@ -60,6 +64,7 @@ def main():
     parser.add_argument("--provider-base-url", required=True)
     parser.add_argument("--model", required=True)
     parser.add_argument("--key-env", required=True)
+    parser.add_argument("--comparison-fixture", action="store_true", help="Use three local HTTP provider fixtures, not live OCR")
     parser.add_argument("--container", default="ohagent-documents-acceptance-20261103")
     parser.add_argument("--db-port", type=int, default=25439)
     parser.add_argument("--browser-seconds", type=int, default=0,
@@ -71,7 +76,7 @@ def main():
     if not 0 <= args.browser_seconds <= 900:
         raise SystemExit("Browser fixture lifetime must be between 0 and 900 seconds")
     provider_key = os.environ.get(args.key_env)
-    if not provider_key:
+    if not provider_key and not args.comparison_fixture:
         raise SystemExit("Existing provider key is unavailable")
     label = subprocess.check_output(["podman", "inspect", "--format", '{{index .Config.Labels "purpose"}}', args.container], text=True).strip()
     if label != "ohagent-document-acceptance":
@@ -83,6 +88,8 @@ def main():
 
     schema = "document_acceptance_" + uuid.uuid4().hex
     processes = []
+    fixture = None
+    temporary = None
 
     def sql(statement):
         result = subprocess.run(["podman", "exec", "-i", args.container, "psql", "-X", "-At", "-v", "ON_ERROR_STOP=1", "-U", "document_test", "-d", "document_test"], input=statement, text=True, capture_output=True, timeout=15)
@@ -96,12 +103,18 @@ def main():
     try:
         sql(f"CREATE SCHEMA {schema};")
         migrations = Path(args.accounting_repo) / "shared/db/migrations"
-        for name in ("001_tenants.sql", "002_accounting_core.sql", "004_organization.sql", "010_document_jobs.sql"):
+        names = ["001_tenants.sql", "002_accounting_core.sql", "004_organization.sql", "010_document_jobs.sql"]
+        for optional_name in ("011_document_comparison.sql", "012_document_pilot.sql"):
+            if (migrations / optional_name).is_file():
+                names.append(optional_name)
+        for name in names:
             scoped((migrations / name).read_text())
         tenant_a, tenant_b, supplier_a, supplier_b = [str(uuid.uuid4()) for _ in range(4)]
         scoped(f"""
 INSERT INTO tenants(id,name,slug,tax_regime) VALUES
  ('{tenant_a}','Artificial Acceptance','artificial-a','SIA'),('{tenant_b}','Artificial Foreign','artificial-b','SIA');
+INSERT INTO users(id,tenant_id,email,name,role,provider_id,totp_secret,recovery_codes) VALUES
+ ('00000000-0000-4000-8000-000000000031','{tenant_a}','fixture@example.invalid','Artificial Reviewer','member','','',ARRAY[]::text[]);
 INSERT INTO accounts(code,tenant_id,name,account_type) VALUES
  ('6300','{tenant_a}','Artificial expense','Expense'),('2110','{tenant_a}','Artificial payable','Liability');
 INSERT INTO suppliers(id,tenant_id,name,registration_number) VALUES
@@ -114,6 +127,11 @@ INSERT INTO suppliers(id,tenant_id,name,registration_number) VALUES
         env = dict(os.environ, OHAGENT_API_KEY=service_key, OHAGENT_DOCUMENT_API_KEY=provider_key,
                    OHAGENT_DOCUMENT_BASE_URL=args.provider_base_url, OHAGENT_DOCUMENT_MODEL=args.model,
                    OHAGENT_DOCUMENT_JSON_MODE="json_object", OHAGENT_DOCUMENT_BIND=f"127.0.0.1:{core_port}")
+        if args.comparison_fixture:
+            temporary = tempfile.TemporaryDirectory(prefix="accounting-comparison-acceptance-")
+            fixture = ComparisonFixture().__enter__()
+            env.update(fixture.environment(temporary.name))
+            env.pop("OHAGENT_DOCUMENT_API_KEY", None)
         core = subprocess.Popen([str(Path(args.ohagent_binary).resolve())], env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         processes.append(core)
         wait_ready(core, ("127.0.0.1", core_port))
@@ -122,6 +140,8 @@ INSERT INTO suppliers(id,tenant_id,name,registration_number) VALUES
         gateway_env = dict(safe_gateway_env, DATABASE_URL=f"postgres://document_test@127.0.0.1:{args.db_port}/document_test?sslmode=disable&search_path={schema}",
                            JWT_SECRET=jwt_secret, GATEWAY_BIND=f"127.0.0.1:{gateway_port}",
                            OHAGENT_DOCUMENT_URL=f"http://127.0.0.1:{core_port}/api/document-processing/extract", OHAGENT_API_KEY=service_key)
+        if fixture:
+            gateway_env["OHAGENT_DOCUMENT_ADMIN_KEY"] = fixture.admin_key
         gateway = subprocess.Popen([str(Path(args.gateway_binary).resolve()), "-port", str(gateway_port)], env=gateway_env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         processes.append(gateway)
         wait_ready(gateway, ("127.0.0.1", gateway_port))
@@ -154,6 +174,14 @@ INSERT INTO suppliers(id,tenant_id,name,registration_number) VALUES
         job = request(tenant_a, "POST", "/api/v1/document-jobs", upload, expected=201)
         assert job["state"] == "review_required", job
         extraction = job["extraction"]
+        comparison_snapshot = job.get("comparison")
+        if fixture:
+            assert comparison_snapshot and len(comparison_snapshot["results"]) == 3, job
+            assert comparison_snapshot["complete"] and comparison_snapshot["disagreements"] == []
+            assert len(fixture.calls) == 3
+            pilot_snapshot = job.get("pilot")
+            assert pilot_snapshot and pilot_snapshot["started_at"] and pilot_snapshot["minimum_ends_at"], job
+            assert pilot_snapshot["minimum_ends_at"] > pilot_snapshot["started_at"]
         assert extraction["document_type"] == "invoice"
         assert extraction["fields"]["invoice_number"] == "TEST-2026-001"
         assert extraction["fields"]["total_amount"] == "123.45"
@@ -172,6 +200,8 @@ INSERT INTO suppliers(id,tenant_id,name,registration_number) VALUES
         review["mapping"]["supplier_id"] = supplier_a
         reviewed = request(tenant_a, "POST", path + "/review", review)
         applied = request(tenant_a, "POST", path + "/apply", {"version": reviewed["version"]})
+        if fixture:
+            assert applied["comparison"] == comparison_snapshot, "Human review mutated model snapshots"
         repeated = request(tenant_a, "POST", path + "/apply", {"version": reviewed["version"]})
         assert applied["applied_transaction_id"] == repeated["applied_transaction_id"]
         duplicate = request(tenant_a, "POST", "/api/v1/document-jobs", upload)
@@ -182,7 +212,41 @@ INSERT INTO suppliers(id,tenant_id,name,registration_number) VALUES
         assert request(tenant_b, "GET", "/api/v1/journal") == []
         totals = scoped(f"SELECT count(*),SUM(e.debit_amount)::text,SUM(e.credit_amount)::text FROM transaction_entries e JOIN transactions t ON t.id=e.transaction_id WHERE t.source_document_job_id='{job['id']}';").splitlines()[-1]
         assert totals == "2|123.45|123.45", totals
-        print(json.dumps({"status": "PASS", "model": extraction["model"], "workflow": "web API upload -> live vision -> classification -> tenant targets -> human review -> real balanced posting", "checked_amount": "123.45 EUR", "source_retained": True, "duplicate_effects": False, "cross_tenant_access": "rejected", "unreviewed_apply": "rejected"}), flush=True)
+        print(json.dumps({"status": "PASS", "provider_kind": "three local HTTP fixtures" if fixture else "live configured providers", "model": extraction["model"], "workflow": "web API upload -> vision HTTP -> classification -> tenant targets -> human review -> real balanced posting", "checked_amount": "123.45 EUR", "source_retained": True, "duplicate_effects": False, "cross_tenant_access": "rejected", "unreviewed_apply": "rejected"}), flush=True)
+        if fixture:
+            settings_path = "/api/v1/document-processing/models"
+            request(tenant_a, "GET", settings_path, expected=403)
+            tokens["tenant-admin"] = token(jwt_secret, tenant_a, role="admin")
+            tokens["role-only"] = token(jwt_secret, tenant_a, role="system_admin")
+            tokens["scope-only"] = token(jwt_secret, tenant_a, scope="system")
+            tokens["system-admin"] = token(jwt_secret, tenant_a, role="system_admin", scope="system")
+            for identity in ("tenant-admin", "role-only", "scope-only"):
+                request(identity, "GET", settings_path, expected=403)
+            settings = request("system-admin", "GET", settings_path)
+            assert len(settings["models"]) == 3
+            assert "api_key" not in json.dumps(settings) and "base_url" not in json.dumps(settings)
+            previous_revision = settings["revision"]
+            settings["models"][2]["enabled"] = False
+            settings["models"][0]["model"] = "fixture-accounting-updated"
+            updated = request("system-admin", "PUT", settings_path, settings)
+            assert updated["revision"] > previous_revision
+            request("system-admin", "PUT", settings_path, settings, expected=409)
+            assert request(tenant_a, "GET", path)["comparison"] == comparison_snapshot
+            fixture.invoice_number = "ACCOUNTING-UPDATED-001"
+            changed_image = Image.new("RGB", (240, 120), "white")
+            changed_stream = io.BytesIO()
+            changed_image.save(changed_stream, format="PNG")
+            changed_upload = {"file_name": "artificial-updated-policy.png", "media_type": "image/png", "content_base64": base64.b64encode(changed_stream.getvalue()).decode()}
+            before_calls = len(fixture.calls)
+            changed = request(tenant_a, "POST", "/api/v1/document-jobs", changed_upload, expected=201)
+            assert len(fixture.calls) - before_calls == 2
+            assert changed["comparison"]["complete"] is False
+            assert changed["comparison"]["results"][2]["status"] == "disabled"
+            assert changed["comparison"]["results"][0]["model"] == "fixture-accounting-updated"
+            assert changed["comparison"]["policy_revision"] == updated["revision"]
+            assert changed["pilot"] == pilot_snapshot, "New upload reset the pilot window"
+            request(tenant_a, "POST", "/api/v1/document-jobs/" + changed["id"] + "/apply", {"version": changed["version"]}, expected=409)
+            print(json.dumps({"status": "PASS", "application": "OHAccounting", "checks": ["system role AND scope required", "tenant admin denied", "runtime disable and version update", "stale revision rejected", "historical comparison immutable", "two calls after disable"]}), flush=True)
         if args.browser_seconds:
             class Bootstrap(BaseHTTPRequestHandler):
                 def log_message(self, *_):
@@ -192,7 +256,7 @@ INSERT INTO suppliers(id,tenant_id,name,registration_number) VALUES
                     if self.path != "/synthetic-browser-bootstrap":
                         self.send_error(404)
                         return
-                    payload = json.dumps({"token": tokens[tenant_a], "tenant_id": tenant_a,
+                    payload = json.dumps({"token": tokens[tenant_a], "admin_token": tokens.get("system-admin"), "tenant_id": tenant_a,
                                           "gateway_url": base}).encode()
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
@@ -223,6 +287,10 @@ INSERT INTO suppliers(id,tenant_id,name,registration_number) VALUES
                 process.kill()
                 process.wait(timeout=5)
         sql(f"DROP SCHEMA IF EXISTS {schema} CASCADE;")
+        if fixture:
+            fixture.__exit__(None, None, None)
+        if temporary:
+            temporary.cleanup()
 
 
 if __name__ == "__main__":

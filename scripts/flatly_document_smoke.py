@@ -19,6 +19,7 @@ import urllib.error
 import urllib.request
 import uuid
 
+from comparison_fixture import ComparisonFixture
 from accounting_document_smoke import port, wait_ready
 
 
@@ -26,23 +27,27 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--ohagent-binary", required=True)
     parser.add_argument("--backend-repo", required=True)
+    parser.add_argument("--backend-jar", help="Explicit freshly packaged local acceptance JAR")
+    parser.add_argument("--admin-key-env", choices=("HOUSEHOLD_DOCUMENTS_ADMIN_KEY", "OHAGENT_DOCUMENT_ADMIN_KEY"), default="HOUSEHOLD_DOCUMENTS_ADMIN_KEY", help="Exercise exactly one documented application admin credential binding")
     parser.add_argument("--provider-base-url", required=True)
     parser.add_argument("--model", required=True)
     parser.add_argument("--key-env", required=True)
+    parser.add_argument("--comparison-fixture", action="store_true", help="Use three local HTTP provider fixtures, not live OCR")
     parser.add_argument("--pdf", action="store_true", help="Submit real PDFs through the isolated shared renderer")
     parser.add_argument("--render-image", default="docker.io/library/alpine:3.20",
                         help="Already provisioned local renderer image, never pulled by the service")
     parser.add_argument("--browser-seconds", type=int, default=0, choices=range(0, 901), metavar="0..900")
     args = parser.parse_args()
     key = os.environ.get(args.key_env)
-    if not key:
+    if not key and not args.comparison_fixture:
         raise SystemExit("Existing provider key is unavailable")
     from PIL import Image, ImageDraw, ImageFont
     root = Path(args.backend_repo).resolve()
-    jar = root / "app/target/household-backend-0.1.jar"
+    jar = Path(args.backend_jar).resolve() if args.backend_jar else root / "app/target/household-backend-0.1.jar"
     if not jar.is_file():
         raise SystemExit("Freshly packaged backend executable JAR is required")
     processes = []
+    fixture = None
     def stop(*_):
         raise SystemExit(0)
     signal.signal(signal.SIGTERM, stop)
@@ -55,6 +60,11 @@ def main():
             core_env = dict(os.environ, OHAGENT_API_KEY=service_key, OHAGENT_DOCUMENT_API_KEY=key,
                             OHAGENT_DOCUMENT_BASE_URL=args.provider_base_url, OHAGENT_DOCUMENT_MODEL=args.model,
                             OHAGENT_DOCUMENT_JSON_MODE="json_object", OHAGENT_DOCUMENT_BIND=f"127.0.0.1:{core_port}")
+            if args.comparison_fixture:
+                fixture = ComparisonFixture().__enter__()
+                fixture.invoice_number = "FLATLY-LIVE-001"
+                core_env.update(fixture.environment(temporary, args.pdf, args.render_image))
+                core_env.pop("OHAGENT_DOCUMENT_API_KEY", None)
             if args.pdf:
                 core_env.update(OHAGENT_DOCUMENT_PDF_MODE="podman", OHAGENT_DOCUMENT_RENDER_IMAGE=args.render_image)
             core = subprocess.Popen([str(Path(args.ohagent_binary).resolve())], env=core_env,
@@ -73,6 +83,10 @@ def main():
                        APP_PUBLIC_URL=f"http://127.0.0.1:{app_port}",
                        OHAGENT_DOCUMENT_URL=f"http://127.0.0.1:{core_port}/api/document-processing/extract",
                        OHAGENT_API_KEY=service_key, DOCUMENT_EXTRACTION_PROVIDER="ohagent")
+            if fixture:
+                env.pop("OHAGENT_DOCUMENT_ADMIN_KEY", None)
+                env.pop("HOUSEHOLD_DOCUMENTS_ADMIN_KEY", None)
+                env[args.admin_key_env] = fixture.admin_key
             app = subprocess.Popen(["java", "-Xmx768m", "-jar", str(jar)], cwd=temporary,
                                    env=env, stdout=log, stderr=log)
             processes.append(app)
@@ -125,6 +139,8 @@ def main():
                  {"meter_number": "DOC-LIVE-MTR-001", "reading_value": "160.00", "reading_date": reading_date}),
             ]
             for kind, lines, expected in examples:
+                if fixture:
+                    fixture.kind = kind
                 image = Image.new("RGB", (1400, 800), "white")
                 draw = ImageDraw.Draw(image)
                 font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 30)
@@ -147,6 +163,12 @@ def main():
                 job = request("POST", path + "/analyze")
                 assert job["status"] == "REVIEW_REQUIRED", job
                 extraction = job["extraction"]
+                comparison_snapshot = job.get("comparison")
+                if fixture:
+                    assert comparison_snapshot and len(comparison_snapshot["results"]) == 3, job
+                    assert comparison_snapshot["complete"] and not comparison_snapshot["disagreements"], comparison_snapshot
+                    assert all(result["status"] == "succeeded" for result in comparison_snapshot["results"])
+                    assert job.get("pilotStartedAt") and job.get("pilotMinimumUntil"), job
                 assert extraction["documentType"] == kind, extraction
                 for field, value in expected.items():
                     assert extraction["fields"][field] == value, (field, extraction["fields"].get(field))
@@ -161,6 +183,8 @@ def main():
                     approval.update(meterId=meter_id)
                 applied = request("POST", path + "/approve-apply", approval)
                 assert applied["status"] == "APPLIED" and applied["resultId"]
+                if fixture:
+                    assert applied["comparison"] == comparison_snapshot, "Human review mutated original comparison"
                 if kind == "invoice":
                     rows = request("GET", "/api/vendor-invoices?companyName=Acceptance%20Company")
                     domain_rows = [row for row in rows if row["id"] == applied["resultId"]]
@@ -177,9 +201,45 @@ def main():
                 duplicate = request("POST", "/api/document-jobs", upload)
                 assert duplicate["id"] == job["id"]
                 print(json.dumps({"status": "PASS", "application": "Flatly", "document_type": kind,
-                                  "model": extraction["model"], "media_type": media_type, "checked_fields": expected,
+                                  "model": extraction["model"], "provider_kind": "three local HTTP fixtures" if fixture else "live configured providers", "media_type": media_type, "checked_fields": expected,
                                   "source_retained": True, "domain_result_id": applied["resultId"],
                                   "reviewer_retained": bool(applied["reviewedBy"]), "duplicate_effects": False}), flush=True)
+            if fixture:
+                bearer = manager_bearer
+                assert request("GET", "/api/document-models/access")["allowed"] is False
+                request("GET", "/api/document-models", expected=403)
+                admin_session = request("POST", "/api/auth/login", {"email": "acceptance-admin@test.local", "password": "TestPass123!"}, authenticated=False)
+                bearer = admin_session.get("accessToken") or admin_session.get("token") or admin_session.get("access_token")
+                assert request("GET", "/api/document-models/access")["allowed"] is True
+                settings = request("GET", "/api/document-models")
+                assert len(settings["models"]) == 3 and "api_key" not in json.dumps(settings)
+                settings["models"][2]["enabled"] = False
+                settings["models"][0]["model"] = "fixture-flatly-updated"
+                updated = request("PUT", "/api/document-models", settings)
+                assert updated["revision"] > settings["revision"]
+                request("PUT", "/api/document-models", settings, expected=409)
+                bearer = manager_bearer
+                assert request("GET", path)["comparison"] == comparison_snapshot
+                fixture.kind = "invoice"
+                fixture.invoice_number = "FLATLY-UPDATED-001"
+                image = Image.new("RGB", (1200, 500), "white")
+                ImageDraw.Draw(image).text((30, 30), "ARTIFICIAL UPDATED POLICY INVOICE FLATLY-UPDATED-001 123.45 EUR", fill="black")
+                updated_source = io.BytesIO()
+                image.save(updated_source, format="PNG")
+                updated_upload = {"companyName": "Acceptance Company", "fileName": "artificial-updated-policy.png", "mediaType": "image/png", "contentBase64": base64.b64encode(updated_source.getvalue()).decode()}
+                updated_job = request("POST", "/api/document-jobs", updated_upload)
+                updated_path = "/api/document-jobs/" + updated_job["id"]
+                before_calls = len(fixture.calls)
+                updated_job = request("POST", updated_path + "/analyze")
+                assert len(fixture.calls) - before_calls == 2
+                assert updated_job["comparison"]["complete"] is False
+                assert updated_job["comparison"]["results"][2]["status"] == "disabled"
+                assert updated_job["comparison"]["results"][0]["model"] == "fixture-flatly-updated"
+                assert updated_job["comparison"]["policyRevision"] == updated["revision"]
+                unacknowledged = {"sourceHash": updated_job["sourceHash"], "documentType": "invoice", "fields": updated_job["extraction"]["fields"], "propertyId": "acceptance-object-1", "distributionBasis": "PER_UNIT", "expenseName": "Artificial updated policy", "expenseType": "OTHER"}
+                request("POST", updated_path + "/approve-apply", unacknowledged, expected=400)
+                assert request("GET", updated_path + "/source") == updated_source.getvalue()
+                print(json.dumps({"status": "PASS", "application": "Flatly", "checks": ["system-admin settings", "manager forbidden", "dynamic version update", "disabled slot receives no call", "stale revision rejected", "historical model snapshot preserved", "partial comparison requires explicit acknowledgement", "pilot dates persisted"]}), flush=True)
             if args.browser_seconds:
                 print(json.dumps({"status": "BROWSER_READY", "backend_url": base,
                                   "lifetime_seconds": args.browser_seconds}), flush=True)
@@ -192,6 +252,8 @@ def main():
                 except subprocess.TimeoutExpired:
                     process.kill()
                     process.wait(timeout=5)
+            if fixture:
+                fixture.__exit__(None, None, None)
             log.close()
 
 
