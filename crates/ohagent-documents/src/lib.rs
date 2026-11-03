@@ -1,7 +1,17 @@
 //! Stateless extraction only. Callers own authorization, tenancy, persistence and actions.
+//!
+//! This library sends validated inline PNG, JPEG or PDF bytes to a server-configured
+//! Chat Completions endpoint. The configured model must support those inputs and
+//! strict JSON-schema output. Compatibility, availability, pricing and extraction
+//! accuracy are not inferred or guaranteed. No fallback model is selected.
+//!
+//! Results are untrusted candidates for caller review, not authorization to create
+//! invoices, record readings or make payments. Evidence quotes and page references
+//! are bounded but cannot be independently verified against image pixels here.
+//! Input magic checks do not replace malware scanning or full document decoding.
+//! Error display strings are stable localization keys, not provider response text.
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use std::time::Duration;
 
 pub const MAX_INPUT_BYTES: usize = 10 * 1024 * 1024;
 pub const MAX_RESPONSE_BYTES: usize = 256 * 1024;
@@ -16,7 +26,12 @@ pub struct ExtractRequest {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum DocumentType { Invoice, Receipt, MeterReading, Other }
+pub enum DocumentType {
+    Invoice,
+    Receipt,
+    MeterReading,
+    Other,
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -36,7 +51,11 @@ pub struct DocumentFields {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct FieldEvidence { pub field: String, pub page: u32, pub quote: String }
+pub struct FieldEvidence {
+    pub field: String,
+    pub page: u32,
+    pub quote: String,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -70,18 +89,15 @@ pub trait VisionProvider: Send + Sync {
 }
 
 /// Server-owned configuration. Never construct this from upload metadata.
+/// `base_url` is the API root (for example, an HTTPS endpoint ending in `/v1`).
+/// The client appends `/chat/completions`. Keep `api_key` in Vault or environment
+/// configuration. This type intentionally does not implement `Debug`.
 #[derive(Clone)]
-pub struct VisionConfig { pub base_url: String, pub model: String, pub api_key: String }
-
-pub struct OpenAiVisionProvider;
-impl OpenAiVisionProvider {
-    pub fn new(_config: VisionConfig) -> Result<Self, DocumentError> { Ok(Self) }
-    pub fn with_timeout(_config: VisionConfig, _timeout: Duration) -> Result<Self, DocumentError> { Ok(Self) }
-}
-#[async_trait]
-impl VisionProvider for OpenAiVisionProvider {
-    async fn extract(&self, _request: ExtractRequest) -> Result<Extraction, DocumentError> { Err(DocumentError::InvalidOutput) }
+pub struct VisionConfig {
+    pub base_url: String,
+    pub model: String,
+    pub api_key: String,
 }
 
-pub fn validate_request(_request: &ExtractRequest) -> Result<(), DocumentError> { Ok(()) }
-pub fn validate_extraction(_extraction: &Extraction) -> Result<(), DocumentError> { Ok(()) }
+mod provider;
+pub use provider::{validate_extraction, validate_request, OpenAiVisionProvider};
