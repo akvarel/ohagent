@@ -1,6 +1,6 @@
 # Document workflow integration
 
-Date: 2026-11-03. Status: live local API and browser workflows passed in OHAccounting and Flatly. Final Flatly hardening/coverage attribution in progress. Not deployed.
+Date: 2026-11-03. Status: final-source live local API and browser workflows passed in OHAccounting and Flatly, including manual exception handling. Existing Flatly repository-wide coverage debt blocks overall verification. Not deployed.
 
 ## Responsibility boundaries
 
@@ -29,7 +29,7 @@ For the first two months after pilot activation, a human checks documents and pr
 | No tenant crossover | Negative app authorization and matching tests | Both actual application workflows reject unauthorized job/source access; accounting also rejects foreign targets and journal reads |
 | Classification and unique target matching | App adapter tests and seeded real API workflow | Actual invoices and Flatly meter PDF classified, tenant-owned candidates/readback checked |
 | Review before application, no duplicate effects | Persistent-state and retry tests | Both real API and browser workflows passed, with original/reviewed separation and real domain effects |
-| Final invoice approval blocks unapproved sends | Existing send-path integration tests | Accounting 15 invoicing tests passed; Flatly full 3971-test suite passed, unchanged overall coverage gate failed |
+| Final invoice approval blocks unapproved sends | Existing send-path integration tests | Accounting 15 invoicing tests passed; Flatly 3993 reactor tests passed (one skipped), unchanged overall coverage gate failed on the same 25 missed classes independently observed before the feature |
 | Web upload and review | Browser workflow | Both actual UIs, live model, explicit review and real domain readback passed in EN/LV/RU |
 
 ## Runtime configuration and reproducible checks
