@@ -1,0 +1,16 @@
+[package]
+name = "ohagent-document-api"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Restricted document-processing HTTP boundary for ohAgent"
+
+[dependencies]
+ohagent-documents = { path = "../ohagent-documents" }
+axum = "0.8"
+tokio.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+reqwest = { workspace = true, features = ["json"] }
+async-trait.workspace = true
