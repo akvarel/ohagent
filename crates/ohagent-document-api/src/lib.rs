@@ -46,7 +46,14 @@ impl DocumentApiState {
             })
         })();
         match config.and_then(|c| OpenAiVisionProvider::new(c).ok()) {
-            Some(provider) => Self::with_provider(api_key, Arc::new(provider)),
+            Some(provider) => {
+                let provider = match std::env::var("OHAGENT_DOCUMENT_JSON_MODE").as_deref() {
+                    Ok("json_object") => provider.with_json_object_mode(),
+                    Ok("json_schema") | Err(_) => provider,
+                    _ => return Self::unavailable(api_key),
+                };
+                Self::with_provider(api_key, Arc::new(provider))
+            }
             None => Self::unavailable(api_key),
         }
     }
