@@ -52,6 +52,19 @@ The accounting fixture verifies the disposable container label and loopback port
 
 The Flatly command supports `--backend-jar` for an explicitly selected packaged artifact and `--admin-key-env` to isolate either documented server credential binding. No browser receives these credentials.
 
+## Publication
+
+All implementation and acceptance changes were committed and pushed to non-protected task branches:
+
+| Repository | Branch | Commits |
+|---|---|---|
+| ohAgent | `feature/document-workflow-20261103` | `7f7b19c` core, `0b2a7ec` independent acceptance |
+| Flatly backend | `feature/ohagent-documents-20261103` | `c647c11b`, final configuration repair `76e314a4` |
+| Flatly frontend | `feature/ohagent-documents-20261103` | `3435085f` |
+| OHAccounting | `feature/ohagent-documents-20261103` | `c24663c`, evidence `ea275ab` |
+
+The final Flatly backend remote SHA was independently compared with local HEAD and matched. Pull requests were not created: the configured Bitbucket integration failed to initialize. No credentials or remote settings were changed to bypass this limitation. Unrelated `TEAM_MEMORY/SESSION_LOG.md` and frontend `test-results/` were preserved and excluded from task commits.
+
 ## Remaining release boundaries
 
 No production deployment, service restart, live secret provisioning, account privilege grants or invoice distribution has been authorized or performed. Previous live single-model extraction checks do not establish the new three-provider behavior. The previously reproduced Flatly overall coverage gate failure, 25 missed classes versus maximum 12 on the pre-feature baseline, must not be hidden or disabled.
