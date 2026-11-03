@@ -99,6 +99,12 @@ pub struct VisionConfig {
     pub api_key: String,
 }
 
+mod comparison;
+pub use comparison::{
+    Comparison, ComparisonResponse, ComparisonService, ConnectionProfile, ModelProviderFactory,
+    ModelRegistry, ModelResult, ModelSlot, ModelStatus, RegistryError, MAX_COMPARISON_BYTES,
+};
+
 mod pdf;
 mod provider;
 pub use pdf::PdfRasterizer;

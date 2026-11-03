@@ -4,12 +4,13 @@ use axum::{
     http::{HeaderMap, StatusCode},
     middleware::{self, Next},
     response::{IntoResponse, Response},
-    routing::post,
+    routing::{get, post},
     Json, Router,
 };
 use ohagent_documents::{
-    validate_extraction, validate_request, DocumentError, ExtractRequest, OpenAiVisionProvider,
-    VisionConfig, VisionProvider,
+    validate_extraction, validate_request, ComparisonService, DocumentError, ExtractRequest,
+    ModelRegistry, OpenAiVisionProvider, RegistryError, VisionConfig, VisionProvider,
+    MAX_COMPARISON_BYTES,
 };
 use std::sync::Arc;
 use tokio::sync::Semaphore;
@@ -19,6 +20,8 @@ pub struct DocumentApiState {
     provider: Option<Arc<dyn VisionProvider>>,
     api_key: Arc<String>,
     permits: Arc<Semaphore>,
+    comparison: Option<Arc<ComparisonService>>,
+    admin_key: Option<Arc<String>>,
 }
 
 impl DocumentApiState {
@@ -27,6 +30,8 @@ impl DocumentApiState {
             provider: None,
             api_key: Arc::new(api_key),
             permits: Arc::new(Semaphore::new(4)),
+            comparison: None,
+            admin_key: None,
         }
     }
 
@@ -37,8 +42,34 @@ impl DocumentApiState {
         }
     }
 
+    /// Inject a boot-owned comparison service, with an independent administrator key.
+    /// Equal service/admin keys are rejected, never granting service callers admin access.
+    pub fn with_comparison(
+        mut self,
+        service: Arc<ComparisonService>,
+        admin_key: Option<String>,
+    ) -> Self {
+        self.comparison = Some(service);
+        self.admin_key = admin_key
+            .filter(|key| key.trim().len() >= 24 && key != self.api_key.as_str())
+            .map(Arc::new);
+        self
+    }
+
     /// Configuration is process-owned, never supplied in an upload request.
     pub fn from_env(api_key: String) -> Self {
+        let mut state = Self::legacy_from_env(api_key);
+        state.admin_key = std::env::var("OHAGENT_DOCUMENT_ADMIN_KEY")
+            .ok()
+            .filter(|key| key.trim().len() >= 24 && key != state.api_key.as_str())
+            .map(Arc::new);
+        if let Ok(service) = ComparisonService::from_env() {
+            state.comparison = Some(Arc::new(service));
+        }
+        state
+    }
+
+    fn legacy_from_env(api_key: String) -> Self {
         let config = (|| {
             Some(VisionConfig {
                 base_url: std::env::var("OHAGENT_DOCUMENT_BASE_URL").ok()?,
@@ -77,6 +108,13 @@ impl DocumentApiState {
 pub fn router(state: DocumentApiState) -> Router {
     Router::new()
         .route("/api/document-processing/extract", post(extract))
+        .route("/api/document-processing/compare", post(compare))
+        .route(
+            "/api/document-processing/models",
+            get(models)
+                .put(update_models)
+                .layer(DefaultBodyLimit::max(16 * 1024)),
+        )
         .layer(DefaultBodyLimit::max(15 * 1024 * 1024))
         .layer(middleware::from_fn_with_state(state.clone(), admit))
         .with_state(state)
@@ -107,16 +145,24 @@ fn authorized(headers: &HeaderMap, expected: &str) -> bool {
 async fn admit(State(state): State<DocumentApiState>, request: Request, next: Next) -> Response {
     // Reject untrusted or excess requests before buffering any document bytes.
     let headers = request.headers();
-    if !authorized(headers, &state.api_key) {
+    let is_admin = request.uri().path() == "/api/document-processing/models";
+    let expected = if is_admin {
+        state.admin_key.as_deref().map(String::as_str)
+    } else {
+        Some(state.api_key.as_str())
+    };
+    if !expected.is_some_and(|key| authorized(headers, key)) {
         return error(StatusCode::UNAUTHORIZED, "unauthorized");
     }
     let tenant = headers.get("X-Tenant-Id").and_then(|s| s.to_str().ok());
-    if !tenant.is_some_and(|t| {
-        !t.is_empty()
-            && t.len() <= 128
-            && t.bytes()
-                .all(|c| c.is_ascii_alphanumeric() || b"-_.:".contains(&c))
-    }) {
+    if !is_admin
+        && !tenant.is_some_and(|t| {
+            !t.is_empty()
+                && t.len() <= 128
+                && t.bytes()
+                    .all(|c| c.is_ascii_alphanumeric() || b"-_.:".contains(&c))
+        })
+    {
         return error(StatusCode::BAD_REQUEST, "invalid_tenant");
     }
     let Ok(_permit) = state.permits.try_acquire() else {
@@ -155,6 +201,98 @@ async fn extract(State(state): State<DocumentApiState>, body: axum::body::Bytes)
         _ => error(StatusCode::BAD_GATEWAY, "provider_failed"),
     }
 }
+
+fn registry_error(value: RegistryError) -> Response {
+    match value {
+        RegistryError::Invalid => error(StatusCode::BAD_REQUEST, "invalid_model_registry"),
+        RegistryError::Unavailable => error(
+            StatusCode::SERVICE_UNAVAILABLE,
+            "model_registry_unavailable",
+        ),
+        RegistryError::Conflict => error(StatusCode::CONFLICT, "model_registry_conflict"),
+        RegistryError::AllDisabled => error(StatusCode::SERVICE_UNAVAILABLE, "all_models_disabled"),
+    }
+}
+
+async fn snapshot(service: Arc<ComparisonService>) -> Result<ModelRegistry, RegistryError> {
+    tokio::task::spawn_blocking(move || service.snapshot())
+        .await
+        .map_err(|_| RegistryError::Unavailable)?
+}
+
+async fn models(State(state): State<DocumentApiState>) -> Response {
+    let Some(service) = state.comparison else {
+        return registry_error(RegistryError::Unavailable);
+    };
+    match snapshot(service).await {
+        Ok(registry) => Json(registry).into_response(),
+        Err(_) => registry_error(RegistryError::Unavailable),
+    }
+}
+
+async fn update_models(
+    State(state): State<DocumentApiState>,
+    body: Result<axum::body::Bytes, axum::extract::rejection::BytesRejection>,
+) -> Response {
+    let body = match body {
+        Ok(body) => body,
+        Err(rejection) => return error(rejection.status(), "model_registry_too_large"),
+    };
+    if body.len() > 16 * 1024 {
+        return error(StatusCode::PAYLOAD_TOO_LARGE, "model_registry_too_large");
+    }
+    let proposed: ModelRegistry = match serde_json::from_slice(&body) {
+        Ok(value) => value,
+        Err(_) => return registry_error(RegistryError::Invalid),
+    };
+    let Some(service) = state.comparison else {
+        return registry_error(RegistryError::Unavailable);
+    };
+    match tokio::task::spawn_blocking(move || service.update(proposed)).await {
+        Ok(Ok(registry)) => Json(registry).into_response(),
+        Ok(Err(error)) => registry_error(error),
+        Err(_) => registry_error(RegistryError::Unavailable),
+    }
+}
+
+async fn compare(
+    State(state): State<DocumentApiState>,
+    body: Result<axum::body::Bytes, axum::extract::rejection::BytesRejection>,
+) -> Response {
+    let body = match body {
+        Ok(body) => body,
+        Err(rejection) => return error(rejection.status(), "invalid_document"),
+    };
+    let request: ExtractRequest = match serde_json::from_slice(&body) {
+        Ok(request) => request,
+        Err(_) => return error(StatusCode::BAD_REQUEST, "invalid_document"),
+    };
+    if validate_request(&request).is_err() {
+        return error(StatusCode::BAD_REQUEST, "invalid_document");
+    }
+    let Some(service) = state.comparison else {
+        return registry_error(RegistryError::Unavailable);
+    };
+    let registry = match snapshot(service.clone()).await {
+        Ok(registry) => registry,
+        // An invalid persisted policy is a server configuration failure, not bad document input.
+        Err(_) => return registry_error(RegistryError::Unavailable),
+    };
+    match service.compare(registry, request).await {
+        Ok(result) => match serde_json::to_vec(&result) {
+            Ok(bytes) if bytes.len() <= MAX_COMPARISON_BYTES => (
+                [(axum::http::header::CONTENT_TYPE, "application/json")],
+                bytes,
+            )
+                .into_response(),
+            _ => error(StatusCode::BAD_GATEWAY, "comparison_too_large"),
+        },
+        Err(error) => registry_error(error),
+    }
+}
+
+#[cfg(test)]
+mod comparison_tests;
 
 #[cfg(test)]
 mod tests {

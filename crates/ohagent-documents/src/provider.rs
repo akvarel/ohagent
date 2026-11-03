@@ -1,6 +1,31 @@
 use crate::*;
 use std::time::Duration;
 
+pub(crate) fn completion_endpoint(
+    base_url: &str,
+    model: &str,
+) -> Result<reqwest::Url, DocumentError> {
+    let mut endpoint = reqwest::Url::parse(base_url).map_err(|_| DocumentError::InvalidConfig)?;
+    let loopback = matches!(
+        endpoint.host_str(),
+        Some("127.0.0.1" | "localhost" | "[::1]")
+    );
+    if (endpoint.scheme() != "https" && !(endpoint.scheme() == "http" && loopback))
+        || !endpoint.username().is_empty()
+        || endpoint.password().is_some()
+        || endpoint.query().is_some()
+        || endpoint.fragment().is_some()
+        || model.trim().is_empty()
+        || model.len() > 256
+        || model.chars().any(char::is_control)
+    {
+        return Err(DocumentError::InvalidConfig);
+    }
+    let path = format!("{}/chat/completions", endpoint.path().trim_end_matches('/'));
+    endpoint.set_path(&path);
+    Ok(endpoint)
+}
+
 pub struct OpenAiVisionProvider {
     client: reqwest::Client,
     endpoint: reqwest::Url,
@@ -15,21 +40,8 @@ impl OpenAiVisionProvider {
 
     /// A shorter deadline is useful to callers and tests. Longer than 60s is rejected.
     pub fn with_timeout(config: VisionConfig, timeout: Duration) -> Result<Self, DocumentError> {
-        let mut endpoint =
-            reqwest::Url::parse(&config.base_url).map_err(|_| DocumentError::InvalidConfig)?;
-        let loopback = matches!(
-            endpoint.host_str(),
-            Some("127.0.0.1" | "localhost" | "[::1]")
-        );
-        if (endpoint.scheme() != "https" && !(endpoint.scheme() == "http" && loopback))
-            || !endpoint.username().is_empty()
-            || endpoint.password().is_some()
-            || endpoint.query().is_some()
-            || endpoint.fragment().is_some()
-            || config.model.trim().is_empty()
-            || config.model.len() > 256
-            || config.model.chars().any(char::is_control)
-            || config.api_key.trim().is_empty()
+        let endpoint = completion_endpoint(&config.base_url, &config.model)?;
+        if config.api_key.trim().is_empty()
             || config.api_key.len() > 4096
             || config.api_key.chars().any(char::is_control)
             || timeout.is_zero()
@@ -37,8 +49,6 @@ impl OpenAiVisionProvider {
         {
             return Err(DocumentError::InvalidConfig);
         }
-        let path = format!("{}/chat/completions", endpoint.path().trim_end_matches('/'));
-        endpoint.set_path(&path);
         let client = reqwest::Client::builder()
             .timeout(timeout)
             .connect_timeout(timeout.min(Duration::from_secs(10)))
