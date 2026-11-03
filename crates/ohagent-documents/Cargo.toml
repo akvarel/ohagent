@@ -13,6 +13,9 @@ reqwest = { workspace = true, features = ["json", "stream"] }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+tokio.workspace = true
+uuid.workspace = true
+tempfile = "3"
 
 [dev-dependencies]
 tokio.workspace = true

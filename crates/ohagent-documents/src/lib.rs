@@ -99,5 +99,7 @@ pub struct VisionConfig {
     pub api_key: String,
 }
 
+mod pdf;
 mod provider;
+pub use pdf::PdfRasterizer;
 pub use provider::{validate_extraction, validate_request, OpenAiVisionProvider};

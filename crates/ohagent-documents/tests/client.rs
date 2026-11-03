@@ -148,14 +148,30 @@ async fn real_client_sends_inline_pdf() {
 
 #[tokio::test]
 async fn json_object_mode_supplies_schema_in_prompt_and_validates_locally() {
-    let (config, handle) = server(200, response(serde_json::to_string(&extraction()).unwrap()), Duration::ZERO).await;
-    OpenAiVisionProvider::new(config).unwrap().with_json_object_mode().extract(request()).await.unwrap();
+    let (config, handle) = server(
+        200,
+        response(serde_json::to_string(&extraction()).unwrap()),
+        Duration::ZERO,
+    )
+    .await;
+    OpenAiVisionProvider::new(config)
+        .unwrap()
+        .with_json_object_mode()
+        .extract(request())
+        .await
+        .unwrap();
     let payload = handle.await.unwrap();
     assert_eq!(payload["response_format"]["type"], "json_object");
     assert_eq!(payload["max_tokens"], 4096);
     assert!(payload.get("max_completion_tokens").is_none());
-    assert!(payload["messages"][0]["content"].as_str().unwrap().contains("supplier_registration_number"));
-    assert!(payload["messages"][0]["content"].as_str().unwrap().contains("JSON"));
+    assert!(payload["messages"][0]["content"]
+        .as_str()
+        .unwrap()
+        .contains("supplier_registration_number"));
+    assert!(payload["messages"][0]["content"]
+        .as_str()
+        .unwrap()
+        .contains("JSON"));
 }
 
 #[tokio::test]

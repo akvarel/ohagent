@@ -1,7 +1,8 @@
 //! Restricted document-processing API. Only trusted application backends may call it.
 use axum::{
-    extract::{DefaultBodyLimit, State},
+    extract::{DefaultBodyLimit, Request, State},
     http::{HeaderMap, StatusCode},
+    middleware::{self, Next},
     response::{IntoResponse, Response},
     routing::post,
     Json, Router,
@@ -52,6 +53,20 @@ impl DocumentApiState {
                     Ok("json_schema") | Err(_) => provider,
                     _ => return Self::unavailable(api_key),
                 };
+                let provider = match std::env::var("OHAGENT_DOCUMENT_PDF_MODE").as_deref() {
+                    Ok("podman") => {
+                        let image = match std::env::var("OHAGENT_DOCUMENT_RENDER_IMAGE") {
+                            Ok(image) => image,
+                            Err(_) => return Self::unavailable(api_key),
+                        };
+                        match ohagent_documents::PdfRasterizer::new(image) {
+                            Ok(renderer) => provider.with_pdf_rasterizer(renderer),
+                            Err(_) => return Self::unavailable(api_key),
+                        }
+                    }
+                    Ok("native") | Err(_) => provider,
+                    _ => return Self::unavailable(api_key),
+                };
                 Self::with_provider(api_key, Arc::new(provider))
             }
             None => Self::unavailable(api_key),
@@ -63,6 +78,7 @@ pub fn router(state: DocumentApiState) -> Router {
     Router::new()
         .route("/api/document-processing/extract", post(extract))
         .layer(DefaultBodyLimit::max(15 * 1024 * 1024))
+        .layer(middleware::from_fn_with_state(state.clone(), admit))
         .with_state(state)
 }
 
@@ -88,12 +104,9 @@ fn authorized(headers: &HeaderMap, expected: &str) -> bool {
             == 0
 }
 
-async fn extract(
-    State(state): State<DocumentApiState>,
-    headers: HeaderMap,
-    body: axum::body::Bytes,
-) -> Response {
-    // Authenticate before deserializing documents. No chat/session state or document logging.
+async fn admit(State(state): State<DocumentApiState>, request: Request, next: Next) -> Response {
+    // Reject untrusted or excess requests before buffering any document bytes.
+    let headers = request.headers();
     if !authorized(&headers, &state.api_key) {
         return error(StatusCode::UNAUTHORIZED, "unauthorized");
     }
@@ -106,6 +119,16 @@ async fn extract(
     }) {
         return error(StatusCode::BAD_REQUEST, "invalid_tenant");
     }
+    let Ok(_permit) = state.permits.try_acquire() else {
+        return error(StatusCode::TOO_MANY_REQUESTS, "capacity_exceeded");
+    };
+    match tokio::time::timeout(std::time::Duration::from_secs(100), next.run(request)).await {
+        Ok(response) => response,
+        Err(_) => error(StatusCode::REQUEST_TIMEOUT, "request_timeout"),
+    }
+}
+
+async fn extract(State(state): State<DocumentApiState>, body: axum::body::Bytes) -> Response {
     let request: ExtractRequest = match serde_json::from_slice(&body) {
         Ok(request) => request,
         Err(_) => return error(StatusCode::BAD_REQUEST, "invalid_document"),
@@ -116,11 +139,8 @@ async fn extract(
     let Some(provider) = &state.provider else {
         return error(StatusCode::SERVICE_UNAVAILABLE, "provider_unavailable");
     };
-    let Ok(_permit) = state.permits.try_acquire() else {
-        return error(StatusCode::TOO_MANY_REQUESTS, "capacity_exceeded");
-    };
     let result = tokio::time::timeout(
-        std::time::Duration::from_secs(65),
+        std::time::Duration::from_secs(95),
         provider.extract(request),
     )
     .await;
@@ -188,6 +208,54 @@ mod tests {
                 "evidence":[{"field":"total_amount", "page":1,"quote":"12.50 EUR"}],"warnings":[],"model":"fixture-vision"
             })).unwrap())
         }
+    }
+
+    async fn incomplete_body_status(state: DocumentApiState, authenticated: bool) -> u16 {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let address = listener.local_addr().unwrap();
+        let task = tokio::spawn(async move { axum::serve(listener, router(state)).await.unwrap() });
+        let mut stream = tokio::net::TcpStream::connect(address).await.unwrap();
+        let auth = if authenticated {
+            "Authorization: Bearer document-test-service-key\r\nX-Tenant-Id: company-a\r\n"
+        } else {
+            ""
+        };
+        stream.write_all(format!("POST /api/document-processing/extract HTTP/1.1\r\nHost: localhost\r\n{auth}Content-Type: application/json\r\nContent-Length: 10000000\r\n\r\n{{").as_bytes()).await.unwrap();
+        let mut buffer = [0u8; 512];
+        let result =
+            tokio::time::timeout(std::time::Duration::from_secs(1), stream.read(&mut buffer)).await;
+        task.abort();
+        let size = result
+            .expect("request headers must be rejected before reading body")
+            .unwrap();
+        std::str::from_utf8(&buffer[..size])
+            .unwrap()
+            .split_whitespace()
+            .nth(1)
+            .unwrap()
+            .parse()
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn unauthorized_incomplete_body_is_rejected_immediately() {
+        assert_eq!(
+            incomplete_body_status(
+                DocumentApiState::unavailable("document-test-service-key".into()),
+                false
+            )
+            .await,
+            401
+        );
+    }
+
+    #[tokio::test]
+    async fn saturated_incomplete_body_is_rejected_immediately() {
+        let state = DocumentApiState::unavailable("document-test-service-key".into());
+        let permits = state.permits.clone();
+        let _held = permits.acquire_many(4).await.unwrap();
+        assert_eq!(incomplete_body_status(state, true).await, 429);
     }
 
     #[tokio::test]
