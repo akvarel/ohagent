@@ -107,7 +107,7 @@ fn authorized(headers: &HeaderMap, expected: &str) -> bool {
 async fn admit(State(state): State<DocumentApiState>, request: Request, next: Next) -> Response {
     // Reject untrusted or excess requests before buffering any document bytes.
     let headers = request.headers();
-    if !authorized(&headers, &state.api_key) {
+    if !authorized(headers, &state.api_key) {
         return error(StatusCode::UNAUTHORIZED, "unauthorized");
     }
     let tenant = headers.get("X-Tenant-Id").and_then(|s| s.to_str().ok());
