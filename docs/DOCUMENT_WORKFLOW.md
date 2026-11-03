@@ -1,6 +1,6 @@
 # Document workflow integration
 
-Date: 2026-11-03. Status: implementation in progress, not deployed.
+Date: 2026-11-03. Status: core and OHAccounting live local acceptance passed; Flatly acceptance in progress. Not deployed.
 
 ## Responsibility boundaries
 
@@ -26,11 +26,11 @@ For the first two months after pilot activation, a human checks documents and pr
 |---|---|---|
 | Image/PDF intake and type/size validation | Shared-core tests and HTTP tests | Passed, including isolated two-page PDF, malformed PDF and page-limit rejection |
 | Real vision request and strict structured extraction | Local HTTP provider contract tests, then permitted live provider smoke | Passed: generated invoice and meter PNG/PDF through live DeepSeek and restricted HTTP API |
-| No tenant crossover | Negative app authorization and matching tests | Pending |
-| Classification and unique target matching | App adapter tests and seeded real API workflow | Pending |
-| Review before application, no duplicate effects | Persistent-state and retry tests | Pending |
-| Final invoice approval blocks unapproved sends | Existing send-path integration tests | Pending |
-| Web upload and review | Browser workflow | Pending |
+| No tenant crossover | Negative app authorization and matching tests | OHAccounting live gateway/SQL negatives passed; Flatly migration-backed runtime pending |
+| Classification and unique target matching | App adapter tests and seeded real API workflow | OHAccounting live invoice classification and tenant-owned candidates passed; Flatly pending |
+| Review before application, no duplicate effects | Persistent-state and retry tests | OHAccounting real SQL and browser correction/application passed; Flatly pending |
+| Final invoice approval blocks unapproved sends | Existing send-path integration tests | Accounting 15 invoicing tests passed; Flatly focused billing release/distribution tests passed, full gate pending |
+| Web upload and review | Browser workflow | Actual OHAccounting UI, live model, corrected review and real journal passed; Flatly pending |
 
 ## Runtime configuration and reproducible checks
 
@@ -44,8 +44,10 @@ Executed on 2026-11-03:
 
 - `cargo test -p ohagent-documents -p ohagent-document-api`: 14 provider tests, 10 actual HTTP API tests and one PDF configuration test passed. Two raw-socket incomplete-body tests first failed, then passed after early admission/authentication fixes.
 - `cargo test -p ohagent-documents --test pdf_runtime -- --ignored`: actual isolated multipage render and malformed/excess-page rejection passed. This opt-in runtime check is intentionally not silently assumed by the ordinary suite.
+- `cargo clippy -p ohagent-documents -p ohagent-document-api --all-targets -- -D warnings`: passed after fixing the middleware's needless borrow.
+- `cargo check -p ohagent-daemon`: passed, including actual merged router integration. Existing unrelated crate warnings were not suppressed.
 - `scripts/document_vision_smoke.py --binary <built-binary> --base-url https://api.deepseek.com --model deepseek-flash --key-env DEEPSEEK_API_KEY`, also repeated with `--pdf`: both runs passed exact invoice number/amount/currency and meter number/value/date checks. Only generated test documents were submitted. No real customer PII was used.
 
-The binary is buildable independently of the full daemon. Full daemon compilation and application adapter/browser acceptance must be recorded separately, not inferred from these results. The independent review snapshot is in `DOCUMENT_SECURITY_REVIEW.md`; its F1/F2 findings were reproduced and fixed by pre-body middleware with bounded admission. Review concerns about provider retention/DPA, real handwriting accuracy, and business-level required-field validation remain distinct from core extraction correctness.
+The binary is buildable independently of the full daemon. Full daemon compilation passed; application adapter/browser acceptance must be recorded separately, not inferred from core results. The independent review snapshot is in `DOCUMENT_SECURITY_REVIEW.md`; its F1/F2 findings were reproduced and fixed by pre-body middleware with bounded admission. Review concerns about provider retention/DPA, real handwriting accuracy, and business-level required-field validation remain distinct from core extraction correctness.
 
 Real handwritten extraction accuracy is not established by fixtures or mock provider responses. Model selection requires a representative approved dataset, known-correct annotations, actual usage/cost, and explicit quality thresholds. No price or model ranking from earlier conversation is treated as verified implementation evidence.
