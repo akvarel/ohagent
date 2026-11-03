@@ -1,0 +1,18 @@
+[package]
+name = "ohagent-documents"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Bounded document extraction through a configured vision API"
+
+[dependencies]
+async-trait.workspace = true
+base64 = "0.22"
+chrono.workspace = true
+reqwest = { workspace = true, features = ["json", "stream"] }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true
