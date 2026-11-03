@@ -74,6 +74,9 @@ pub struct ApiState {
 /// Auth middleware is applied to /api/* endpoints.
 pub fn router(state: ApiState) -> Router {
     let auth_ext = state.auth_state.clone();
+    let documents = ohagent_document_api::router(ohagent_document_api::DocumentApiState::from_env(
+        state.auth_state.config.api_key.as_ref().clone(),
+    ));
     let metrics_ext = state.metrics_state.clone();
     let webhooks = Router::new()
         .route("/webhooks/whatsapp", get(crate::webhooks::wa_verify))
@@ -135,6 +138,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/api/reminders", get(list_reminders_handler))
         .merge(webhooks)
         .with_state(state)
+        .merge(documents)
         .layer(middleware::from_fn(auth::require_auth))
         .layer(middleware::from_fn(metrics::metrics_middleware))
         .layer(axum::Extension(auth_ext))

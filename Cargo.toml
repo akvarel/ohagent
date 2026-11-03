@@ -1,6 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
+    "crates/ohagent-document-api",
+    "crates/ohagent-documents",
     "crates/ohagent-core",
     "crates/ohagent-eloop",
     "crates/ohagent-daemon",
