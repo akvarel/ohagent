@@ -1,6 +1,6 @@
 # Document workflow integration
 
-Date: 2026-11-03. Status: core and OHAccounting live local acceptance passed; Flatly acceptance in progress. Not deployed.
+Date: 2026-11-03. Status: live local API and browser workflows passed in OHAccounting and Flatly. Final Flatly hardening/coverage attribution in progress. Not deployed.
 
 ## Responsibility boundaries
 
@@ -26,11 +26,11 @@ For the first two months after pilot activation, a human checks documents and pr
 |---|---|---|
 | Image/PDF intake and type/size validation | Shared-core tests and HTTP tests | Passed, including isolated two-page PDF, malformed PDF and page-limit rejection |
 | Real vision request and strict structured extraction | Local HTTP provider contract tests, then permitted live provider smoke | Passed: generated invoice and meter PNG/PDF through live DeepSeek and restricted HTTP API |
-| No tenant crossover | Negative app authorization and matching tests | OHAccounting live gateway/SQL negatives passed; Flatly migration-backed runtime pending |
-| Classification and unique target matching | App adapter tests and seeded real API workflow | OHAccounting live invoice classification and tenant-owned candidates passed; Flatly pending |
-| Review before application, no duplicate effects | Persistent-state and retry tests | OHAccounting real SQL and browser correction/application passed; Flatly pending |
-| Final invoice approval blocks unapproved sends | Existing send-path integration tests | Accounting 15 invoicing tests passed; Flatly focused billing release/distribution tests passed, full gate pending |
-| Web upload and review | Browser workflow | Actual OHAccounting UI, live model, corrected review and real journal passed; Flatly pending |
+| No tenant crossover | Negative app authorization and matching tests | Both actual application workflows reject unauthorized job/source access; accounting also rejects foreign targets and journal reads |
+| Classification and unique target matching | App adapter tests and seeded real API workflow | Actual invoices and Flatly meter PDF classified, tenant-owned candidates/readback checked |
+| Review before application, no duplicate effects | Persistent-state and retry tests | Both real API and browser workflows passed, with original/reviewed separation and real domain effects |
+| Final invoice approval blocks unapproved sends | Existing send-path integration tests | Accounting 15 invoicing tests passed; Flatly full 3971-test suite passed, unchanged overall coverage gate failed |
+| Web upload and review | Browser workflow | Both actual UIs, live model, explicit review and real domain readback passed in EN/LV/RU |
 
 ## Runtime configuration and reproducible checks
 
