@@ -25,6 +25,16 @@ The first real backend attempt exposed a comparison-envelope compatibility failu
 
 Final frontend validation passed 366 files / 3149 tests, lint with zero errors and four existing warnings, production build and the five-scenario/twenty-five-step Cucumber dry run. The coordinator independently reran all 44 meter-sheet component tests successfully. Decimal boundary tests reject overlong values without truncation or rounding.
 
+## Additional coordinator validation at 14:47 UTC
+
+To independently recheck the contract inspection, parsing/atomic application, review UI/locales and acceptance-contract work, the coordinator reran:
+
+- Backend serialized `mvn -o -pl app -am test -Dtest=MeterSheetExtractionTest,DocumentExtractionTest,DocumentComparisonTest,DocumentWorkflowIntegrationTest,DocumentWorkflowFlywayTest -Dsurefire.failIfNoSpecifiedTests=false`: **36 passed**, zero failures/errors/skips, BUILD SUCCESS. Includes 23 actual workflow integration cases and the actual Flyway migration, plus strict row/comparison contracts.
+- Frontend `npx vitest run src/test/meter-sheet-review.test.jsx src/test/document-workflow.test.jsx src/test/document-model-settings.test.jsx --maxWorkers=2`: **57 passed across three files**. Covers fourteen-row decisions, locales, decimal/date boundaries, source immutability, legacy review and model-settings authority.
+- `npm run test:cucumber -- --dry-run --tags @OHAGENT-DOCS`: five scenarios and twenty-five steps resolved, zero undefined steps. They are explicitly skipped in dry-run and are not additional executed browser scenarios.
+
+No implementation changes were needed. Backend remained clean and unrelated frontend `test-results/` was preserved. These focused successes do not override the full verify coverage limitation below.
+
 ## Gate limitations
 
 Final-source unfiltered backend verify completed at 14:44:07 UTC: 3997 tests, zero failures/errors and one skip. Packaging succeeded, but overall verify failed the unchanged JaCoCo missed-class gate: 25 versus maximum 12. The earlier full run had the same gate failure. The corrected focused package passed 77 tests. No threshold or required check was weakened. Exact backend commands and regression details are recorded in `household-backend/docs/OHAGENT_METER_SHEETS.md`.
