@@ -27,6 +27,6 @@ Final frontend validation passed 366 files / 3149 tests, lint with zero errors a
 
 ## Gate limitations
 
-Backend initial full verify ran 3993 tests with no failures/errors and one skip, but failed the unchanged JaCoCo missed-class gate: 25 versus maximum 12. It predates final narrow hardening and is not a final-source full-green claim. Final focused package and subsequent compatibility regression results are recorded in backend `docs/OHAGENT_METER_SHEETS.md`. No threshold or required check was weakened.
+Final-source unfiltered backend verify completed at 14:44:07 UTC: 3997 tests, zero failures/errors and one skip. Packaging succeeded, but overall verify failed the unchanged JaCoCo missed-class gate: 25 versus maximum 12. The earlier full run had the same gate failure. The corrected focused package passed 77 tests. No threshold or required check was weakened. Exact backend commands and regression details are recorded in `household-backend/docs/OHAGENT_METER_SHEETS.md`.
 
 Bitbucket PR inspection through the configured `atlassian-bitbucket` MCP failed initialization twice with a closed connection. No authentication or provider configuration was changed to bypass that blocker. Branch pushes are separate from PR creation.
