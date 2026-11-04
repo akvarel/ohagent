@@ -94,6 +94,39 @@ async fn server(
 }
 
 #[tokio::test]
+async fn prompt_preserves_ambiguous_multi_reading_documents_without_invalid_evidence() {
+    for json_object in [false, true] {
+        let ambiguous = Extraction {
+            document_type: DocumentType::MeterReading,
+            fields: DocumentFields::default(),
+            evidence: vec![],
+            warnings: vec!["Multiple readings and no visible year; manual handling required.".into()],
+            model: "untrusted-attribution".into(),
+        };
+        let (config, handle) = server(
+            200,
+            response(serde_json::to_string(&ambiguous).unwrap()),
+            Duration::ZERO,
+        )
+        .await;
+        let mut provider = OpenAiVisionProvider::new(config).unwrap();
+        if json_object {
+            provider = provider.with_json_object_mode();
+        }
+        let result = provider.extract(request()).await.unwrap();
+        assert!(result.fields.reading_value.is_none());
+        assert!(result.fields.reading_date.is_none());
+        assert!(result.evidence.is_empty());
+        assert_eq!(result.model, "configured-vision");
+        let payload = handle.await.unwrap();
+        let prompt = payload["messages"][0]["content"].as_str().unwrap();
+        assert!(prompt.contains("Evidence may reference only non-null fields"));
+        assert!(prompt.contains("Never choose an arbitrary row"));
+        assert!(prompt.contains("Never infer a missing year"));
+    }
+}
+
+#[tokio::test]
 async fn real_client_sends_image_and_strict_schema() {
     let (config, handle) = server(
         200,
