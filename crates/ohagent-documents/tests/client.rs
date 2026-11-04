@@ -100,7 +100,9 @@ async fn prompt_preserves_ambiguous_multi_reading_documents_without_invalid_evid
             document_type: DocumentType::MeterReading,
             fields: DocumentFields::default(),
             evidence: vec![],
-            warnings: vec!["Multiple readings and no visible year; manual handling required.".into()],
+            warnings: vec![
+                "Multiple readings and no visible year; manual handling required.".into(),
+            ],
             model: "untrusted-attribution".into(),
         };
         let (config, handle) = server(
