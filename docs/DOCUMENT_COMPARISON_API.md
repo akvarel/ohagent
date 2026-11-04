@@ -83,17 +83,44 @@ Response is HTTP 200 for completed fan-out with any mixture of successes and fai
 }
 ```
 
-`Extraction` is the unchanged strict legacy shape: `document_type`, typed nullable `fields`, `evidence`, `warnings`, `model`. Supported input types remain PNG, JPEG and PDF. Existing request magic/type validation, schema validation, decimal/date/currency semantics and output collection/text limits apply to each model result separately. Model attribution is overwritten with the snapshotted operator-selected identifier, never trusted from the model's response.
+`Extraction` retains `document_type`, typed nullable `fields`, `evidence`, `warnings`, `model`, and adds `meter_readings`, an optional/default-empty array when reading legacy responses. New provider schemas require the array explicitly. Supported input types remain PNG, JPEG and PDF. Existing request magic/type validation, schema validation, decimal/date/currency semantics and output collection/text limits apply to each model result separately. Model attribution is overwritten with the snapshotted operator-selected identifier, never trusted from the model's response.
 
 - Enabled slots run concurrently, with at most three calls per comparison. Results retain registry order, not completion order.
 - All three slots remain visible. Disabled slots have `extraction:null` and `error_code:null`, and are not called.
 - `complete:true` means **all three configured slots succeeded**, even if they disagree. Disabled slots or failures make it false. It does not mean agreement, correctness or approval.
-- `disagreements` contains lexicographically sorted exact differing `document_type` and `fields.<field_name>` paths among successful results. Null versus string and `"12.30"` versus `"12.3"` differ. Evidence, warning prose and model identifiers are not field disagreements. With fewer than two successes the list is empty, which must never be presented as unanimity.
+- `disagreements` contains lexicographically sorted exact differing `document_type`, `fields.<field_name>` and ordered meter-row paths among successful results. `meter_readings.length` reports different counts. `meter_readings.order` reports different row-ID sequences at equal length. `meter_readings[i]` reports an absent row, and `meter_readings[i].<field_name>` reports any differing scalar, including `row_id`, at the zero-based source position. Missing rows differ from present rows with null values. Null versus string and `"12.30"` versus `"12.3"` differ. Evidence, warning prose and model identifiers are not field disagreements. With fewer than two successes the list is empty, which must never be presented as unanimity.
 - `extraction` is only the first successful result in configured order, an editable candidate. There is no majority vote, authority score, automatic application or silent single-model fallback. All failures produce HTTP 200 with `extraction:null`, three failed results and `complete:false`.
 - Per-result `error_code` values are stable localization codes: `provider_failed`, `provider_unavailable`, `provider_timeout`, `invalid_extraction`, `response_too_large`. Provider response bodies, credential values and free-text errors are never forwarded.
 - Each extraction's serialized size is bounded below 256 KiB, leaving room for the duplicate candidate and metadata. The final serialized response has a hard 1 MiB limit. A defensive overflow returns 502 `comparison_too_large` rather than sending an oversized response.
 
 Missing or invalid boot profiles, unavailable/invalid persisted registry or unavailable registry storage fail comparison closed with HTTP 503 `model_registry_unavailable`, without using the legacy provider. All-disabled policy is allowed to persist, but comparison returns HTTP 503 `all_models_disabled` with zero provider calls. Invalid documents return 400 `invalid_document`. Total HTTP deadline expiry returns 408 `request_timeout` rather than falsely reporting a completed comparison. Existing structured HTTP errors retain `{error:{code,message_key}}`, with stable `documents.<code>` localization keys.
+
+### Ordered meter-sheet observations (2026-11-04)
+
+Only `document_type:"meter_reading"` may have a nonempty `meter_readings` array, with at most 100 rows. Each row has exactly these required properties, including explicit nulls:
+
+```json
+{
+  "row_id":"observation-1",
+  "unit_number":"1",
+  "meter_number":null,
+  "owner_name":null,
+  "reading_value":"100.25",
+  "reading_date":null,
+  "reading_date_text":"30.09",
+  "evidence":[{"field":"reading_date_text","page":1,"quote":"30.09"}],
+  "warnings":["Year, meter identifier and owner are not visible."]
+}
+```
+
+- `row_id` is a unique, nonempty, at most 64-byte ASCII identifier matching `[A-Za-z0-9_.-]+`. The other six scalar properties are nullable strings. Non-null strings must be nonblank and at most 2048 UTF-8 bytes, without disallowed control characters.
+- A row represents **one observation**, not one apartment. Seven apartments with previous and current readings produce 14 rows in original source order, without sorting, merging, voting, deduplicating or choosing one reading. All original rows, evidence and warnings remain in each model's attributed result. The editable candidate is still only the first successful configured slot.
+- `reading_value` is a plain nonnegative decimal string, at most 40 characters with at most 12 fractional digits, using existing scalar decimal semantics. No floating-point conversion or normalization occurs.
+- `reading_date` is a real full ISO date `YYYY-MM-DD` or null. `reading_date_text` preserves the visible text, including `30.09` when no year is visible. A missing year must never be inferred from current time, filenames or metadata. A non-null normalized date paired with numeric day/month-only text (`30.09`, `30.09.`, `30/09` or `30-09`) is rejected locally. Unknown or uncertain row values remain null with row warnings. Any null scalar requires a nonempty warning array.
+- Row evidence uses the existing exact `field`, `page`, `quote` shape, with only the six row scalar field names. Evidence must reference non-null fields. Quotes are nonblank and bounded to 2048 UTF-8 bytes, pages to 1..10000 and, for images/rasterized PDFs, the actual supplied page count. At most 64 evidence entries and 32 nonblank warnings of at most 2048 bytes are allowed per row. These limits do not independently verify quotes against pixels.
+- With nonempty rows, scalar `meter_number`, `reading_value`, `reading_date` and `unit_number` must be null. A shared `property_address` remains scalar. Existing single-reading scalar responses and requests remain supported with an absent/empty array. `meter_readings:null`, unknown row keys, missing row properties, invalid dates/decimals, duplicate IDs, and over-limit arrays fail validation rather than being repaired or truncated.
+- The prompt requests every observation. If a sheet visibly exceeds 100 observations it requests no rows and an explicit complete-sheet/manual-handling warning, never an apparently complete truncated prefix. Completeness and visible-year truth cannot be proven by structural validation and remain human-review responsibilities.
+- Both JSON-schema and JSON-object modes allow at most 16384 completion tokens to accommodate multi-row output. HTTP/comparison/overall deadlines, no-retry/no-fallback behavior, 256 KiB provider-response limit, 1 MiB comparison limit, tenant isolation and credential handling are unchanged. A length-truncated response remains invalid output, not a partial success.
 
 ## Mutable registry wire contract
 
@@ -116,6 +143,10 @@ Every comparison captures an immutable validated policy snapshot before provider
 | Three explicit operator slots, no hardcoded default | `registry_requires_three_unique_operator_slots`, actual binary `missing_or_incomplete_profiles_fail_closed_without_registry_or_network` |
 | Concurrent bounded fan-out | Barrier-based `three_calls_run_concurrently_and_preserve_server_attribution`, short-deadline `timeout_retains_successes_and_does_not_wait_for_summed_deadlines` |
 | Exact disagreement and candidate-only behavior | `exact_type_and_null_string_field_differences_are_not_majority_authority` |
+| Fourteen ordered observations, partial dates, shared address and model attribution | `transport_preserves_all_fourteen_rows_in_both_output_modes`, `row_candidates_keep_all_observations_and_first_success_not_majority` |
+| Additive legacy array compatibility and exact row schema | `legacy_without_array_still_reads_and_keeps_scalar_reading`, `transport_accepts_legacy_scalar_responses_without_array`, `every_row_property_is_required_and_unknown_properties_are_rejected` |
+| Bounded rows, unique IDs, null evidence, semantic dates/decimals | `rows_reject_invalid_ids_duplicates_overlimit_and_scalar_conflicts`, `rows_validate_decimals_dates_uncertainty_and_evidence_bounds`, `transport_rejects_incomplete_duplicate_overlimit_rows_and_invalid_row_pages` |
+| Exact row count/order/all-scalar disagreements without mutation | `row_disagreements_cover_every_scalar_exactly_without_normalization`, `row_count_and_source_order_differences_are_not_hidden_or_reordered`, `row_evidence_warnings_are_preserved_without_becoming_scalar_disagreements` |
 | Visible failed/disabled/all-failed results | `failures_and_disabled_slots_are_visible_without_false_unanimity`, `all_failed_invalid_and_panicking_providers_never_produce_a_candidate`, HTTP comparison tests |
 | Strict local validation and output bounds | Existing adversarial provider tests, comparison invalid-result test and `comparison_result_size_bound_applies_after_json_escaping` |
 | Admin-only settings, never service-key elevation | `service_key_cannot_administer_models_and_admin_key_cannot_extract`, `missing_or_identical_administrator_credentials_fail_closed`, incomplete-body HTTP test |
@@ -140,3 +171,5 @@ cargo check -p ohagent-daemon
 Validation executed on 2026-11-03: 51 ordinary tests passed (19 API HTTP tests, four actual-binary environment/three-provider HTTP tests, 14 provider transport tests, 13 comparison/registry tests and one PDF configuration test). The opt-in isolated PDF runtime test was also explicitly run and passed multipage rendering and malformed/excess-page rejection. Strict focused clippy, workspace formatting check, standalone binary build and scoped diff checks passed. `cargo check -p ohagent-daemon` passed with pre-existing unrelated warnings. An initial test was RED before the registry types existed, then GREEN after implementation. Shared-target disk exhaustion during later linking was resolved, and final focused tests/builds used the separate home target without incremental/debug artifacts.
 
 The isolated PDF runtime test remains opt-in and requires its documented local Podman image and Poppler prerequisites. These tests prove code paths and transport contracts, not live provider availability, handwriting quality, model independence, retention/DPA compliance, pricing or the two-month application's actual routing/review behavior. Three-provider live evaluation requires separately approved credentials and a representative approved dataset.
+
+Multi-row extension validation on 2026-11-04: the synthetic 14-observation regression first failed because the old extraction shape rejected `meter_readings`. After implementation and additive empty-array updates to the API test fixtures, `cargo test -p ohagent-documents -p ohagent-document-api` passed 70 tests (23 provider/semantic tests, 23 comparison/registry tests, 19 API tests, four actual-binary HTTP tests and one PDF configuration test). The existing opt-in isolated PDF runtime test remained ignored, not newly verified. Strict focused clippy for both packages with `--all-targets -- -D warnings`, `cargo build -p ohagent-document-api`, workspace formatting and scoped diff checks passed. Checks used `CARGO_TARGET_DIR=/home/sergey/.cache/ohagent-documents-build`, `CARGO_PROFILE_DEV_DEBUG=0` and `CARGO_INCREMENTAL=0`. Synthetic fixtures contain no customer document content. Live multi-row application acceptance remains a separate coordinator-owned check, not an implication of these tests.

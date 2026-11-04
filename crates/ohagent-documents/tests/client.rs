@@ -1,4 +1,6 @@
 include!("support/adversarial.rs");
+include!("support/meter_rows.rs");
+include!("support/meter_transport.rs");
 
 use base64::{engine::general_purpose::STANDARD, Engine};
 use ohagent_documents::*;
@@ -31,6 +33,7 @@ fn extraction() -> Extraction {
             quote: "12.30 EUR".into(),
         }],
         warnings: vec![],
+        meter_readings: vec![],
         model: "configured-vision".into(),
     }
 }
@@ -103,6 +106,7 @@ async fn prompt_preserves_ambiguous_multi_reading_documents_without_invalid_evid
             warnings: vec![
                 "Multiple readings and no visible year; manual handling required.".into(),
             ],
+            meter_readings: vec![],
             model: "untrusted-attribution".into(),
         };
         let (config, handle) = server(
@@ -197,7 +201,7 @@ async fn json_object_mode_supplies_schema_in_prompt_and_validates_locally() {
         .unwrap();
     let payload = handle.await.unwrap();
     assert_eq!(payload["response_format"]["type"], "json_object");
-    assert_eq!(payload["max_tokens"], 4096);
+    assert_eq!(payload["max_tokens"], 16384);
     assert!(payload.get("max_completion_tokens").is_none());
     assert!(payload["messages"][0]["content"]
         .as_str()

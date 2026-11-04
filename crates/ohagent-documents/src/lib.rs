@@ -57,11 +57,44 @@ pub struct FieldEvidence {
     pub quote: String,
 }
 
+/// One visible observation, not one apartment. Previous/current values are separate rows.
+/// Nullable properties must be explicitly present on the wire to avoid silent omissions.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MeterReading {
+    pub row_id: String,
+    #[serde(deserialize_with = "required_nullable")]
+    pub unit_number: Option<String>,
+    #[serde(deserialize_with = "required_nullable")]
+    pub meter_number: Option<String>,
+    #[serde(deserialize_with = "required_nullable")]
+    pub owner_name: Option<String>,
+    #[serde(deserialize_with = "required_nullable")]
+    pub reading_value: Option<String>,
+    #[serde(deserialize_with = "required_nullable")]
+    pub reading_date: Option<String>,
+    #[serde(deserialize_with = "required_nullable")]
+    pub reading_date_text: Option<String>,
+    pub evidence: Vec<FieldEvidence>,
+    pub warnings: Vec<String>,
+}
+
+fn required_nullable<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<String>, D::Error> {
+    Option::<String>::deserialize(deserializer)
+}
+
+pub const MAX_METER_READINGS: usize = 100;
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Extraction {
     pub document_type: DocumentType,
     pub fields: DocumentFields,
+    /// Missing in legacy persisted extractions. New provider schemas always request it.
+    #[serde(default)]
+    pub meter_readings: Vec<MeterReading>,
     pub evidence: Vec<FieldEvidence>,
     pub warnings: Vec<String>,
     pub model: String,

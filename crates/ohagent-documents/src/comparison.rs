@@ -505,6 +505,59 @@ fn disagreements(results: &[ModelResult]) -> Vec<String> {
             differences.push(format!("fields.{name}"));
         }
     }
+    if values
+        .iter()
+        .any(|v| v.meter_readings.len() != first.meter_readings.len())
+    {
+        differences.push("meter_readings.length".into());
+    }
+    if values.iter().skip(1).any(|v| {
+        v.meter_readings.len() == first.meter_readings.len()
+            && v.meter_readings
+                .iter()
+                .map(|row| &row.row_id)
+                .ne(first.meter_readings.iter().map(|row| &row.row_id))
+    }) {
+        differences.push("meter_readings.order".into());
+    }
+    let row_count = values
+        .iter()
+        .map(|v| v.meter_readings.len())
+        .max()
+        .unwrap_or(0);
+    for index in 0..row_count {
+        let rows: Vec<_> = values
+            .iter()
+            .map(|v| {
+                v.meter_readings
+                    .get(index)
+                    .map(|row| serde_json::to_value(row).expect("typed row"))
+            })
+            .collect();
+        if rows.iter().any(Option::is_none) {
+            differences.push(format!("meter_readings[{index}]"));
+        }
+        // No normalization, voting, sorting, deduplication or merging of observations.
+        // Evidence and warnings remain attached to each provider but are not field votes.
+        for name in [
+            "row_id",
+            "unit_number",
+            "meter_number",
+            "owner_name",
+            "reading_value",
+            "reading_date",
+            "reading_date_text",
+        ] {
+            let first_value = rows[0].as_ref().map(|row| &row[name]);
+            if rows
+                .iter()
+                .skip(1)
+                .any(|row| row.as_ref().map(|row| &row[name]) != first_value)
+            {
+                differences.push(format!("meter_readings[{index}].{name}"));
+            }
+        }
+    }
     differences.sort_unstable();
     differences
 }

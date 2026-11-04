@@ -1,6 +1,9 @@
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD, Engine};
 use ohagent_documents::*;
+use serde_json::{json, Value};
+include!("support/meter_rows.rs");
+include!("support/meter_comparison.rs");
 use std::{
     collections::HashMap,
     sync::{
@@ -41,6 +44,7 @@ fn extraction() -> Extraction {
         },
         evidence: vec![],
         warnings: vec![],
+        meter_readings: vec![],
         model: "untrusted-attribution".into(),
     }
 }

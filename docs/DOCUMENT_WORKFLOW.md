@@ -10,9 +10,11 @@ The endpoint accepts `X-Tenant-Id` from the trusted backend, not directly from b
 
 ## Wire contract
 
-Request: `file_name`, `media_type`, `content_base64`. Response: `document_type`, typed `fields`, `evidence`, `warnings`, `model`. Supported document classifications: `invoice`, `receipt`, `meter_reading`, `other`.
+Request: `file_name`, `media_type`, `content_base64`. Response: `document_type`, typed `fields`, optional/default-empty `meter_readings`, `evidence`, `warnings`, `model`. Supported document classifications: `invoice`, `receipt`, `meter_reading`, `other`. New provider schemas explicitly request the array while legacy persisted responses without it remain readable.
 
 Fields: optional `invoice_number`, `issue_date`, `currency`, `total_amount` (decimal string), `supplier_name`, `supplier_registration_number`, `meter_number`, `reading_value` (decimal string), `reading_date`, `property_address`, `unit_number`.
+
+Meter sheets use up to 100 ordered observations in `meter_readings`, with exact required keys `row_id`, `unit_number`, `meter_number`, `owner_name`, `reading_value`, `reading_date`, `reading_date_text`, `evidence`, `warnings`. Each previous/current reading is its own row: seven apartments with two observations each produce 14 rows. Unknown values are null with row warnings, and a visible partial date such as `30.09` stays in `reading_date_text` with `reading_date:null`, never an invented year. With rows present, singular meter/reading/date/unit fields are null and a shared address stays scalar. Legacy single-reading scalar extraction remains supported. See `DOCUMENT_COMPARISON_API.md` for exact bounds, evidence rules and row disagreement paths. Structured rows are candidates for application review, not authorization to create domain records.
 
 No extracted identifier is itself authorization. The application must independently resolve a unique tenant-owned target and reject ambiguous or unsupported actions.
 
