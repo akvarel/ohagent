@@ -46,6 +46,7 @@ async fn completion(
         evidence: vec![],
         warnings: vec![],
         model: "provider-spoofed-attribution".into(),
+        meter_readings: vec![],
     };
     Json(
         json!({"choices":[{"finish_reason":"stop","message":{"content":serde_json::to_string(&extraction).unwrap()}}]}),

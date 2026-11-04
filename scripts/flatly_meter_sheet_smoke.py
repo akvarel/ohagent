@@ -254,7 +254,16 @@ def main():
         request('GET', path, expected=403)
         request('GET', path + '/source', expected=403)
         bearer = manager
-        job = request('POST', path + '/analyze')
+        try:
+            job = request('POST', path + '/analyze')
+        except AssertionError:
+            if args.private_results:
+                args.private_results.mkdir(parents=True, exist_ok=True, mode=0o700)
+                descriptor = os.open(args.private_results / 'multirow-failed-job.json',
+                                     os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+                with os.fdopen(descriptor, 'w') as stream:
+                    json.dump(request('GET', path), stream, ensure_ascii=False, indent=2)
+            raise
         assert job['status'] == 'REVIEW_REQUIRED', job
         rows = job['extraction']['meterReadings']
         comparison = deepcopy(job['comparison'])
@@ -283,7 +292,7 @@ def main():
             result = {}
             for unit in range(1, 8):
                 apartment = request('POST', '/api/units', {'companyName': 'Acceptance Company',
-                                    'householdObject': 'acceptance-object-1', 'apartmentNumber': f'{prefix}-{unit}'}, expected=201)
+                                    'householdObject': 'acceptance-object-1', 'apartmentNumber': f'{prefix}-{unit}'})
                 meter = request('POST', '/api/utility-meters', {'objectId': 'acceptance-object-1',
                                 'unitId': apartment['id'], 'type': 'cold_water',
                                 'serialNumber': f'{prefix}-METER-{unit}', 'status': 'active'}, expected=201)
@@ -291,7 +300,13 @@ def main():
             return result
 
         def domain_rows(meter):
-            return request('GET', '/api/utility-meters/readings?meterId=' + meter)['content']
+            page = request('GET', '/api/utility-meters/readings?meterId=' + meter)
+            if 'content' not in page:
+                # Existing global NON_EMPTY serialization omits the empty Page content.
+                assert page.get('totalSize') == 0, ('Missing nonempty history content', page)
+                return []
+            assert isinstance(page['content'], list)
+            return page['content']
 
         targets = create_meters('SHEET-API')
         decisions = []
@@ -302,6 +317,12 @@ def main():
                               'readingDate': f'{review_year}-{int(month):02d}-{int(day):02d}', 'reviewed': True})
         approval = {'sourceHash': job['sourceHash'], 'documentType': 'meter_reading',
                     'fields': job['extraction']['fields'], 'comparisonReviewed': True, 'meterReadings': decisions}
+        unacknowledged = deepcopy(approval)
+        unacknowledged['comparisonReviewed'] = False
+        request('POST', path + '/approve-apply', unacknowledged, expected=400)
+        unauthorized_target = deepcopy(approval)
+        unauthorized_target['meterReadings'][-1]['meterId'] = 'not-an-authorized-company-meter'
+        request('POST', path + '/approve-apply', unauthorized_target, expected=403)
         incomplete = deepcopy(approval)
         incomplete['meterReadings'].pop()
         request('POST', path + '/approve-apply', incomplete, expected=400)
@@ -314,10 +335,12 @@ def main():
         scalar = {key: value for key, value in approval.items() if key != 'meterReadings'}
         scalar.update(meterId=next(iter(targets.values())))
         request('POST', path + '/approve-apply', scalar, expected=400)
+        assert request('GET', path)['status'] == 'REVIEW_REQUIRED'
+        assert all(not domain_rows(meter) for meter in targets.values()), 'Invalid review created a domain row'
         # Seed a real conflict on the final meter, forcing rollback after earlier writes.
         last = decisions[-1]
         conflict = request('POST', '/api/utility-meters/readings', {'meterId': last['meterId'],
-                           'readingValue': '9999', 'readingDate': last['readingDate'], 'source': 'manual'}, expected=201)
+                           'readingValue': '9999', 'readingDate': last['readingDate'], 'source': 'manual'})
         request('POST', path + '/approve-apply', approval, expected=409)
         assert request('GET', path)['status'] == 'REVIEW_REQUIRED'
         for meter in targets.values():

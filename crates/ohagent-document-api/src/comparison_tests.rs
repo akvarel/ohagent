@@ -29,6 +29,7 @@ impl VisionProvider for Fixture {
             evidence: vec![],
             warnings: vec![],
             model: "fixture-untrusted".into(),
+            meter_readings: vec![],
         })
     }
 }
