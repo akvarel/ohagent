@@ -237,7 +237,8 @@ pub async fn run_agent_turn(
                     content: vec![ContentBlock::Text {
                         text: "Continue. Please provide your response now.".to_string(),
                         cache_control: None,
-                    }],
+                    }]
+                    .into(),
                     timestamp: None,
                     tool_duration_ms: None,
                 });
@@ -364,7 +365,7 @@ pub async fn run_agent_turn(
         // Add assistant message with tool calls
         current_messages.push(Message {
             role: Role::Assistant,
-            content: assistant_content,
+            content: assistant_content.into(),
             timestamp: None,
             tool_duration_ms: None,
         });
@@ -372,7 +373,7 @@ pub async fn run_agent_turn(
         // Add tool results as user message (per OpenAI/Jcode convention)
         current_messages.push(Message {
             role: Role::User,
-            content: tool_result_blocks,
+            content: tool_result_blocks.into(),
             timestamp: None,
             tool_duration_ms: None,
         });

@@ -227,7 +227,8 @@ impl CmcRouterIntegration {
             content: vec![jcode_message_types::ContentBlock::Text {
                 text: message.to_string(),
                 cache_control: None,
-            }],
+            }]
+            .into(),
             timestamp: Some(chrono::Utc::now()),
             tool_duration_ms: None,
         }];

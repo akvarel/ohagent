@@ -125,7 +125,8 @@ impl RollingSummaryTracker {
             content: vec![ContentBlock::Text {
                 text: prompt,
                 cache_control: None,
-            }],
+            }]
+            .into(),
             timestamp: None,
             tool_duration_ms: None,
         }];

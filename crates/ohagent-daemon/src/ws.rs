@@ -464,7 +464,8 @@ fn convert_messages(openai_msgs: &[OpenAiWsMessage]) -> (Vec<JcodeMessage>, Stri
                     content: vec![ContentBlock::Text {
                         text: m.content.clone(),
                         cache_control: None,
-                    }],
+                    }]
+                    .into(),
                     timestamp: None,
                     tool_duration_ms: None,
                 });
@@ -475,7 +476,8 @@ fn convert_messages(openai_msgs: &[OpenAiWsMessage]) -> (Vec<JcodeMessage>, Stri
                     content: vec![ContentBlock::Text {
                         text: m.content.clone(),
                         cache_control: None,
-                    }],
+                    }]
+                    .into(),
                     timestamp: None,
                     tool_duration_ms: None,
                 });
@@ -486,7 +488,8 @@ fn convert_messages(openai_msgs: &[OpenAiWsMessage]) -> (Vec<JcodeMessage>, Stri
                     content: vec![ContentBlock::Text {
                         text: format!("[{}] {}", m.role, m.content),
                         cache_control: None,
-                    }],
+                    }]
+                    .into(),
                     timestamp: None,
                     tool_duration_ms: None,
                 });
