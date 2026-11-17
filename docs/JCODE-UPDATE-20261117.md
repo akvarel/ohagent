@@ -17,4 +17,10 @@ Jcode also requires rusqlite 0.41. All parent SQLite consumers now inherit that 
 - Isolated library tests for `ohagent-aggregator-core` and `ohagent-provider-metrics` passed: 19 tests, no failures. The aggregator crate currently has no library tests.
 - Full parent runtime/E2E suites were not run. No ohAgent deployment, restart, production migration, credential change, or provider configuration change was performed.
 
-Builds used a shared local Cargo target directory, which is removed after installation and completion of all validation. The pre-existing `TEAM_MEMORY/SESSION_LOG.md` working-tree edit is unrelated and excluded from this update.
+## Local installation outcome
+
+The supported fast installer installed clean fork commit `1513367cd`. The launcher, current, stable, and shared-server channels resolve to that immutable binary. The local daemon completed a graceful exec handoff, and `/proc/<daemon-pid>/exe --version` independently confirmed the same commit.
+
+The binary reports `jcode v1.0.70-dev (1513367cd)`, not a new upstream release: development metadata adds the 70 fork-side commits in `v1.0.0..HEAD` to the base patch number. The integrated stable upstream release remains v1.0.0.
+
+All builds finished before cleanup. The 40 GB source `target` directory and inactive scratch fixtures created by validation were removed. Installed binaries, source checkouts, configuration, runtime data, and the unrelated user session-log edit were preserved.
