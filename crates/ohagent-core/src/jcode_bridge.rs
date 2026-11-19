@@ -10,7 +10,8 @@ use crate::verified_context::{
 };
 use jcode_base::mcp::SharedMcpPool;
 use jcode_provider_core::Provider as ProviderTrait;
-use jcode_sdk::{JcodeClient, LaunchOptions, LaunchedInstance, RunOptions, SessionInfo};
+use jcode_sdk::{ApiEvent, JcodeClient, LaunchOptions, LaunchedInstance, RunOptions, SessionInfo};
+use ohagent_progress::{Activity, ProgressStore};
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::path::{Component, Path, PathBuf};
@@ -60,6 +61,7 @@ pub struct SessionHandle {
     tenant_id: String,
     client: Arc<JcodeClient>,
     verified_context: Option<Arc<VerifiedContextRuntime>>,
+    progress: ProgressStore,
 }
 
 impl SessionHandle {
@@ -83,11 +85,38 @@ impl SessionHandle {
         let session_id = self.session_id.clone();
         let content = content.to_string();
         let verified_context = self.verified_context.clone();
+        let progress = self.progress.clone();
+        let tenant_id = self.tenant_id.clone();
         tokio::task::spawn_blocking(move || {
-            run_session_turn(client, session_id, content, images, verified_context)
+            progress.update(&tenant_id, &session_id, Activity::Working, None, None);
+            let event_store = progress.clone();
+            let event_tenant = tenant_id.clone();
+            let event_session = session_id.clone();
+            let callback: Box<dyn Fn(&ApiEvent) + Send> = Box::new(move |event| {
+                record_progress_event(&event_store, &event_tenant, &event_session, event);
+            });
+            let result = run_session_turn(
+                client,
+                session_id.clone(),
+                content,
+                images,
+                verified_context,
+                callback,
+            );
+            progress.finish(&tenant_id, &session_id, result.is_ok());
+            result
         })
         .await
-        .map_err(|e| BridgeError::Message(e.to_string()))?
+        .map_err(|e| {
+            self.progress.update(
+                &self.tenant_id,
+                &self.session_id,
+                Activity::Failed,
+                None,
+                None,
+            );
+            BridgeError::Message(e.to_string())
+        })?
         .map_err(BridgeError::Message)
     }
 
@@ -149,6 +178,7 @@ pub struct JcodeBridge {
     tool_registry: Arc<ToolRegistry>,
     mcp_pool: Option<Arc<SharedMcpPool>>,
     config: JcodeBridgeConfig,
+    progress: ProgressStore,
 }
 
 impl JcodeBridge {
@@ -163,7 +193,12 @@ impl JcodeBridge {
             tool_registry: Arc::new(ToolRegistry::new()),
             mcp_pool: None,
             config: JcodeBridgeConfig::default(),
+            progress: ProgressStore::default(),
         }
+    }
+
+    pub fn progress(&self) -> &ProgressStore {
+        &self.progress
     }
 
     pub fn with_config(mut self, config: JcodeBridgeConfig) -> Self {
@@ -307,11 +342,14 @@ impl JcodeBridge {
                 .insert(scoped_key, Arc::clone(context));
         }
 
+        self.progress
+            .update(&config.tenant_id, &session_id, Activity::Idle, None, None);
         Ok(SessionHandle {
             session_id,
             tenant_id: config.tenant_id,
             client: Arc::clone(&runtime.client),
             verified_context,
+            progress: self.progress.clone(),
         })
     }
 
@@ -327,6 +365,7 @@ impl JcodeBridge {
             tenant_id: stored_tenant_id,
             client,
             verified_context,
+            progress: self.progress.clone(),
         })
     }
 
@@ -460,6 +499,13 @@ impl JcodeBridge {
                 ..LaunchOptions::default()
             };
             launch.env.insert("JCODE_INHERIT_LOGINS".into(), "0".into());
+            // Monitoring credentials are daemon concerns, not agent tool inputs.
+            for key in [
+                "OHAGENT_PROGRESS_PUBLISH_TOKEN",
+                "OHAGENT_PROGRESS_VIEW_TOKEN",
+            ] {
+                launch.env.insert(key.into(), "".into());
+            }
             let instance = jcode_sdk::launch_instance(&launch)?;
             let client = JcodeClient::connect(jcode_sdk::ConnectOptions {
                 socket_path: Some(instance.socket_path.clone()),
@@ -535,13 +581,139 @@ fn stable_hash_hex(value: &str) -> String {
     format!("rt-{}", &digest[..24])
 }
 
+/// Project only explicit lifecycle metadata. Prompt text, reasoning, arguments,
+/// output and permission descriptions never enter the monitoring store.
+fn record_progress_event(store: &ProgressStore, tenant: &str, session: &str, event: &ApiEvent) {
+    match event {
+        ApiEvent::ToolExec {
+            session_id, name, ..
+        } if session_id == session => {
+            store.update(tenant, session, Activity::Working, Some(name), None)
+        }
+        ApiEvent::ToolDone { session_id, .. } if session_id == session => {
+            store.update(tenant, session, Activity::Working, None, None)
+        }
+        ApiEvent::PermissionRequest { session_id, .. } if session_id == session => {
+            store.update(tenant, session, Activity::Waiting, None, None)
+        }
+        ApiEvent::TokenUsage {
+            session_id,
+            input,
+            output,
+            ..
+        } if session_id == session => store.update(
+            tenant,
+            session,
+            Activity::Working,
+            None,
+            Some((*input, *output)),
+        ),
+        ApiEvent::TextDelta { session_id, .. } if session_id == session => {
+            store.update(tenant, session, Activity::Working, None, None)
+        }
+        ApiEvent::TurnStopped {
+            session_id, reason, ..
+        } if session_id == session => {
+            let status = if matches!(reason, jcode_sdk::TurnStopReason::Interrupted) {
+                Activity::Cancelled
+            } else {
+                Activity::Failed
+            };
+            store.update(tenant, session, status, None, None);
+        }
+        _ => {}
+    }
+}
+
+#[cfg(test)]
+mod progress_tests {
+    use super::*;
+
+    #[test]
+    fn sdk_events_project_metadata_without_transcript_or_tool_payloads() {
+        let store = ProgressStore::default();
+        let session = "session";
+        for event in [
+            ApiEvent::ToolExec {
+                session_id: session.into(),
+                call_id: "c".into(),
+                name: "read".into(),
+            },
+            ApiEvent::ToolDone {
+                session_id: session.into(),
+                call_id: "c".into(),
+                name: "read".into(),
+                output: "PRIVATE_FILE_CONTENT".into(),
+                error: None,
+            },
+            ApiEvent::TextDelta {
+                session_id: session.into(),
+                text: "PRIVATE_REPLY".into(),
+                message_id: None,
+            },
+            ApiEvent::PermissionRequest {
+                session_id: session.into(),
+                request_id: "r".into(),
+                tool_name: "bash".into(),
+                description: "PRIVATE_COMMAND".into(),
+            },
+        ] {
+            record_progress_event(&store, "tenant", session, &event);
+        }
+        let snapshot = store.snapshot("tenant", "local", 1);
+        assert_eq!(snapshot.sessions[0].status, Activity::Waiting);
+        assert_eq!(snapshot.sessions[0].tools.get("read"), Some(&1));
+        assert!(!serde_json::to_string(&snapshot)
+            .unwrap()
+            .contains("PRIVATE"));
+        record_progress_event(
+            &store,
+            "tenant",
+            session,
+            &ApiEvent::ToolExec {
+                session_id: "foreign".into(),
+                call_id: "c".into(),
+                name: "FOREIGN_TOOL".into(),
+            },
+        );
+        assert!(
+            !serde_json::to_string(&store.snapshot("tenant", "local", 1))
+                .unwrap()
+                .contains("FOREIGN")
+        );
+    }
+
+    #[test]
+    fn interruption_is_not_reported_as_success() {
+        let store = ProgressStore::default();
+        record_progress_event(
+            &store,
+            "tenant",
+            "s",
+            &ApiEvent::TurnStopped {
+                session_id: "s".into(),
+                reason: jcode_sdk::TurnStopReason::Interrupted,
+                message: "private".into(),
+                provider_stop_reason: None,
+            },
+        );
+        store.finish("tenant", "s", true);
+        assert_eq!(
+            store.snapshot("tenant", "local", 1).sessions[0].status,
+            Activity::Cancelled
+        );
+    }
+}
+
 fn run_session_turn(
     client: Arc<JcodeClient>,
     session_id: String,
     content: String,
     images: Vec<(String, String)>,
     verified_context: Option<Arc<VerifiedContextRuntime>>,
+    callback: Box<dyn Fn(&ApiEvent) + Send>,
 ) -> Result<String, String> {
+    let mut callback = Some(callback);
     if let Some(runtime) = verified_context.as_ref() {
         match runtime.lock_turn() {
             Ok(_guard) => match runtime.begin_turn(&content) {
@@ -555,7 +727,7 @@ fn run_session_turn(
                             &decorated,
                             RunOptions {
                                 images: images.clone(),
-                                on_event: None,
+                                on_event: callback.take(),
                                 auto_approve: false,
                             },
                         )
@@ -597,7 +769,7 @@ fn run_session_turn(
             &content,
             RunOptions {
                 images,
-                on_event: None,
+                on_event: callback.take(),
                 auto_approve: false,
             },
         )

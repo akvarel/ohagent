@@ -3,6 +3,7 @@
 //! This crate provides the central agent orchestration — session management,
 //! Jcode integration bridge, tool dispatch, and provider resolution.
 
+pub use ohagent_progress as progress;
 pub mod agent;
 pub mod agent_runner;
 pub mod builtin_tools;

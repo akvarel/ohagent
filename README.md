@@ -36,6 +36,17 @@ ohAgent is always on, remembers everything, and gets smarter.
 
 ---
 
+## Live activity and remote monitoring
+
+The dashboard's `/progress` page shows Jcode SDK session activity, permission waits,
+tool executions, latest-call token counts and connection freshness in English,
+Latvian and Russian. An opt-in outbound publisher sends metadata-only snapshots
+to a standalone remote web receiver with separate read and publish credentials.
+It does not expose the daemon's administration or conversation content.
+
+See [Progress panel setup and security boundaries](docs/PROGRESS_PANEL.md) for
+build instructions, remote configuration, limitations and browser acceptance tests.
+
 ## Quick Start
 
 ### Docker (recommended)

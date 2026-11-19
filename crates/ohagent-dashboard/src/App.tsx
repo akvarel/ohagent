@@ -1,4 +1,5 @@
-import { Routes, Route, NavLink } from 'react-router-dom';
+import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import Progress from './pages/Progress';
 import Dashboard from './pages/Dashboard';
 import Skills from './pages/Skills';
 import SkillDetail from './pages/SkillDetail';
@@ -7,9 +8,15 @@ import ApiKeys from './pages/ApiKeys';
 import Usage from './pages/Usage';
 
 function App() {
+  const location = useLocation();
+  if (location.pathname === '/progress') {
+    return <main className="min-h-screen p-4 sm:p-8 bg-slate-50"><Progress /></main>;
+  }
+  const progressLabel = navigator.language.startsWith('ru') ? 'Ход работы' : navigator.language.startsWith('lv') ? 'Darba gaita' : 'Live activity';
   return (
     <div className="min-h-screen flex flex-col">
-      <nav className="bg-white border-b border-gray-200 px-6 py-3 flex gap-6 items-center shadow-sm">
+      <nav className="bg-white border-b border-gray-200 px-6 py-3 flex flex-wrap gap-6 items-center shadow-sm">
+        <NavLink to="/progress" className="text-sm font-medium text-orangehat-600">{progressLabel}</NavLink>
         <h1 className="text-xl font-bold text-orangehat-600">ohAgent</h1>
         <NavLink
           to="/"

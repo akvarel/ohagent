@@ -801,6 +801,23 @@ impl Daemon {
             },
         };
 
+        let publisher = match ohagent_core::progress::publisher::PublisherConfig::from_env() {
+            Ok(config) => config,
+            Err(message) => {
+                tracing::warn!("Progress publisher disabled: {message}");
+                None
+            }
+        };
+        if let Some(config) = publisher {
+            let progress = self.bridge.progress().clone();
+            let shutdown = Arc::clone(&self.shutdown);
+            tokio::spawn(async move {
+                tokio::select! {
+                    _ = ohagent_core::progress::publisher::run(config, progress) => {},
+                    _ = shutdown.notified() => {},
+                }
+            });
+        }
         let app = api::router(api_state);
 
         tokio::spawn(async move {

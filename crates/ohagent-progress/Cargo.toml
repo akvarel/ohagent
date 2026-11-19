@@ -1,0 +1,21 @@
+[package]
+name = "ohagent-progress"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Metadata-only agent activity snapshots and remote monitoring receiver"
+
+[dependencies]
+axum = "0.8"
+chrono = { workspace = true }
+reqwest = { workspace = true, features = ["json"] }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha2 = "0.10"
+tokio = { workspace = true }
+tower-http = { version = "0.6", features = ["fs", "set-header"] }
+tracing = { workspace = true }
+uuid = { workspace = true }
+
+[dev-dependencies]
+tower = { workspace = true, features = ["util"] }

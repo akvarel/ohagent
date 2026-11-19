@@ -106,6 +106,7 @@ pub fn router(state: ApiState) -> Router {
         )
         // WebSocket real-time streaming (instead of SSE polling)
         .route("/v1/ws/chat", get(crate::ws::ws_chat_handler))
+        .route("/api/progress", get(progress_handler))
         .route("/api/status", get(status_handler))
         .route("/api/keys", get(get_keys))
         .route("/api/keys", put(update_keys))
@@ -143,6 +144,31 @@ pub fn router(state: ApiState) -> Router {
         .layer(middleware::from_fn(metrics::metrics_middleware))
         .layer(axum::Extension(auth_ext))
         .layer(axum::Extension(metrics_ext))
+}
+
+#[derive(Deserialize)]
+struct ProgressQuery {
+    tenant_id: String,
+}
+
+/// Operator-authenticated local view. Tenant is mandatory, never an aggregate.
+async fn progress_handler(
+    State(state): State<ApiState>,
+    Query(query): Query<ProgressQuery>,
+) -> Result<impl axum::response::IntoResponse, axum::http::StatusCode> {
+    if !ohagent_core::progress::valid_id(&query.tenant_id) {
+        return Err(axum::http::StatusCode::BAD_REQUEST);
+    }
+    let snapshot = state
+        .bridge
+        .progress()
+        .snapshot(&query.tenant_id, "local", 1);
+    Ok((
+        [("cache-control", "no-store")],
+        Json(
+            serde_json::json!([{ "received_at": snapshot.generated_at, "stale": false, "snapshot": snapshot }]),
+        ),
+    ))
 }
 
 // ── Handlers ──

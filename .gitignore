@@ -3,6 +3,9 @@
 **/*.rs.bk
 *.pdb
 
+# Dashboard incremental TypeScript build cache
+*.tsbuildinfo
+
 # IDE
 .vscode/
 .idea/
