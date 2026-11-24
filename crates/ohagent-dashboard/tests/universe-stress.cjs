@@ -3,10 +3,12 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
-const { spawn } = require('node:child_process');
 const { chromium } = require('playwright');
 (async () => {
-  const server = spawn(process.execPath, [path.resolve(__dirname, '../node_modules/vite/bin/vite.js'), '--host', '127.0.0.1', '--port', '5185', '--strictPort'], { cwd: path.resolve(__dirname, '..'), stdio: 'ignore' });
+  const { createServer } = await import('vite');
+  // Freeze the measured source. Repository edits must not reload a timed fixture.
+  const server = await createServer({ root: path.resolve(__dirname, '..'), server: { host:'127.0.0.1', port:5185, strictPort:true, hmr:false, watch:null } });
+  await server.listen();
   let browser;
   try {
     for (let n=0;n<100;n++) { try { if ((await fetch('http://127.0.0.1:5185')).ok) break; } catch {} await new Promise(resolve=>setTimeout(resolve,100)); }
@@ -41,5 +43,5 @@ const { chromium } = require('playwright');
     assert.ok(result.injection_to_next_frame_p95_ms<2000,'fixture render latency exceeded target');
     assert.ok(result.heap_growth_bytes<20*1024*1024,'retained heap growth exceeded bounded fixture allowance');
     assert.ok(nodesAfter<=nodesBefore+30,'unexpected DOM accumulation');
-  } finally { if(browser) await browser.close();server.kill('SIGTERM'); }
+  } finally { if(browser) await browser.close();await server.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1;});

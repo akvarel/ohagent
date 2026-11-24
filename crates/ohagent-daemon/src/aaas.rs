@@ -281,28 +281,6 @@ impl Runtime for JcodeAnalyticalRuntime {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[tokio::test]
-    async fn cancel_ack_is_not_turn_termination() {
-        let (done, pending) = tokio::sync::oneshot::channel::<Result<(), ()>>();
-        let stopped = wait_for_turn_stop(async { pending.await.unwrap() });
-        tokio::pin!(stopped);
-        assert!(
-            tokio::time::timeout(Duration::from_millis(20), &mut stopped)
-                .await
-                .is_err()
-        );
-        done.send(Ok(())).unwrap();
-        assert!(stopped.await.is_ok());
-        assert_eq!(
-            wait_for_turn_stop(async { Err::<(), _>(()) }).await,
-            Err("runtime_cancel_unconfirmed")
-        );
-    }
-}
-
 /// Missing configuration is unavailable, never an operator-key fallback.
 pub async fn router(bridge: &Arc<JcodeBridge>, data_root: PathBuf) -> anyhow::Result<axum::Router> {
     let enabled = std::env::var("OHAGENT_AAAS_ENABLED").as_deref() == Ok("1");
@@ -357,4 +335,26 @@ pub async fn router(bridge: &Arc<JcodeBridge>, data_root: PathBuf) -> anyhow::Re
     )
     .await?;
     Ok(ohagent_aaas::router(state))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[tokio::test]
+    async fn cancel_ack_is_not_turn_termination() {
+        let (done, pending) = tokio::sync::oneshot::channel::<Result<(), ()>>();
+        let stopped = wait_for_turn_stop(async { pending.await.unwrap() });
+        tokio::pin!(stopped);
+        assert!(
+            tokio::time::timeout(Duration::from_millis(20), &mut stopped)
+                .await
+                .is_err()
+        );
+        done.send(Ok(())).unwrap();
+        assert!(stopped.await.is_ok());
+        assert_eq!(
+            wait_for_turn_stop(async { Err::<(), _>(()) }).await,
+            Err("runtime_cancel_unconfirmed")
+        );
+    }
 }

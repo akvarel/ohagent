@@ -105,11 +105,29 @@ impl Brief {
         let quotes = self
             .citations
             .iter()
-            .map(|c| format!("> {}", c.quote.replace('\n', "\n> ")))
+            .map(|c| format!("> {}", markdown_text(&c.quote).replace('\n', "\n> ")))
             .collect::<Vec<_>>()
             .join("\n\n");
-        format!("# {}\n\n{}\n\n## Findings\n\n{}\n\n## Limitations\n\n{}\n\n## Source quotations\n\n{}\n\n---\nVerification: required fields and exact source quotations checked deterministically. Semantic accuracy is not certified.\n", self.title, self.summary, self.findings, self.limitations, quotes)
+        format!("# {}\n\n{}\n\n## Findings\n\n{}\n\n## Limitations\n\n{}\n\n## Source quotations\n\n{}\n\n---\nVerification: required fields and exact source quotations checked deterministically. Semantic accuracy is not certified.\n", markdown_text(&self.title), markdown_text(&self.summary), markdown_text(&self.findings), markdown_text(&self.limitations), quotes)
     }
+}
+
+fn markdown_text(value: &str) -> String {
+    let mut safe = String::with_capacity(value.len());
+    for c in value.chars() {
+        match c {
+            '&' => safe.push_str("&amp;"),
+            '<' => safe.push_str("&lt;"),
+            '>' => safe.push_str("&gt;"),
+            '\\' | '`' | '*' | '_' | '{' | '}' | '[' | ']' | '(' | ')' | '#' | '+' | '-' | '.'
+            | '!' | '|' | '~' => {
+                safe.push('\\');
+                safe.push(c);
+            }
+            _ => safe.push(c),
+        }
+    }
+    safe
 }
 
 #[cfg(test)]
@@ -131,6 +149,20 @@ mod tests {
     fn exact_quotes_are_verified_without_model_voting() {
         let b = verify_brief(&output("alpha revenue 12"), "Record: alpha revenue 12 EUR.").unwrap();
         assert!(b.markdown().contains("Semantic accuracy is not certified"));
+    }
+    #[test]
+    fn artifact_treats_html_and_remote_images_as_text() {
+        let source = "<script>alert(1)</script> ![private](https://example.invalid/pixel)";
+        let mut brief = verify_brief(&output(source), source).unwrap();
+        brief.title = source.into();
+        brief.summary = source.into();
+        brief.findings = source.into();
+        brief.limitations = source.into();
+        let markdown = brief.markdown();
+        assert!(!markdown.contains("<script>"));
+        assert!(!markdown.contains("![private]("));
+        assert!(markdown.contains("&lt;script&gt;"));
+        assert!(markdown.contains("\\!\\[private\\]"));
     }
     #[test]
     fn fabricated_quote_fails() {
