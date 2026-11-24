@@ -31,7 +31,7 @@ AAAS_SITE_TEST_URL=http://127.0.0.1:9190 node --test tests/site-http.mjs
 
 ## Customer pilot configuration
 
-Configure only in an approved isolated environment using the existing credential mechanism. This task created no new secrets and changed no identity-provider client, access control, production service, DNS or certificate.
+Configure only in an approved isolated environment using the existing credential mechanism. On November 24, 2026 the owner approved `stage.orangehat.ai` / `orangehat.ai` and explicitly authorized registration of `ohagent-stage` / `ohagent-prod` in the existing BugZero Authentik instance. Both public registrations now exist. No client secret was created or copied, and BugZero clients, production application workloads, DNS and certificates were not changed. See `AAAS_OIDC.md` for live verification and remaining deployment gates.
 
 | Variable | Meaning |
 | --- | --- |
@@ -43,6 +43,7 @@ Configure only in an approved isolated environment using the existing credential
 | `OHAGENT_AAAS_OIDC_ISSUER` | Existing approved HTTPS issuer, exact discovery issuer match |
 | `OHAGENT_AAAS_OIDC_AUDIENCE` | Required API access-token audience |
 | `OHAGENT_AAAS_OIDC_CLIENT_ID` | Approved public browser PKCE client ID, not a secret |
+| `OHAGENT_AAAS_OIDC_REQUIRED_ACCESS_SCOPE` | Set to `openid` for these Authentik profiles; requires that access-token scope and `azp` matching client ID, rejecting ID-token substitution |
 | Existing provider environment | Already-authorized DeepSeek service credential consumed by Jcode, never put it in browser configuration |
 
 A complete OIDC configuration is required. Missing fields fail closed. Configured but unreachable/invalid discovery fails startup rather than bypassing authentication. Browser callback is `{approved-origin}/agent-as-a-service/app/callback`. Register the exact origin/callback through the identity owner's approved process. Browser requests `openid profile`, S256 PKCE and no client secret. The IdP must issue a signed JWT access token with the configured API audience by default, permit browser token/JWKS requests as needed, and issue RS256/ES256 ID tokens. The backend supports additional asymmetric access-token algorithms, but that does not expand browser ID-token support.
@@ -91,7 +92,7 @@ With a local Vite server on 5184, browser checks are `npm run test:public` and `
 
 ## Approved staging release gate
 
-1. Obtain the approved staging origin and dedicated OIDC public-client configuration. Do not reuse another product's audience/client or alter production access controls without permission.
+1. Use approved staging origin `https://stage.orangehat.ai` and `config/aaas-stage.env.example`; the separate production origin is `https://orangehat.ai` with `config/aaas-prod.env.example`. Dedicated public clients have been registered and publicly checked. Do not reuse BugZero clients or deploy production merely because its identity registration exists. Real account login, runtime secret provisioning and staging deployment remain separate checks.
 2. Confirm real company contact and legal/privacy publication data. Current page honestly says no verified contact is available. This does not satisfy the final contact requirement.
 3. Build a pinned commit through the existing approved pipeline. This branch contains no automatic production deployment. Use an isolated data root/DB and one replica. Preserve existing gateways, billing and operator access.
 4. Reverse proxy same-origin `/api/aaas` without buffering SSE, support idle timeouts above the ten-second heartbeat, forward Authorization, disable private caching, terminate approved TLS and keep source/test/data directories unserved. Validate nested route refresh, assets, callback and logout on that origin.

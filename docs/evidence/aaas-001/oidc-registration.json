@@ -1,0 +1,34 @@
+{
+  "executed_at": "2026-11-24T22:17:46.650Z",
+  "kind": "live-public-oidc-registration-check-not-user-login",
+  "clients": [
+    {
+      "client_id": "ohagent-stage",
+      "origin": "https://stage.orangehat.ai",
+      "issuer": "https://auth.bugzero.lv/application/o/ohagent-stage/",
+      "callback": "https://stage.orangehat.ai/agent-as-a-service/app/callback",
+      "discovery": 200,
+      "jwks": 200,
+      "signing_algorithm": "RS256",
+      "public_client_without_secret": true,
+      "browser_cors": true,
+      "anonymous_authorization": "login_required",
+      "rejected_foreign_callbacks": 3,
+      "actual_user_login_executed": false
+    },
+    {
+      "client_id": "ohagent-prod",
+      "origin": "https://orangehat.ai",
+      "issuer": "https://auth.bugzero.lv/application/o/ohagent-prod/",
+      "callback": "https://orangehat.ai/agent-as-a-service/app/callback",
+      "discovery": 200,
+      "jwks": 200,
+      "signing_algorithm": "RS256",
+      "public_client_without_secret": true,
+      "browser_cors": true,
+      "anonymous_authorization": "login_required",
+      "rejected_foreign_callbacks": 3,
+      "actual_user_login_executed": false
+    }
+  ]
+}

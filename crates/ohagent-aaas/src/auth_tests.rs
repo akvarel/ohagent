@@ -17,6 +17,7 @@ fn fixture() -> (Oidc, EncodingKey) {
             issuer: "https://issuer.example".into(),
             audience: "aaas".into(),
             client_id: "public-client".into(),
+            required_access_scope: None,
         },
         metadata: Metadata {
             issuer: "https://issuer.example".into(),
@@ -108,6 +109,38 @@ async fn asymmetric_jwt_validates_signature_issuer_audience_expiry_subject_and_k
     ));
 }
 #[tokio::test]
+async fn authentik_profile_rejects_id_tokens_and_wrong_authorized_party() {
+    let (mut oidc, key) = fixture();
+    oidc.config.audience = oidc.config.client_id.clone();
+    oidc.config.required_access_scope = Some("openid".into());
+    let mut valid = claims();
+    valid["aud"] = json!("public-client");
+    valid["scope"] = json!("openid profile");
+    valid["azp"] = json!("public-client");
+    assert!(oidc.authorize(&token(&key, &valid)).await.is_ok());
+    for field in ["scope", "azp"] {
+        let mut bad = valid.clone();
+        bad.as_object_mut().unwrap().remove(field);
+        assert!(matches!(
+            oidc.authorize(&token(&key, &bad)).await,
+            Err(BackendError::Unauthorized)
+        ));
+    }
+    for (field, value) in [
+        ("scope", json!("not-openid profile")),
+        ("scope", json!(["openid"])),
+        ("azp", json!("other-client")),
+    ] {
+        let mut bad = valid.clone();
+        bad[field] = value;
+        assert!(matches!(
+            oidc.authorize(&token(&key, &bad)).await,
+            Err(BackendError::Unauthorized)
+        ));
+    }
+}
+
+#[tokio::test]
 async fn insecure_issuer_configuration_is_rejected_without_network() {
     for issuer in [
         "http://issuer.example",
@@ -118,7 +151,8 @@ async fn insecure_issuer_configuration_is_rejected_without_network() {
             Oidc::discover(OidcConfig {
                 issuer: issuer.into(),
                 audience: "aaas".into(),
-                client_id: "client".into()
+                client_id: "client".into(),
+                required_access_scope: None,
             })
             .await,
             Err(BackendError::Unavailable)

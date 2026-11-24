@@ -16,6 +16,9 @@ pub struct OidcConfig {
     pub issuer: String,
     pub audience: String,
     pub client_id: String,
+    /// Require an access-token scope and matching authorized party. Used by
+    /// Authentik profiles whose ID and access tokens share the client audience.
+    pub required_access_scope: Option<String>,
 }
 #[derive(Clone, Serialize, Deserialize)]
 pub(crate) struct Metadata {
@@ -82,7 +85,13 @@ async fn fetch<T: serde::de::DeserializeOwned>(
 }
 impl Oidc {
     pub async fn discover(config: OidcConfig) -> Result<Arc<Self>, BackendError> {
-        if !https(&config.issuer) || config.audience.is_empty() || config.client_id.is_empty() {
+        if !https(&config.issuer)
+            || config.audience.is_empty()
+            || config.client_id.is_empty()
+            || config.required_access_scope.as_ref().is_some_and(|scope| {
+                scope.is_empty() || scope.bytes().any(|b| !(0x21..=0x7e).contains(&b))
+            })
+        {
             return Err(BackendError::Unavailable);
         }
         let client = reqwest::Client::builder()
@@ -120,6 +129,8 @@ impl Oidc {
 struct Claims {
     sub: String,
     iss: String,
+    scope: Option<String>,
+    azp: Option<String>,
 }
 #[async_trait::async_trait]
 impl Authorizer for Oidc {
@@ -174,6 +185,19 @@ impl Authorizer for Oidc {
         let claims = decode::<Claims>(token, &key, &validation)
             .map_err(|_| BackendError::Unauthorized)?
             .claims;
+        if self
+            .config
+            .required_access_scope
+            .as_ref()
+            .is_some_and(|required| {
+                claims.azp.as_deref() != Some(self.config.client_id.as_str())
+                    || !claims.scope.as_deref().is_some_and(|scope| {
+                        scope.split_ascii_whitespace().any(|item| item == required)
+                    })
+            })
+        {
+            return Err(BackendError::Unauthorized);
+        }
         if claims.sub.is_empty() || claims.sub.len() > 1024 {
             return Err(BackendError::Unauthorized);
         }

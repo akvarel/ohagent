@@ -293,6 +293,7 @@ pub async fn router(bridge: &Arc<JcodeBridge>, data_root: PathBuf) -> anyhow::Re
             issuer,
             audience,
             client_id,
+            required_access_scope: std::env::var("OHAGENT_AAAS_OIDC_REQUIRED_ACCESS_SCOPE").ok(),
         }),
         _ => None,
     };
