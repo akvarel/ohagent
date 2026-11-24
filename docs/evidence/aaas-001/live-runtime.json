@@ -1,0 +1,2914 @@
+{
+  "executed_at": "2026-11-24T21:28:10.657745689+00:00",
+  "kind": "actual-jcode-provider-with-test-identities",
+  "runs": [
+    {
+      "artifact_markdown": "# Project Readiness Brief: ALPHA-ACCEPTANCE-71\n\nThe materials report a passing integration test suite for ALPHA-ACCEPTANCE-71 with a 2026-12-03 delivery target, but deployment approval is outstanding and no budget has been provided. Readiness and delivery risk cannot be fully assessed because the source does not define readiness criteria or provide approval, budget, coverage or deployment details.\n\n## Findings\n\nStatus: The integration test suite passed on November 24, 2026. The delivery target is 2026-12-03. The release owner has not approved the deployment. The budget has not been provided. The material identifies itself as synthetic acceptance material, not customer data.\n\nDelivery risk: Readiness and schedule risk cannot be quantified from the source. Deployment approval is outstanding. Budget status is unspecified. The material does not state that approval or budget is a precondition for delivery, nor does it provide an approval date, rationale, budget figures, or risk rating. The source provides no basis to conclude the target will or will not be met.\n\nMissing information: release owner approval decision, rationale and expected date; budget amount, approval status and spend; test coverage, defect counts and acceptance criteria; deployment plan, environment readiness and rollback provisions; stakeholders and dependencies; definition of readiness or go/no-go criteria.\n\n## Limitations\n\nThe review relies only on the supplied synthetic acceptance material. No tools, files, or external sources were used, and the test result, schedule, approval state and budget state were not independently verified. The source does not define readiness, state whether approval or budget is required before delivery, or give any risk rating. Statements about risk are therefore assessments of what cannot be determined, not forecasts.\n\n## Source quotations\n\n> Project ALPHA-ACCEPTANCE-71.\n\n> The integration test suite passed on November 24, 2026.\n\n> Delivery target: 2026-12-03.\n\n> The release owner has not approved the deployment.\n\n> The budget has not been provided.\n\n> This is synthetic acceptance material, not customer data.\n\n---\nVerification: required fields and exact source quotations checked deterministically. Semantic accuracy is not certified.\n",
+      "events": [
+        {
+          "event_id": "bf8911ba-1408-4cc0-bcf7-1883d2a536ea",
+          "occurred_at": "2026-11-24T21:27:45.226864446+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.226746660+00:00",
+              "edges": [
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "0c931119-bbc2-43bc-a385-5ded264b0f52",
+                  "status": "planned",
+                  "to": "aba84ff6-eb8f-477a-a895-0f7645db0269"
+                },
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "f3872f8d-850c-422a-b2ee-5ff19e4ca4a0",
+                  "status": "planned",
+                  "to": "64f3ec05-e6d0-4936-9b5d-dfda14693369"
+                },
+                {
+                  "from": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "id": "37e5e6de-88a8-4bdc-b687-3995222c5fb5",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                },
+                {
+                  "from": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "id": "4b776c58-a8b7-4be6-822a-556678ede81a",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+              "process_id": "71468fb1-6941-4252-a664-10080c5842af",
+              "process_version": 1,
+              "status": "queued",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+                  "id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+                  "id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+                  "id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+                  "id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:27:45.226859724+00:00",
+              "version": 1,
+              "watermark": 1
+            },
+            "status": "queued",
+            "version": 1
+          },
+          "recorded_at": "2026-11-24T21:27:45.226865322+00:00",
+          "run_id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+          "run_seq": 1,
+          "schema_version": 1,
+          "type": "run.created"
+        },
+        {
+          "agent_definition_id": "coordinator",
+          "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+          "event_id": "128fc84d-3128-4020-9443-c93b4cf1260c",
+          "occurred_at": "2026-11-24T21:27:45.231130186+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.226746660+00:00",
+              "edges": [
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "0c931119-bbc2-43bc-a385-5ded264b0f52",
+                  "status": "planned",
+                  "to": "aba84ff6-eb8f-477a-a895-0f7645db0269"
+                },
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "f3872f8d-850c-422a-b2ee-5ff19e4ca4a0",
+                  "status": "planned",
+                  "to": "64f3ec05-e6d0-4936-9b5d-dfda14693369"
+                },
+                {
+                  "from": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "id": "37e5e6de-88a8-4bdc-b687-3995222c5fb5",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                },
+                {
+                  "from": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "id": "4b776c58-a8b7-4be6-822a-556678ede81a",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+              "process_id": "71468fb1-6941-4252-a664-10080c5842af",
+              "process_version": 1,
+              "status": "queued",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+                  "id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+                  "id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+                  "id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+                  "id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:27:45.231119279+00:00",
+              "version": 2,
+              "watermark": 2
+            },
+            "status": "queued",
+            "version": 2
+          },
+          "recorded_at": "2026-11-24T21:27:45.231131285+00:00",
+          "run_id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+          "run_seq": 2,
+          "schema_version": 1,
+          "task_id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+          "type": "task.dispatched"
+        },
+        {
+          "agent_definition_id": "coordinator",
+          "agent_instance_id": "session_blossom_1795555665789_31fde66b64ee3113",
+          "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+          "event_id": "8c8ff92e-cd64-480a-bf31-48b985fedfa9",
+          "occurred_at": "2026-11-24T21:27:45.814898697+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.226746660+00:00",
+              "edges": [
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "0c931119-bbc2-43bc-a385-5ded264b0f52",
+                  "status": "planned",
+                  "to": "aba84ff6-eb8f-477a-a895-0f7645db0269"
+                },
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "f3872f8d-850c-422a-b2ee-5ff19e4ca4a0",
+                  "status": "planned",
+                  "to": "64f3ec05-e6d0-4936-9b5d-dfda14693369"
+                },
+                {
+                  "from": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "id": "37e5e6de-88a8-4bdc-b687-3995222c5fb5",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                },
+                {
+                  "from": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "id": "4b776c58-a8b7-4be6-822a-556678ede81a",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+              "process_id": "71468fb1-6941-4252-a664-10080c5842af",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_blossom_1795555665789_31fde66b64ee3113",
+                  "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+                  "id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "started_at": "2026-11-24T21:27:45.814842617+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+                  "id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+                  "id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+                  "id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:27:45.814892444+00:00",
+              "version": 3,
+              "watermark": 3
+            },
+            "status": "running",
+            "version": 3
+          },
+          "recorded_at": "2026-11-24T21:27:45.814899597+00:00",
+          "run_id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+          "run_seq": 3,
+          "schema_version": 1,
+          "task_id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+          "type": "task.started"
+        },
+        {
+          "agent_definition_id": "coordinator",
+          "agent_instance_id": "session_blossom_1795555665789_31fde66b64ee3113",
+          "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+          "event_id": "02dbce5a-aa42-4080-b75d-890566ae66d2",
+          "occurred_at": "2026-11-24T21:27:50.312151570+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.226746660+00:00",
+              "edges": [
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "0c931119-bbc2-43bc-a385-5ded264b0f52",
+                  "status": "planned",
+                  "to": "aba84ff6-eb8f-477a-a895-0f7645db0269"
+                },
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "f3872f8d-850c-422a-b2ee-5ff19e4ca4a0",
+                  "status": "planned",
+                  "to": "64f3ec05-e6d0-4936-9b5d-dfda14693369"
+                },
+                {
+                  "from": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "id": "37e5e6de-88a8-4bdc-b687-3995222c5fb5",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                },
+                {
+                  "from": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "id": "4b776c58-a8b7-4be6-822a-556678ede81a",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+              "process_id": "71468fb1-6941-4252-a664-10080c5842af",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_blossom_1795555665789_31fde66b64ee3113",
+                  "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+                  "completed_at": "2026-11-24T21:27:50.312136595+00:00",
+                  "id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "started_at": "2026-11-24T21:27:45.814842617+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+                  "id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+                  "id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+                  "id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:27:50.312145794+00:00",
+              "version": 4,
+              "watermark": 4
+            },
+            "status": "running",
+            "version": 4
+          },
+          "recorded_at": "2026-11-24T21:27:50.312152454+00:00",
+          "run_id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+          "run_seq": 4,
+          "schema_version": 1,
+          "task_id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+          "type": "task.completed"
+        },
+        {
+          "agent_definition_id": "analyst",
+          "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+          "event_id": "6dc510e8-f5f7-4957-bb2b-11d31f27fc9b",
+          "occurred_at": "2026-11-24T21:27:50.316757964+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.226746660+00:00",
+              "edges": [
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "0c931119-bbc2-43bc-a385-5ded264b0f52",
+                  "status": "dispatched",
+                  "to": "aba84ff6-eb8f-477a-a895-0f7645db0269"
+                },
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "f3872f8d-850c-422a-b2ee-5ff19e4ca4a0",
+                  "status": "planned",
+                  "to": "64f3ec05-e6d0-4936-9b5d-dfda14693369"
+                },
+                {
+                  "from": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "id": "37e5e6de-88a8-4bdc-b687-3995222c5fb5",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                },
+                {
+                  "from": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "id": "4b776c58-a8b7-4be6-822a-556678ede81a",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+              "process_id": "71468fb1-6941-4252-a664-10080c5842af",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_blossom_1795555665789_31fde66b64ee3113",
+                  "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+                  "completed_at": "2026-11-24T21:27:50.312136595+00:00",
+                  "id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "started_at": "2026-11-24T21:27:45.814842617+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+                  "id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+                  "id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+                  "id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:27:50.316751177+00:00",
+              "version": 5,
+              "watermark": 5
+            },
+            "status": "running",
+            "version": 5
+          },
+          "recorded_at": "2026-11-24T21:27:50.316759034+00:00",
+          "run_id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+          "run_seq": 5,
+          "schema_version": 1,
+          "task_id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+          "type": "task.dispatched"
+        },
+        {
+          "agent_definition_id": "evidence_checker",
+          "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+          "event_id": "89df7a54-1974-441d-80c1-d4f17cb87395",
+          "occurred_at": "2026-11-24T21:27:50.321417938+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.226746660+00:00",
+              "edges": [
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "0c931119-bbc2-43bc-a385-5ded264b0f52",
+                  "status": "dispatched",
+                  "to": "aba84ff6-eb8f-477a-a895-0f7645db0269"
+                },
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "f3872f8d-850c-422a-b2ee-5ff19e4ca4a0",
+                  "status": "dispatched",
+                  "to": "64f3ec05-e6d0-4936-9b5d-dfda14693369"
+                },
+                {
+                  "from": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "id": "37e5e6de-88a8-4bdc-b687-3995222c5fb5",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                },
+                {
+                  "from": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "id": "4b776c58-a8b7-4be6-822a-556678ede81a",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+              "process_id": "71468fb1-6941-4252-a664-10080c5842af",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_blossom_1795555665789_31fde66b64ee3113",
+                  "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+                  "completed_at": "2026-11-24T21:27:50.312136595+00:00",
+                  "id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "started_at": "2026-11-24T21:27:45.814842617+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+                  "id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+                  "id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+                  "id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:27:50.321411584+00:00",
+              "version": 6,
+              "watermark": 6
+            },
+            "status": "running",
+            "version": 6
+          },
+          "recorded_at": "2026-11-24T21:27:50.321419003+00:00",
+          "run_id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+          "run_seq": 6,
+          "schema_version": 1,
+          "task_id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+          "type": "task.dispatched"
+        },
+        {
+          "agent_definition_id": "evidence_checker",
+          "agent_instance_id": "session_tulip_1795555670835_42456c957b998d84",
+          "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+          "event_id": "594528d2-3585-4a54-a64e-57ab9b976458",
+          "occurred_at": "2026-11-24T21:27:52.618412712+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.226746660+00:00",
+              "edges": [
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "0c931119-bbc2-43bc-a385-5ded264b0f52",
+                  "status": "dispatched",
+                  "to": "aba84ff6-eb8f-477a-a895-0f7645db0269"
+                },
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "f3872f8d-850c-422a-b2ee-5ff19e4ca4a0",
+                  "status": "dispatched",
+                  "to": "64f3ec05-e6d0-4936-9b5d-dfda14693369"
+                },
+                {
+                  "from": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "id": "37e5e6de-88a8-4bdc-b687-3995222c5fb5",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                },
+                {
+                  "from": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "id": "4b776c58-a8b7-4be6-822a-556678ede81a",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+              "process_id": "71468fb1-6941-4252-a664-10080c5842af",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_blossom_1795555665789_31fde66b64ee3113",
+                  "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+                  "completed_at": "2026-11-24T21:27:50.312136595+00:00",
+                  "id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "started_at": "2026-11-24T21:27:45.814842617+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+                  "id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_tulip_1795555670835_42456c957b998d84",
+                  "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+                  "id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "started_at": "2026-11-24T21:27:52.618342064+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+                  "id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:27:52.618403512+00:00",
+              "version": 7,
+              "watermark": 7
+            },
+            "status": "running",
+            "version": 7
+          },
+          "recorded_at": "2026-11-24T21:27:52.618413832+00:00",
+          "run_id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+          "run_seq": 7,
+          "schema_version": 1,
+          "task_id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+          "type": "task.started"
+        },
+        {
+          "agent_definition_id": "analyst",
+          "agent_instance_id": "session_daisy_1795555670833_18b0e3b11ca1a2c9",
+          "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+          "event_id": "30bbd4e0-199a-4ebe-8e60-3ac98dd7e6ec",
+          "occurred_at": "2026-11-24T21:27:52.633273975+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.226746660+00:00",
+              "edges": [
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "0c931119-bbc2-43bc-a385-5ded264b0f52",
+                  "status": "dispatched",
+                  "to": "aba84ff6-eb8f-477a-a895-0f7645db0269"
+                },
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "f3872f8d-850c-422a-b2ee-5ff19e4ca4a0",
+                  "status": "dispatched",
+                  "to": "64f3ec05-e6d0-4936-9b5d-dfda14693369"
+                },
+                {
+                  "from": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "id": "37e5e6de-88a8-4bdc-b687-3995222c5fb5",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                },
+                {
+                  "from": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "id": "4b776c58-a8b7-4be6-822a-556678ede81a",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+              "process_id": "71468fb1-6941-4252-a664-10080c5842af",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_blossom_1795555665789_31fde66b64ee3113",
+                  "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+                  "completed_at": "2026-11-24T21:27:50.312136595+00:00",
+                  "id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "started_at": "2026-11-24T21:27:45.814842617+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_daisy_1795555670833_18b0e3b11ca1a2c9",
+                  "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+                  "id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "started_at": "2026-11-24T21:27:52.633186275+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_tulip_1795555670835_42456c957b998d84",
+                  "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+                  "id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "started_at": "2026-11-24T21:27:52.618342064+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+                  "id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:27:52.633261774+00:00",
+              "version": 8,
+              "watermark": 8
+            },
+            "status": "running",
+            "version": 8
+          },
+          "recorded_at": "2026-11-24T21:27:52.633275546+00:00",
+          "run_id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+          "run_seq": 8,
+          "schema_version": 1,
+          "task_id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+          "type": "task.started"
+        },
+        {
+          "agent_definition_id": "analyst",
+          "agent_instance_id": "session_daisy_1795555670833_18b0e3b11ca1a2c9",
+          "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+          "event_id": "c0f089f8-8168-41b9-8559-1ab0cc2f1d53",
+          "occurred_at": "2026-11-24T21:27:55.865015927+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.226746660+00:00",
+              "edges": [
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "0c931119-bbc2-43bc-a385-5ded264b0f52",
+                  "status": "completed",
+                  "to": "aba84ff6-eb8f-477a-a895-0f7645db0269"
+                },
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "f3872f8d-850c-422a-b2ee-5ff19e4ca4a0",
+                  "status": "dispatched",
+                  "to": "64f3ec05-e6d0-4936-9b5d-dfda14693369"
+                },
+                {
+                  "from": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "id": "37e5e6de-88a8-4bdc-b687-3995222c5fb5",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                },
+                {
+                  "from": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "id": "4b776c58-a8b7-4be6-822a-556678ede81a",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+              "process_id": "71468fb1-6941-4252-a664-10080c5842af",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_blossom_1795555665789_31fde66b64ee3113",
+                  "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+                  "completed_at": "2026-11-24T21:27:50.312136595+00:00",
+                  "id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "started_at": "2026-11-24T21:27:45.814842617+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_daisy_1795555670833_18b0e3b11ca1a2c9",
+                  "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+                  "completed_at": "2026-11-24T21:27:55.865000590+00:00",
+                  "id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "started_at": "2026-11-24T21:27:52.633186275+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_tulip_1795555670835_42456c957b998d84",
+                  "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+                  "id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "started_at": "2026-11-24T21:27:52.618342064+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+                  "id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:27:55.865009758+00:00",
+              "version": 9,
+              "watermark": 9
+            },
+            "status": "running",
+            "version": 9
+          },
+          "recorded_at": "2026-11-24T21:27:55.865017007+00:00",
+          "run_id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+          "run_seq": 9,
+          "schema_version": 1,
+          "task_id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+          "type": "task.completed"
+        },
+        {
+          "agent_definition_id": "evidence_checker",
+          "agent_instance_id": "session_tulip_1795555670835_42456c957b998d84",
+          "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+          "event_id": "310dad9f-e912-41d5-a9f6-89123559937d",
+          "occurred_at": "2026-11-24T21:28:00.265319439+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.226746660+00:00",
+              "edges": [
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "0c931119-bbc2-43bc-a385-5ded264b0f52",
+                  "status": "completed",
+                  "to": "aba84ff6-eb8f-477a-a895-0f7645db0269"
+                },
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "f3872f8d-850c-422a-b2ee-5ff19e4ca4a0",
+                  "status": "completed",
+                  "to": "64f3ec05-e6d0-4936-9b5d-dfda14693369"
+                },
+                {
+                  "from": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "id": "37e5e6de-88a8-4bdc-b687-3995222c5fb5",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                },
+                {
+                  "from": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "id": "4b776c58-a8b7-4be6-822a-556678ede81a",
+                  "status": "planned",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+              "process_id": "71468fb1-6941-4252-a664-10080c5842af",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_blossom_1795555665789_31fde66b64ee3113",
+                  "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+                  "completed_at": "2026-11-24T21:27:50.312136595+00:00",
+                  "id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "started_at": "2026-11-24T21:27:45.814842617+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_daisy_1795555670833_18b0e3b11ca1a2c9",
+                  "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+                  "completed_at": "2026-11-24T21:27:55.865000590+00:00",
+                  "id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "started_at": "2026-11-24T21:27:52.633186275+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_tulip_1795555670835_42456c957b998d84",
+                  "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+                  "completed_at": "2026-11-24T21:28:00.265297006+00:00",
+                  "id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "started_at": "2026-11-24T21:27:52.618342064+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+                  "id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:28:00.265310032+00:00",
+              "version": 10,
+              "watermark": 10
+            },
+            "status": "running",
+            "version": 10
+          },
+          "recorded_at": "2026-11-24T21:28:00.265320896+00:00",
+          "run_id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+          "run_seq": 10,
+          "schema_version": 1,
+          "task_id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+          "type": "task.completed"
+        },
+        {
+          "agent_definition_id": "reviewer",
+          "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+          "event_id": "4eda9a4e-b31c-40c9-aefb-2f5b86b8d6f1",
+          "occurred_at": "2026-11-24T21:28:00.270610326+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.226746660+00:00",
+              "edges": [
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "0c931119-bbc2-43bc-a385-5ded264b0f52",
+                  "status": "completed",
+                  "to": "aba84ff6-eb8f-477a-a895-0f7645db0269"
+                },
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "f3872f8d-850c-422a-b2ee-5ff19e4ca4a0",
+                  "status": "completed",
+                  "to": "64f3ec05-e6d0-4936-9b5d-dfda14693369"
+                },
+                {
+                  "from": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "id": "37e5e6de-88a8-4bdc-b687-3995222c5fb5",
+                  "status": "dispatched",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                },
+                {
+                  "from": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "id": "4b776c58-a8b7-4be6-822a-556678ede81a",
+                  "status": "dispatched",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+              "process_id": "71468fb1-6941-4252-a664-10080c5842af",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_blossom_1795555665789_31fde66b64ee3113",
+                  "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+                  "completed_at": "2026-11-24T21:27:50.312136595+00:00",
+                  "id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "started_at": "2026-11-24T21:27:45.814842617+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_daisy_1795555670833_18b0e3b11ca1a2c9",
+                  "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+                  "completed_at": "2026-11-24T21:27:55.865000590+00:00",
+                  "id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "started_at": "2026-11-24T21:27:52.633186275+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_tulip_1795555670835_42456c957b998d84",
+                  "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+                  "completed_at": "2026-11-24T21:28:00.265297006+00:00",
+                  "id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "started_at": "2026-11-24T21:27:52.618342064+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+                  "id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:28:00.270594328+00:00",
+              "version": 11,
+              "watermark": 11
+            },
+            "status": "running",
+            "version": 11
+          },
+          "recorded_at": "2026-11-24T21:28:00.270611381+00:00",
+          "run_id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+          "run_seq": 11,
+          "schema_version": 1,
+          "task_id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+          "type": "task.dispatched"
+        },
+        {
+          "agent_definition_id": "reviewer",
+          "agent_instance_id": "session_rose_1795555680278_da1cc22d7b6daab4",
+          "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+          "event_id": "4961cb4a-7d50-4a39-884d-00962219a8ef",
+          "occurred_at": "2026-11-24T21:28:00.297642571+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.226746660+00:00",
+              "edges": [
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "0c931119-bbc2-43bc-a385-5ded264b0f52",
+                  "status": "completed",
+                  "to": "aba84ff6-eb8f-477a-a895-0f7645db0269"
+                },
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "f3872f8d-850c-422a-b2ee-5ff19e4ca4a0",
+                  "status": "completed",
+                  "to": "64f3ec05-e6d0-4936-9b5d-dfda14693369"
+                },
+                {
+                  "from": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "id": "37e5e6de-88a8-4bdc-b687-3995222c5fb5",
+                  "status": "dispatched",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                },
+                {
+                  "from": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "id": "4b776c58-a8b7-4be6-822a-556678ede81a",
+                  "status": "dispatched",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+              "process_id": "71468fb1-6941-4252-a664-10080c5842af",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_blossom_1795555665789_31fde66b64ee3113",
+                  "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+                  "completed_at": "2026-11-24T21:27:50.312136595+00:00",
+                  "id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "started_at": "2026-11-24T21:27:45.814842617+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_daisy_1795555670833_18b0e3b11ca1a2c9",
+                  "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+                  "completed_at": "2026-11-24T21:27:55.865000590+00:00",
+                  "id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "started_at": "2026-11-24T21:27:52.633186275+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_tulip_1795555670835_42456c957b998d84",
+                  "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+                  "completed_at": "2026-11-24T21:28:00.265297006+00:00",
+                  "id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "started_at": "2026-11-24T21:27:52.618342064+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "agent_instance_id": "session_rose_1795555680278_da1cc22d7b6daab4",
+                  "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+                  "id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+                  "started_at": "2026-11-24T21:28:00.297565099+00:00",
+                  "status": "running",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:28:00.297631253+00:00",
+              "version": 12,
+              "watermark": 12
+            },
+            "status": "running",
+            "version": 12
+          },
+          "recorded_at": "2026-11-24T21:28:00.297644178+00:00",
+          "run_id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+          "run_seq": 12,
+          "schema_version": 1,
+          "task_id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+          "type": "task.started"
+        },
+        {
+          "agent_definition_id": "reviewer",
+          "agent_instance_id": "session_rose_1795555680278_da1cc22d7b6daab4",
+          "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+          "event_id": "d0cb98d1-fd03-4314-bfb8-29e83be9d9c5",
+          "occurred_at": "2026-11-24T21:28:10.070135895+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.226746660+00:00",
+              "edges": [
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "0c931119-bbc2-43bc-a385-5ded264b0f52",
+                  "status": "completed",
+                  "to": "aba84ff6-eb8f-477a-a895-0f7645db0269"
+                },
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "f3872f8d-850c-422a-b2ee-5ff19e4ca4a0",
+                  "status": "completed",
+                  "to": "64f3ec05-e6d0-4936-9b5d-dfda14693369"
+                },
+                {
+                  "from": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "id": "37e5e6de-88a8-4bdc-b687-3995222c5fb5",
+                  "status": "completed",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                },
+                {
+                  "from": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "id": "4b776c58-a8b7-4be6-822a-556678ede81a",
+                  "status": "completed",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+              "process_id": "71468fb1-6941-4252-a664-10080c5842af",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_blossom_1795555665789_31fde66b64ee3113",
+                  "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+                  "completed_at": "2026-11-24T21:27:50.312136595+00:00",
+                  "id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "started_at": "2026-11-24T21:27:45.814842617+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_daisy_1795555670833_18b0e3b11ca1a2c9",
+                  "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+                  "completed_at": "2026-11-24T21:27:55.865000590+00:00",
+                  "id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "started_at": "2026-11-24T21:27:52.633186275+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_tulip_1795555670835_42456c957b998d84",
+                  "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+                  "completed_at": "2026-11-24T21:28:00.265297006+00:00",
+                  "id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "started_at": "2026-11-24T21:27:52.618342064+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "agent_instance_id": "session_rose_1795555680278_da1cc22d7b6daab4",
+                  "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+                  "completed_at": "2026-11-24T21:28:10.070120761+00:00",
+                  "id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+                  "started_at": "2026-11-24T21:28:00.297565099+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.reviewer.completed"
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:28:10.070130177+00:00",
+              "version": 13,
+              "watermark": 13
+            },
+            "status": "running",
+            "version": 13
+          },
+          "recorded_at": "2026-11-24T21:28:10.070136846+00:00",
+          "run_id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+          "run_seq": 13,
+          "schema_version": 1,
+          "task_id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+          "type": "task.completed"
+        },
+        {
+          "event_id": "e66a382b-5213-45b8-8b3b-c2b06756bffb",
+          "occurred_at": "2026-11-24T21:28:10.075019411+00:00",
+          "payload": {
+            "snapshot": {
+              "artifact": {
+                "id": "7ecea1bc-f3f9-4005-a209-c98c2c033d8a",
+                "verification": "nonempty_bounded_text_v1"
+              },
+              "created_at": "2026-11-24T21:27:45.226746660+00:00",
+              "edges": [
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "0c931119-bbc2-43bc-a385-5ded264b0f52",
+                  "status": "completed",
+                  "to": "aba84ff6-eb8f-477a-a895-0f7645db0269"
+                },
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "f3872f8d-850c-422a-b2ee-5ff19e4ca4a0",
+                  "status": "completed",
+                  "to": "64f3ec05-e6d0-4936-9b5d-dfda14693369"
+                },
+                {
+                  "from": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "id": "37e5e6de-88a8-4bdc-b687-3995222c5fb5",
+                  "status": "completed",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                },
+                {
+                  "from": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "id": "4b776c58-a8b7-4be6-822a-556678ede81a",
+                  "status": "completed",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+              "process_id": "71468fb1-6941-4252-a664-10080c5842af",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_blossom_1795555665789_31fde66b64ee3113",
+                  "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+                  "completed_at": "2026-11-24T21:27:50.312136595+00:00",
+                  "id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "started_at": "2026-11-24T21:27:45.814842617+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_daisy_1795555670833_18b0e3b11ca1a2c9",
+                  "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+                  "completed_at": "2026-11-24T21:27:55.865000590+00:00",
+                  "id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "started_at": "2026-11-24T21:27:52.633186275+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_tulip_1795555670835_42456c957b998d84",
+                  "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+                  "completed_at": "2026-11-24T21:28:00.265297006+00:00",
+                  "id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "started_at": "2026-11-24T21:27:52.618342064+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "agent_instance_id": "session_rose_1795555680278_da1cc22d7b6daab4",
+                  "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+                  "completed_at": "2026-11-24T21:28:10.070120761+00:00",
+                  "id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+                  "started_at": "2026-11-24T21:28:00.297565099+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.reviewer.completed"
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:28:10.075013466+00:00",
+              "version": 14,
+              "watermark": 14
+            },
+            "status": "running",
+            "version": 14
+          },
+          "recorded_at": "2026-11-24T21:28:10.075020369+00:00",
+          "run_id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+          "run_seq": 14,
+          "schema_version": 1,
+          "type": "artifact.verified"
+        },
+        {
+          "event_id": "57a83ded-8432-48db-9ea2-bcebc3ccab61",
+          "occurred_at": "2026-11-24T21:28:10.075350515+00:00",
+          "payload": {
+            "snapshot": {
+              "artifact": {
+                "id": "7ecea1bc-f3f9-4005-a209-c98c2c033d8a",
+                "verification": "nonempty_bounded_text_v1"
+              },
+              "created_at": "2026-11-24T21:27:45.226746660+00:00",
+              "edges": [
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "0c931119-bbc2-43bc-a385-5ded264b0f52",
+                  "status": "completed",
+                  "to": "aba84ff6-eb8f-477a-a895-0f7645db0269"
+                },
+                {
+                  "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "id": "f3872f8d-850c-422a-b2ee-5ff19e4ca4a0",
+                  "status": "completed",
+                  "to": "64f3ec05-e6d0-4936-9b5d-dfda14693369"
+                },
+                {
+                  "from": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "id": "37e5e6de-88a8-4bdc-b687-3995222c5fb5",
+                  "status": "completed",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                },
+                {
+                  "from": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "id": "4b776c58-a8b7-4be6-822a-556678ede81a",
+                  "status": "completed",
+                  "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+              "process_id": "71468fb1-6941-4252-a664-10080c5842af",
+              "process_version": 1,
+              "status": "completed",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_blossom_1795555665789_31fde66b64ee3113",
+                  "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+                  "completed_at": "2026-11-24T21:27:50.312136595+00:00",
+                  "id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+                  "started_at": "2026-11-24T21:27:45.814842617+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_daisy_1795555670833_18b0e3b11ca1a2c9",
+                  "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+                  "completed_at": "2026-11-24T21:27:55.865000590+00:00",
+                  "id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+                  "started_at": "2026-11-24T21:27:52.633186275+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_tulip_1795555670835_42456c957b998d84",
+                  "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+                  "completed_at": "2026-11-24T21:28:00.265297006+00:00",
+                  "id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+                  "started_at": "2026-11-24T21:27:52.618342064+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "agent_instance_id": "session_rose_1795555680278_da1cc22d7b6daab4",
+                  "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+                  "completed_at": "2026-11-24T21:28:10.070120761+00:00",
+                  "id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+                  "started_at": "2026-11-24T21:28:00.297565099+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.reviewer.completed"
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:28:10.075345469+00:00",
+              "version": 15,
+              "watermark": 15
+            },
+            "status": "completed",
+            "version": 15
+          },
+          "recorded_at": "2026-11-24T21:28:10.075351435+00:00",
+          "run_id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+          "run_seq": 15,
+          "schema_version": 1,
+          "type": "run.completed"
+        }
+      ],
+      "identity": "private test principal, not deployed OIDC",
+      "run": {
+        "artifact": {
+          "id": "7ecea1bc-f3f9-4005-a209-c98c2c033d8a",
+          "verification": "nonempty_bounded_text_v1"
+        },
+        "created_at": "2026-11-24T21:27:45.226746660+00:00",
+        "edges": [
+          {
+            "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+            "id": "0c931119-bbc2-43bc-a385-5ded264b0f52",
+            "status": "completed",
+            "to": "aba84ff6-eb8f-477a-a895-0f7645db0269"
+          },
+          {
+            "from": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+            "id": "f3872f8d-850c-422a-b2ee-5ff19e4ca4a0",
+            "status": "completed",
+            "to": "64f3ec05-e6d0-4936-9b5d-dfda14693369"
+          },
+          {
+            "from": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+            "id": "37e5e6de-88a8-4bdc-b687-3995222c5fb5",
+            "status": "completed",
+            "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+          },
+          {
+            "from": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+            "id": "4b776c58-a8b7-4be6-822a-556678ede81a",
+            "status": "completed",
+            "to": "739b17bf-9ec4-430b-8515-79986a50b9a5"
+          }
+        ],
+        "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+        "id": "675042b9-7dd1-4037-92d1-5139ba53e939",
+        "process_id": "71468fb1-6941-4252-a664-10080c5842af",
+        "process_version": 1,
+        "status": "completed",
+        "tasks": [
+          {
+            "agent_definition_id": "coordinator",
+            "agent_instance_id": "session_blossom_1795555665789_31fde66b64ee3113",
+            "attempt_id": "9917eeb4-fa8a-4af5-939c-19998b54bb71",
+            "completed_at": "2026-11-24T21:27:50.312136595+00:00",
+            "id": "b5c8b9c5-2e54-4e9f-87c6-cb29ed23d848",
+            "started_at": "2026-11-24T21:27:45.814842617+00:00",
+            "status": "completed",
+            "summary": "aaas.stage.coordinator.completed"
+          },
+          {
+            "agent_definition_id": "analyst",
+            "agent_instance_id": "session_daisy_1795555670833_18b0e3b11ca1a2c9",
+            "attempt_id": "686d58d8-ec78-4de3-b2e7-3165998e1b63",
+            "completed_at": "2026-11-24T21:27:55.865000590+00:00",
+            "id": "aba84ff6-eb8f-477a-a895-0f7645db0269",
+            "started_at": "2026-11-24T21:27:52.633186275+00:00",
+            "status": "completed",
+            "summary": "aaas.stage.analyst.completed"
+          },
+          {
+            "agent_definition_id": "evidence_checker",
+            "agent_instance_id": "session_tulip_1795555670835_42456c957b998d84",
+            "attempt_id": "7c8f1b86-ad54-4c56-b68a-b83f0bbef578",
+            "completed_at": "2026-11-24T21:28:00.265297006+00:00",
+            "id": "64f3ec05-e6d0-4936-9b5d-dfda14693369",
+            "started_at": "2026-11-24T21:27:52.618342064+00:00",
+            "status": "completed",
+            "summary": "aaas.stage.evidence_checker.completed"
+          },
+          {
+            "agent_definition_id": "reviewer",
+            "agent_instance_id": "session_rose_1795555680278_da1cc22d7b6daab4",
+            "attempt_id": "44390825-2605-4b89-bd1e-04a179d5e769",
+            "completed_at": "2026-11-24T21:28:10.070120761+00:00",
+            "id": "739b17bf-9ec4-430b-8515-79986a50b9a5",
+            "started_at": "2026-11-24T21:28:00.297565099+00:00",
+            "status": "completed",
+            "summary": "aaas.stage.reviewer.completed"
+          }
+        ],
+        "title": "Live acceptance alice",
+        "updated_at": "2026-11-24T21:28:10.075345469+00:00",
+        "version": 15,
+        "watermark": 15
+      },
+      "tenant": "alice"
+    },
+    {
+      "artifact_markdown": "# Project BETA-ACCEPTANCE-92 readiness brief\n\nIntegration testing passed on November 24, 2026, and the delivery target is December 17, 2026. However, release owner approval is outstanding and budget information has not been provided. On the supplied material, readiness cannot be confirmed, and delivery risk centers on the missing approval and absent budget detail.\n\n## Findings\n\nStatus: the integration test suite passed on November 24, 2026, and the stated delivery target is 2026-12-17. The release owner has not approved the deployment. Delivery risk: approval remains outstanding, and no approval date, criteria, or conditions are recorded. Budget readiness cannot be assessed because no budget was provided. Missing information includes release owner approval status and expected date, approval criteria or conditions, budget amount and funding state, acceptance scope beyond the integration suite, other test layers, and formal stakeholder or customer sign-off. The material is described as synthetic acceptance material, not customer data, which limits how far the test result can be generalized.\n\n## Limitations\n\nOnly one self-described synthetic material set was available, and none of its statements were independently verified. The material does not establish that release owner approval is a mandatory deployment gate, does not quantify schedule or cost risk, and does not describe scope, other test layers, or sign-off. Absent information is treated as unknown rather than as proof of failure.\n\n## Source quotations\n\n> Project BETA-ACCEPTANCE-92.\n\n> The integration test suite passed on November 24, 2026.\n\n> Delivery target: 2026-12-17.\n\n> The release owner has not approved the deployment.\n\n> The budget has not been provided.\n\n> This is synthetic acceptance material, not customer data.\n\n---\nVerification: required fields and exact source quotations checked deterministically. Semantic accuracy is not certified.\n",
+      "events": [
+        {
+          "event_id": "01cc5333-296b-4ae7-badd-f81901ba9dbd",
+          "occurred_at": "2026-11-24T21:27:45.240616839+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.240389633+00:00",
+              "edges": [
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "341dbf2a-2ae9-40e3-acb2-3092d08dbff2",
+                  "status": "planned",
+                  "to": "e8162083-7b98-4e66-a68e-0ee07847642c"
+                },
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "58c97e73-aa57-440f-b3ad-4f9d73be2fc1",
+                  "status": "planned",
+                  "to": "9b298f39-feef-43d7-995c-8d6607e49030"
+                },
+                {
+                  "from": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "id": "762fbd4b-8bea-463c-9b07-5b17c2291f58",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                },
+                {
+                  "from": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "id": "7d836aec-3449-49e7-b544-fe8295725ac8",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+              "process_id": "fb72aa91-7bc7-4f9b-b5d9-48657c3e7053",
+              "process_version": 1,
+              "status": "queued",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+                  "id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+                  "id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+                  "id": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+                  "id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:27:45.240609048+00:00",
+              "version": 1,
+              "watermark": 1
+            },
+            "status": "queued",
+            "version": 1
+          },
+          "recorded_at": "2026-11-24T21:27:45.240619118+00:00",
+          "run_id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+          "run_seq": 1,
+          "schema_version": 1,
+          "type": "run.created"
+        },
+        {
+          "agent_definition_id": "coordinator",
+          "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+          "event_id": "de099659-835f-4126-ae5e-5fb6da6b99fb",
+          "occurred_at": "2026-11-24T21:27:45.245778188+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.240389633+00:00",
+              "edges": [
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "341dbf2a-2ae9-40e3-acb2-3092d08dbff2",
+                  "status": "planned",
+                  "to": "e8162083-7b98-4e66-a68e-0ee07847642c"
+                },
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "58c97e73-aa57-440f-b3ad-4f9d73be2fc1",
+                  "status": "planned",
+                  "to": "9b298f39-feef-43d7-995c-8d6607e49030"
+                },
+                {
+                  "from": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "id": "762fbd4b-8bea-463c-9b07-5b17c2291f58",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                },
+                {
+                  "from": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "id": "7d836aec-3449-49e7-b544-fe8295725ac8",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+              "process_id": "fb72aa91-7bc7-4f9b-b5d9-48657c3e7053",
+              "process_version": 1,
+              "status": "queued",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+                  "id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+                  "id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+                  "id": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+                  "id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:27:45.245765706+00:00",
+              "version": 2,
+              "watermark": 2
+            },
+            "status": "queued",
+            "version": 2
+          },
+          "recorded_at": "2026-11-24T21:27:45.245779297+00:00",
+          "run_id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+          "run_seq": 2,
+          "schema_version": 1,
+          "task_id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+          "type": "task.dispatched"
+        },
+        {
+          "agent_definition_id": "coordinator",
+          "agent_instance_id": "session_ram_1795555666441_a51765dba73bb276",
+          "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+          "event_id": "06a35730-137c-44d9-bcf0-a793cfeaac72",
+          "occurred_at": "2026-11-24T21:27:46.468093280+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.240389633+00:00",
+              "edges": [
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "341dbf2a-2ae9-40e3-acb2-3092d08dbff2",
+                  "status": "planned",
+                  "to": "e8162083-7b98-4e66-a68e-0ee07847642c"
+                },
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "58c97e73-aa57-440f-b3ad-4f9d73be2fc1",
+                  "status": "planned",
+                  "to": "9b298f39-feef-43d7-995c-8d6607e49030"
+                },
+                {
+                  "from": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "id": "762fbd4b-8bea-463c-9b07-5b17c2291f58",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                },
+                {
+                  "from": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "id": "7d836aec-3449-49e7-b544-fe8295725ac8",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+              "process_id": "fb72aa91-7bc7-4f9b-b5d9-48657c3e7053",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_ram_1795555666441_a51765dba73bb276",
+                  "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+                  "id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "started_at": "2026-11-24T21:27:46.468033987+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+                  "id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+                  "id": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+                  "id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:27:46.468086083+00:00",
+              "version": 3,
+              "watermark": 3
+            },
+            "status": "running",
+            "version": 3
+          },
+          "recorded_at": "2026-11-24T21:27:46.468094195+00:00",
+          "run_id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+          "run_seq": 3,
+          "schema_version": 1,
+          "task_id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+          "type": "task.started"
+        },
+        {
+          "agent_definition_id": "coordinator",
+          "agent_instance_id": "session_ram_1795555666441_a51765dba73bb276",
+          "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+          "event_id": "1ce195f0-007e-4a58-8c35-f0aa4e50e749",
+          "occurred_at": "2026-11-24T21:27:51.050266303+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.240389633+00:00",
+              "edges": [
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "341dbf2a-2ae9-40e3-acb2-3092d08dbff2",
+                  "status": "planned",
+                  "to": "e8162083-7b98-4e66-a68e-0ee07847642c"
+                },
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "58c97e73-aa57-440f-b3ad-4f9d73be2fc1",
+                  "status": "planned",
+                  "to": "9b298f39-feef-43d7-995c-8d6607e49030"
+                },
+                {
+                  "from": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "id": "762fbd4b-8bea-463c-9b07-5b17c2291f58",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                },
+                {
+                  "from": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "id": "7d836aec-3449-49e7-b544-fe8295725ac8",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+              "process_id": "fb72aa91-7bc7-4f9b-b5d9-48657c3e7053",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_ram_1795555666441_a51765dba73bb276",
+                  "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+                  "completed_at": "2026-11-24T21:27:51.050248598+00:00",
+                  "id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "started_at": "2026-11-24T21:27:46.468033987+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+                  "id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+                  "id": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+                  "id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:27:51.050259355+00:00",
+              "version": 4,
+              "watermark": 4
+            },
+            "status": "running",
+            "version": 4
+          },
+          "recorded_at": "2026-11-24T21:27:51.050267192+00:00",
+          "run_id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+          "run_seq": 4,
+          "schema_version": 1,
+          "task_id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+          "type": "task.completed"
+        },
+        {
+          "agent_definition_id": "analyst",
+          "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+          "event_id": "140326df-3f38-4366-84e9-ece50a7bdfd9",
+          "occurred_at": "2026-11-24T21:27:51.054435174+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.240389633+00:00",
+              "edges": [
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "341dbf2a-2ae9-40e3-acb2-3092d08dbff2",
+                  "status": "dispatched",
+                  "to": "e8162083-7b98-4e66-a68e-0ee07847642c"
+                },
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "58c97e73-aa57-440f-b3ad-4f9d73be2fc1",
+                  "status": "planned",
+                  "to": "9b298f39-feef-43d7-995c-8d6607e49030"
+                },
+                {
+                  "from": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "id": "762fbd4b-8bea-463c-9b07-5b17c2291f58",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                },
+                {
+                  "from": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "id": "7d836aec-3449-49e7-b544-fe8295725ac8",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+              "process_id": "fb72aa91-7bc7-4f9b-b5d9-48657c3e7053",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_ram_1795555666441_a51765dba73bb276",
+                  "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+                  "completed_at": "2026-11-24T21:27:51.050248598+00:00",
+                  "id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "started_at": "2026-11-24T21:27:46.468033987+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+                  "id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+                  "id": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+                  "id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:27:51.054426559+00:00",
+              "version": 5,
+              "watermark": 5
+            },
+            "status": "running",
+            "version": 5
+          },
+          "recorded_at": "2026-11-24T21:27:51.054436415+00:00",
+          "run_id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+          "run_seq": 5,
+          "schema_version": 1,
+          "task_id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+          "type": "task.dispatched"
+        },
+        {
+          "agent_definition_id": "evidence_checker",
+          "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+          "event_id": "4599efc5-b018-4725-9fc4-f6abeb28e861",
+          "occurred_at": "2026-11-24T21:27:51.059211126+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.240389633+00:00",
+              "edges": [
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "341dbf2a-2ae9-40e3-acb2-3092d08dbff2",
+                  "status": "dispatched",
+                  "to": "e8162083-7b98-4e66-a68e-0ee07847642c"
+                },
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "58c97e73-aa57-440f-b3ad-4f9d73be2fc1",
+                  "status": "dispatched",
+                  "to": "9b298f39-feef-43d7-995c-8d6607e49030"
+                },
+                {
+                  "from": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "id": "762fbd4b-8bea-463c-9b07-5b17c2291f58",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                },
+                {
+                  "from": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "id": "7d836aec-3449-49e7-b544-fe8295725ac8",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+              "process_id": "fb72aa91-7bc7-4f9b-b5d9-48657c3e7053",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_ram_1795555666441_a51765dba73bb276",
+                  "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+                  "completed_at": "2026-11-24T21:27:51.050248598+00:00",
+                  "id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "started_at": "2026-11-24T21:27:46.468033987+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+                  "id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+                  "id": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+                  "id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:27:51.059201909+00:00",
+              "version": 6,
+              "watermark": 6
+            },
+            "status": "running",
+            "version": 6
+          },
+          "recorded_at": "2026-11-24T21:27:51.059212284+00:00",
+          "run_id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+          "run_seq": 6,
+          "schema_version": 1,
+          "task_id": "9b298f39-feef-43d7-995c-8d6607e49030",
+          "type": "task.dispatched"
+        },
+        {
+          "agent_definition_id": "analyst",
+          "agent_instance_id": "session_rooster_1795555671066_80f58b1bc4f2a0db",
+          "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+          "event_id": "283dee21-ef40-4234-b13c-5891bfa70f27",
+          "occurred_at": "2026-11-24T21:27:53.362344821+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.240389633+00:00",
+              "edges": [
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "341dbf2a-2ae9-40e3-acb2-3092d08dbff2",
+                  "status": "dispatched",
+                  "to": "e8162083-7b98-4e66-a68e-0ee07847642c"
+                },
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "58c97e73-aa57-440f-b3ad-4f9d73be2fc1",
+                  "status": "dispatched",
+                  "to": "9b298f39-feef-43d7-995c-8d6607e49030"
+                },
+                {
+                  "from": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "id": "762fbd4b-8bea-463c-9b07-5b17c2291f58",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                },
+                {
+                  "from": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "id": "7d836aec-3449-49e7-b544-fe8295725ac8",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+              "process_id": "fb72aa91-7bc7-4f9b-b5d9-48657c3e7053",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_ram_1795555666441_a51765dba73bb276",
+                  "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+                  "completed_at": "2026-11-24T21:27:51.050248598+00:00",
+                  "id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "started_at": "2026-11-24T21:27:46.468033987+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_rooster_1795555671066_80f58b1bc4f2a0db",
+                  "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+                  "id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "started_at": "2026-11-24T21:27:53.362249733+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+                  "id": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+                  "id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:27:53.362332376+00:00",
+              "version": 7,
+              "watermark": 7
+            },
+            "status": "running",
+            "version": 7
+          },
+          "recorded_at": "2026-11-24T21:27:53.362346344+00:00",
+          "run_id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+          "run_seq": 7,
+          "schema_version": 1,
+          "task_id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+          "type": "task.started"
+        },
+        {
+          "agent_definition_id": "evidence_checker",
+          "agent_instance_id": "session_shrimp_1795555671066_294a7000ba01e0dc",
+          "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+          "event_id": "424972e7-c784-4983-8d72-7c5bdf0dec35",
+          "occurred_at": "2026-11-24T21:27:53.370017736+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.240389633+00:00",
+              "edges": [
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "341dbf2a-2ae9-40e3-acb2-3092d08dbff2",
+                  "status": "dispatched",
+                  "to": "e8162083-7b98-4e66-a68e-0ee07847642c"
+                },
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "58c97e73-aa57-440f-b3ad-4f9d73be2fc1",
+                  "status": "dispatched",
+                  "to": "9b298f39-feef-43d7-995c-8d6607e49030"
+                },
+                {
+                  "from": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "id": "762fbd4b-8bea-463c-9b07-5b17c2291f58",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                },
+                {
+                  "from": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "id": "7d836aec-3449-49e7-b544-fe8295725ac8",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+              "process_id": "fb72aa91-7bc7-4f9b-b5d9-48657c3e7053",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_ram_1795555666441_a51765dba73bb276",
+                  "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+                  "completed_at": "2026-11-24T21:27:51.050248598+00:00",
+                  "id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "started_at": "2026-11-24T21:27:46.468033987+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_rooster_1795555671066_80f58b1bc4f2a0db",
+                  "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+                  "id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "started_at": "2026-11-24T21:27:53.362249733+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_shrimp_1795555671066_294a7000ba01e0dc",
+                  "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+                  "id": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "started_at": "2026-11-24T21:27:53.369912686+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+                  "id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:27:53.370004267+00:00",
+              "version": 8,
+              "watermark": 8
+            },
+            "status": "running",
+            "version": 8
+          },
+          "recorded_at": "2026-11-24T21:27:53.370020050+00:00",
+          "run_id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+          "run_seq": 8,
+          "schema_version": 1,
+          "task_id": "9b298f39-feef-43d7-995c-8d6607e49030",
+          "type": "task.started"
+        },
+        {
+          "agent_definition_id": "analyst",
+          "agent_instance_id": "session_rooster_1795555671066_80f58b1bc4f2a0db",
+          "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+          "event_id": "6d212ba7-4964-4ec9-9b72-c84dd7ff20b6",
+          "occurred_at": "2026-11-24T21:27:58.816705958+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.240389633+00:00",
+              "edges": [
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "341dbf2a-2ae9-40e3-acb2-3092d08dbff2",
+                  "status": "completed",
+                  "to": "e8162083-7b98-4e66-a68e-0ee07847642c"
+                },
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "58c97e73-aa57-440f-b3ad-4f9d73be2fc1",
+                  "status": "dispatched",
+                  "to": "9b298f39-feef-43d7-995c-8d6607e49030"
+                },
+                {
+                  "from": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "id": "762fbd4b-8bea-463c-9b07-5b17c2291f58",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                },
+                {
+                  "from": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "id": "7d836aec-3449-49e7-b544-fe8295725ac8",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+              "process_id": "fb72aa91-7bc7-4f9b-b5d9-48657c3e7053",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_ram_1795555666441_a51765dba73bb276",
+                  "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+                  "completed_at": "2026-11-24T21:27:51.050248598+00:00",
+                  "id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "started_at": "2026-11-24T21:27:46.468033987+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_rooster_1795555671066_80f58b1bc4f2a0db",
+                  "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+                  "completed_at": "2026-11-24T21:27:58.816690389+00:00",
+                  "id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "started_at": "2026-11-24T21:27:53.362249733+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_shrimp_1795555671066_294a7000ba01e0dc",
+                  "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+                  "id": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "started_at": "2026-11-24T21:27:53.369912686+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+                  "id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:27:58.816699180+00:00",
+              "version": 9,
+              "watermark": 9
+            },
+            "status": "running",
+            "version": 9
+          },
+          "recorded_at": "2026-11-24T21:27:58.816706957+00:00",
+          "run_id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+          "run_seq": 9,
+          "schema_version": 1,
+          "task_id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+          "type": "task.completed"
+        },
+        {
+          "agent_definition_id": "evidence_checker",
+          "agent_instance_id": "session_shrimp_1795555671066_294a7000ba01e0dc",
+          "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+          "event_id": "c37d5bc9-9c47-4cf8-8569-74b45a5eefd3",
+          "occurred_at": "2026-11-24T21:28:01.068584681+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.240389633+00:00",
+              "edges": [
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "341dbf2a-2ae9-40e3-acb2-3092d08dbff2",
+                  "status": "completed",
+                  "to": "e8162083-7b98-4e66-a68e-0ee07847642c"
+                },
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "58c97e73-aa57-440f-b3ad-4f9d73be2fc1",
+                  "status": "completed",
+                  "to": "9b298f39-feef-43d7-995c-8d6607e49030"
+                },
+                {
+                  "from": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "id": "762fbd4b-8bea-463c-9b07-5b17c2291f58",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                },
+                {
+                  "from": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "id": "7d836aec-3449-49e7-b544-fe8295725ac8",
+                  "status": "planned",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+              "process_id": "fb72aa91-7bc7-4f9b-b5d9-48657c3e7053",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_ram_1795555666441_a51765dba73bb276",
+                  "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+                  "completed_at": "2026-11-24T21:27:51.050248598+00:00",
+                  "id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "started_at": "2026-11-24T21:27:46.468033987+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_rooster_1795555671066_80f58b1bc4f2a0db",
+                  "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+                  "completed_at": "2026-11-24T21:27:58.816690389+00:00",
+                  "id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "started_at": "2026-11-24T21:27:53.362249733+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_shrimp_1795555671066_294a7000ba01e0dc",
+                  "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+                  "completed_at": "2026-11-24T21:28:01.068569392+00:00",
+                  "id": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "started_at": "2026-11-24T21:27:53.369912686+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+                  "id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:28:01.068578737+00:00",
+              "version": 10,
+              "watermark": 10
+            },
+            "status": "running",
+            "version": 10
+          },
+          "recorded_at": "2026-11-24T21:28:01.068585557+00:00",
+          "run_id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+          "run_seq": 10,
+          "schema_version": 1,
+          "task_id": "9b298f39-feef-43d7-995c-8d6607e49030",
+          "type": "task.completed"
+        },
+        {
+          "agent_definition_id": "reviewer",
+          "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+          "event_id": "3002b464-ed7c-4bcd-a9a7-7ab9801e4163",
+          "occurred_at": "2026-11-24T21:28:01.073592947+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.240389633+00:00",
+              "edges": [
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "341dbf2a-2ae9-40e3-acb2-3092d08dbff2",
+                  "status": "completed",
+                  "to": "e8162083-7b98-4e66-a68e-0ee07847642c"
+                },
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "58c97e73-aa57-440f-b3ad-4f9d73be2fc1",
+                  "status": "completed",
+                  "to": "9b298f39-feef-43d7-995c-8d6607e49030"
+                },
+                {
+                  "from": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "id": "762fbd4b-8bea-463c-9b07-5b17c2291f58",
+                  "status": "dispatched",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                },
+                {
+                  "from": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "id": "7d836aec-3449-49e7-b544-fe8295725ac8",
+                  "status": "dispatched",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+              "process_id": "fb72aa91-7bc7-4f9b-b5d9-48657c3e7053",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_ram_1795555666441_a51765dba73bb276",
+                  "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+                  "completed_at": "2026-11-24T21:27:51.050248598+00:00",
+                  "id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "started_at": "2026-11-24T21:27:46.468033987+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_rooster_1795555671066_80f58b1bc4f2a0db",
+                  "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+                  "completed_at": "2026-11-24T21:27:58.816690389+00:00",
+                  "id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "started_at": "2026-11-24T21:27:53.362249733+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_shrimp_1795555671066_294a7000ba01e0dc",
+                  "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+                  "completed_at": "2026-11-24T21:28:01.068569392+00:00",
+                  "id": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "started_at": "2026-11-24T21:27:53.369912686+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+                  "id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:28:01.073585818+00:00",
+              "version": 11,
+              "watermark": 11
+            },
+            "status": "running",
+            "version": 11
+          },
+          "recorded_at": "2026-11-24T21:28:01.073594066+00:00",
+          "run_id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+          "run_seq": 11,
+          "schema_version": 1,
+          "task_id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+          "type": "task.dispatched"
+        },
+        {
+          "agent_definition_id": "reviewer",
+          "agent_instance_id": "session_sauropod_1795555681081_1829e7ce463887b9",
+          "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+          "event_id": "b2affefd-675d-4ff9-9742-6889d59391ca",
+          "occurred_at": "2026-11-24T21:28:01.101449255+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.240389633+00:00",
+              "edges": [
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "341dbf2a-2ae9-40e3-acb2-3092d08dbff2",
+                  "status": "completed",
+                  "to": "e8162083-7b98-4e66-a68e-0ee07847642c"
+                },
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "58c97e73-aa57-440f-b3ad-4f9d73be2fc1",
+                  "status": "completed",
+                  "to": "9b298f39-feef-43d7-995c-8d6607e49030"
+                },
+                {
+                  "from": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "id": "762fbd4b-8bea-463c-9b07-5b17c2291f58",
+                  "status": "dispatched",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                },
+                {
+                  "from": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "id": "7d836aec-3449-49e7-b544-fe8295725ac8",
+                  "status": "dispatched",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+              "process_id": "fb72aa91-7bc7-4f9b-b5d9-48657c3e7053",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_ram_1795555666441_a51765dba73bb276",
+                  "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+                  "completed_at": "2026-11-24T21:27:51.050248598+00:00",
+                  "id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "started_at": "2026-11-24T21:27:46.468033987+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_rooster_1795555671066_80f58b1bc4f2a0db",
+                  "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+                  "completed_at": "2026-11-24T21:27:58.816690389+00:00",
+                  "id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "started_at": "2026-11-24T21:27:53.362249733+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_shrimp_1795555671066_294a7000ba01e0dc",
+                  "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+                  "completed_at": "2026-11-24T21:28:01.068569392+00:00",
+                  "id": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "started_at": "2026-11-24T21:27:53.369912686+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "agent_instance_id": "session_sauropod_1795555681081_1829e7ce463887b9",
+                  "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+                  "id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+                  "started_at": "2026-11-24T21:28:01.101394285+00:00",
+                  "status": "running",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:28:01.101443249+00:00",
+              "version": 12,
+              "watermark": 12
+            },
+            "status": "running",
+            "version": 12
+          },
+          "recorded_at": "2026-11-24T21:28:01.101450337+00:00",
+          "run_id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+          "run_seq": 12,
+          "schema_version": 1,
+          "task_id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+          "type": "task.started"
+        },
+        {
+          "agent_definition_id": "reviewer",
+          "agent_instance_id": "session_sauropod_1795555681081_1829e7ce463887b9",
+          "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+          "event_id": "24ff2255-dd60-46ec-8499-50940a02f56a",
+          "occurred_at": "2026-11-24T21:28:10.423161469+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:27:45.240389633+00:00",
+              "edges": [
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "341dbf2a-2ae9-40e3-acb2-3092d08dbff2",
+                  "status": "completed",
+                  "to": "e8162083-7b98-4e66-a68e-0ee07847642c"
+                },
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "58c97e73-aa57-440f-b3ad-4f9d73be2fc1",
+                  "status": "completed",
+                  "to": "9b298f39-feef-43d7-995c-8d6607e49030"
+                },
+                {
+                  "from": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "id": "762fbd4b-8bea-463c-9b07-5b17c2291f58",
+                  "status": "completed",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                },
+                {
+                  "from": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "id": "7d836aec-3449-49e7-b544-fe8295725ac8",
+                  "status": "completed",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+              "process_id": "fb72aa91-7bc7-4f9b-b5d9-48657c3e7053",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_ram_1795555666441_a51765dba73bb276",
+                  "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+                  "completed_at": "2026-11-24T21:27:51.050248598+00:00",
+                  "id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "started_at": "2026-11-24T21:27:46.468033987+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_rooster_1795555671066_80f58b1bc4f2a0db",
+                  "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+                  "completed_at": "2026-11-24T21:27:58.816690389+00:00",
+                  "id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "started_at": "2026-11-24T21:27:53.362249733+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_shrimp_1795555671066_294a7000ba01e0dc",
+                  "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+                  "completed_at": "2026-11-24T21:28:01.068569392+00:00",
+                  "id": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "started_at": "2026-11-24T21:27:53.369912686+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "agent_instance_id": "session_sauropod_1795555681081_1829e7ce463887b9",
+                  "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+                  "completed_at": "2026-11-24T21:28:10.423123316+00:00",
+                  "id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+                  "started_at": "2026-11-24T21:28:01.101394285+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.reviewer.completed"
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:28:10.423145281+00:00",
+              "version": 13,
+              "watermark": 13
+            },
+            "status": "running",
+            "version": 13
+          },
+          "recorded_at": "2026-11-24T21:28:10.423164631+00:00",
+          "run_id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+          "run_seq": 13,
+          "schema_version": 1,
+          "task_id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+          "type": "task.completed"
+        },
+        {
+          "event_id": "17adaf3c-4d35-4aaa-afb9-201f5d0c3efc",
+          "occurred_at": "2026-11-24T21:28:10.428826608+00:00",
+          "payload": {
+            "snapshot": {
+              "artifact": {
+                "id": "5e11efa1-3473-4a50-a7c0-f39cb48e0cef",
+                "verification": "nonempty_bounded_text_v1"
+              },
+              "created_at": "2026-11-24T21:27:45.240389633+00:00",
+              "edges": [
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "341dbf2a-2ae9-40e3-acb2-3092d08dbff2",
+                  "status": "completed",
+                  "to": "e8162083-7b98-4e66-a68e-0ee07847642c"
+                },
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "58c97e73-aa57-440f-b3ad-4f9d73be2fc1",
+                  "status": "completed",
+                  "to": "9b298f39-feef-43d7-995c-8d6607e49030"
+                },
+                {
+                  "from": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "id": "762fbd4b-8bea-463c-9b07-5b17c2291f58",
+                  "status": "completed",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                },
+                {
+                  "from": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "id": "7d836aec-3449-49e7-b544-fe8295725ac8",
+                  "status": "completed",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+              "process_id": "fb72aa91-7bc7-4f9b-b5d9-48657c3e7053",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_ram_1795555666441_a51765dba73bb276",
+                  "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+                  "completed_at": "2026-11-24T21:27:51.050248598+00:00",
+                  "id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "started_at": "2026-11-24T21:27:46.468033987+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_rooster_1795555671066_80f58b1bc4f2a0db",
+                  "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+                  "completed_at": "2026-11-24T21:27:58.816690389+00:00",
+                  "id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "started_at": "2026-11-24T21:27:53.362249733+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_shrimp_1795555671066_294a7000ba01e0dc",
+                  "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+                  "completed_at": "2026-11-24T21:28:01.068569392+00:00",
+                  "id": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "started_at": "2026-11-24T21:27:53.369912686+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "agent_instance_id": "session_sauropod_1795555681081_1829e7ce463887b9",
+                  "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+                  "completed_at": "2026-11-24T21:28:10.423123316+00:00",
+                  "id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+                  "started_at": "2026-11-24T21:28:01.101394285+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.reviewer.completed"
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:28:10.428807665+00:00",
+              "version": 14,
+              "watermark": 14
+            },
+            "status": "running",
+            "version": 14
+          },
+          "recorded_at": "2026-11-24T21:28:10.428829523+00:00",
+          "run_id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+          "run_seq": 14,
+          "schema_version": 1,
+          "type": "artifact.verified"
+        },
+        {
+          "event_id": "6286c618-5308-4257-b9ca-f10ea856b2f7",
+          "occurred_at": "2026-11-24T21:28:10.430297975+00:00",
+          "payload": {
+            "snapshot": {
+              "artifact": {
+                "id": "5e11efa1-3473-4a50-a7c0-f39cb48e0cef",
+                "verification": "nonempty_bounded_text_v1"
+              },
+              "created_at": "2026-11-24T21:27:45.240389633+00:00",
+              "edges": [
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "341dbf2a-2ae9-40e3-acb2-3092d08dbff2",
+                  "status": "completed",
+                  "to": "e8162083-7b98-4e66-a68e-0ee07847642c"
+                },
+                {
+                  "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "id": "58c97e73-aa57-440f-b3ad-4f9d73be2fc1",
+                  "status": "completed",
+                  "to": "9b298f39-feef-43d7-995c-8d6607e49030"
+                },
+                {
+                  "from": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "id": "762fbd4b-8bea-463c-9b07-5b17c2291f58",
+                  "status": "completed",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                },
+                {
+                  "from": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "id": "7d836aec-3449-49e7-b544-fe8295725ac8",
+                  "status": "completed",
+                  "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+                }
+              ],
+              "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+              "id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+              "process_id": "fb72aa91-7bc7-4f9b-b5d9-48657c3e7053",
+              "process_version": 1,
+              "status": "completed",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_ram_1795555666441_a51765dba73bb276",
+                  "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+                  "completed_at": "2026-11-24T21:27:51.050248598+00:00",
+                  "id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+                  "started_at": "2026-11-24T21:27:46.468033987+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_rooster_1795555671066_80f58b1bc4f2a0db",
+                  "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+                  "completed_at": "2026-11-24T21:27:58.816690389+00:00",
+                  "id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+                  "started_at": "2026-11-24T21:27:53.362249733+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_shrimp_1795555671066_294a7000ba01e0dc",
+                  "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+                  "completed_at": "2026-11-24T21:28:01.068569392+00:00",
+                  "id": "9b298f39-feef-43d7-995c-8d6607e49030",
+                  "started_at": "2026-11-24T21:27:53.369912686+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "agent_instance_id": "session_sauropod_1795555681081_1829e7ce463887b9",
+                  "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+                  "completed_at": "2026-11-24T21:28:10.423123316+00:00",
+                  "id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+                  "started_at": "2026-11-24T21:28:01.101394285+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.reviewer.completed"
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:28:10.430282170+00:00",
+              "version": 15,
+              "watermark": 15
+            },
+            "status": "completed",
+            "version": 15
+          },
+          "recorded_at": "2026-11-24T21:28:10.430303273+00:00",
+          "run_id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+          "run_seq": 15,
+          "schema_version": 1,
+          "type": "run.completed"
+        }
+      ],
+      "identity": "private test principal, not deployed OIDC",
+      "run": {
+        "artifact": {
+          "id": "5e11efa1-3473-4a50-a7c0-f39cb48e0cef",
+          "verification": "nonempty_bounded_text_v1"
+        },
+        "created_at": "2026-11-24T21:27:45.240389633+00:00",
+        "edges": [
+          {
+            "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+            "id": "341dbf2a-2ae9-40e3-acb2-3092d08dbff2",
+            "status": "completed",
+            "to": "e8162083-7b98-4e66-a68e-0ee07847642c"
+          },
+          {
+            "from": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+            "id": "58c97e73-aa57-440f-b3ad-4f9d73be2fc1",
+            "status": "completed",
+            "to": "9b298f39-feef-43d7-995c-8d6607e49030"
+          },
+          {
+            "from": "e8162083-7b98-4e66-a68e-0ee07847642c",
+            "id": "762fbd4b-8bea-463c-9b07-5b17c2291f58",
+            "status": "completed",
+            "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+          },
+          {
+            "from": "9b298f39-feef-43d7-995c-8d6607e49030",
+            "id": "7d836aec-3449-49e7-b544-fe8295725ac8",
+            "status": "completed",
+            "to": "8181745a-f7fe-4eae-afa1-a2906ad17c61"
+          }
+        ],
+        "goal": "Prepare a concise analytical brief in English on project readiness using only these materials.",
+        "id": "972a8046-52fc-4d32-a9ad-d9349db7a40d",
+        "process_id": "fb72aa91-7bc7-4f9b-b5d9-48657c3e7053",
+        "process_version": 1,
+        "status": "completed",
+        "tasks": [
+          {
+            "agent_definition_id": "coordinator",
+            "agent_instance_id": "session_ram_1795555666441_a51765dba73bb276",
+            "attempt_id": "c54ad899-2d81-4a55-86f0-9c906b5db2e2",
+            "completed_at": "2026-11-24T21:27:51.050248598+00:00",
+            "id": "3337dc49-de8f-4e82-818c-7f971f78c7df",
+            "started_at": "2026-11-24T21:27:46.468033987+00:00",
+            "status": "completed",
+            "summary": "aaas.stage.coordinator.completed"
+          },
+          {
+            "agent_definition_id": "analyst",
+            "agent_instance_id": "session_rooster_1795555671066_80f58b1bc4f2a0db",
+            "attempt_id": "26eaadf2-cc04-4d59-a4d4-63b95940d9db",
+            "completed_at": "2026-11-24T21:27:58.816690389+00:00",
+            "id": "e8162083-7b98-4e66-a68e-0ee07847642c",
+            "started_at": "2026-11-24T21:27:53.362249733+00:00",
+            "status": "completed",
+            "summary": "aaas.stage.analyst.completed"
+          },
+          {
+            "agent_definition_id": "evidence_checker",
+            "agent_instance_id": "session_shrimp_1795555671066_294a7000ba01e0dc",
+            "attempt_id": "dbafc3d4-d632-4f69-8740-979fa519e0f5",
+            "completed_at": "2026-11-24T21:28:01.068569392+00:00",
+            "id": "9b298f39-feef-43d7-995c-8d6607e49030",
+            "started_at": "2026-11-24T21:27:53.369912686+00:00",
+            "status": "completed",
+            "summary": "aaas.stage.evidence_checker.completed"
+          },
+          {
+            "agent_definition_id": "reviewer",
+            "agent_instance_id": "session_sauropod_1795555681081_1829e7ce463887b9",
+            "attempt_id": "311db197-c620-422d-b2b6-b0c45833d041",
+            "completed_at": "2026-11-24T21:28:10.423123316+00:00",
+            "id": "8181745a-f7fe-4eae-afa1-a2906ad17c61",
+            "started_at": "2026-11-24T21:28:01.101394285+00:00",
+            "status": "completed",
+            "summary": "aaas.stage.reviewer.completed"
+          }
+        ],
+        "title": "Live acceptance bob",
+        "updated_at": "2026-11-24T21:28:10.430282170+00:00",
+        "version": 15,
+        "watermark": 15
+      },
+      "tenant": "bob"
+    }
+  ]
+}
