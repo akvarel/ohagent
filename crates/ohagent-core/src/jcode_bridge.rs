@@ -178,6 +178,8 @@ pub struct JcodeBridge {
     tool_registry: Arc<ToolRegistry>,
     mcp_pool: Option<Arc<SharedMcpPool>>,
     config: JcodeBridgeConfig,
+    /// Customer analytical agents cannot execute tools or discover host data.
+    text_only: bool,
     progress: ProgressStore,
 }
 
@@ -193,8 +195,21 @@ impl JcodeBridge {
             tool_registry: Arc::new(ToolRegistry::new()),
             mcp_pool: None,
             config: JcodeBridgeConfig::default(),
+            text_only: false,
             progress: ProgressStore::default(),
         }
+    }
+
+    /// Restrict a dedicated customer runtime to text inference. This is enforced
+    /// by Jcode's tool policy, not by instructions inside untrusted materials.
+    /// Use a separate bridge and security-domain tenant IDs from gateway sessions.
+    pub fn with_text_only_policy(mut self) -> Self {
+        self.text_only = true;
+        self
+    }
+
+    pub fn is_text_only(&self) -> bool {
+        self.text_only
     }
 
     pub fn progress(&self) -> &ProgressStore {
@@ -488,6 +503,7 @@ impl JcodeBridge {
         let jcode_home = self.runtime_home_for_tenant(&tenant_id)?;
         let binary = self.jcode_binary();
         let inherited_working_dir = config.working_dir.as_ref().map(PathBuf::from);
+        let text_only = self.text_only;
 
         let runtime = tokio::task::spawn_blocking(move || {
             let mut launch = LaunchOptions {
@@ -499,6 +515,16 @@ impl JcodeBridge {
                 ..LaunchOptions::default()
             };
             launch.env.insert("JCODE_INHERIT_LOGINS".into(), "0".into());
+            if text_only {
+                for (key, value) in [
+                    ("JCODE_TOOL_PROFILE", "none"),
+                    ("JCODE_TOOLS", ""),
+                    ("JCODE_DISABLE_BASE_TOOLS", "true"),
+                    ("JCODE_CODEMODE", "false"),
+                ] {
+                    launch.env.insert(key.into(), value.into());
+                }
+            }
             // Monitoring credentials are daemon concerns, not agent tool inputs.
             for key in [
                 "OHAGENT_PROGRESS_PUBLISH_TOKEN",
