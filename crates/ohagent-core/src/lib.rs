@@ -23,6 +23,7 @@ pub mod s3_archive;
 pub mod scheduler;
 pub mod session;
 pub mod session_store;
+pub mod standard_agents;
 pub mod tools;
 pub mod usage_tracker;
 pub mod vault;

@@ -4,6 +4,7 @@
 //! Manages lifecycle, health checks, graceful shutdown,
 //! hosts the messaging gateway, and serves the REST API.
 
+mod aaas;
 mod api;
 mod auth;
 mod context_compressor;
@@ -17,6 +18,7 @@ mod reasoning;
 mod security_guard;
 mod system_prompt;
 mod webhooks;
+mod web_site;
 mod ws;
 
 use anyhow::Result;
@@ -95,6 +97,10 @@ struct Cli {
     /// Health check port
     #[arg(long, default_value = "9090")]
     health_port: u16,
+
+    /// Serve the public site and AaaS only, without gateways, cron or private key files.
+    #[arg(long)]
+    site_only: bool,
 
     /// Enable Telegram gateway
     #[arg(long, default_value = "true")]
@@ -818,7 +824,13 @@ impl Daemon {
                 }
             });
         }
-        let app = api::router(api_state);
+        let app = api::router(api_state).merge(aaas::router(
+            &self.bridge,
+            std::env::var_os("OHAGENT_AAAS_DATA_ROOT")
+                .map(std::path::PathBuf::from)
+                .unwrap_or_else(|| self.config.resolve_path("~/.ohagent/aaas")),
+        ).await?);
+        let app = web_site::attach(app)?;
 
         tokio::spawn(async move {
             use std::net::SocketAddr;
@@ -1164,8 +1176,31 @@ pub async fn run() -> Result<()> {
         )
         .init();
 
+    if cli.site_only {
+        return run_site_only(cli.health_port).await;
+    }
     let daemon = Daemon::new(cli.health_port, cli.telegram, &cli.config)?;
     daemon.run().await
+}
+
+/// Local/staging entry mode using the same routers and adapter as the daemon.
+/// It never reads keys.toml, starts messaging adapters or runs scheduled work.
+async fn run_site_only(port: u16) -> Result<()> {
+    setup_provider_runtimes();
+    let bridge = Arc::new(JcodeBridge::new(Arc::new(jcode_base::provider::MultiProvider::new())));
+    let root = std::env::var_os("OHAGENT_AAAS_DATA_ROOT")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::path::PathBuf::from(shellexpand::tilde("~/.ohagent/aaas").as_ref()));
+    let app = axum::Router::new()
+        .route("/health", axum::routing::get(|| async { axum::Json(serde_json::json!({"status":"ok","mode":"site-only"})) }))
+        .merge(aaas::router(&bridge, root).await?);
+    let app = web_site::attach(app)?;
+    let host = std::env::var("OHAGENT_SITE_BIND").unwrap_or_else(|_| "127.0.0.1".into());
+    let address: std::net::SocketAddr = format!("{host}:{port}").parse()?;
+    let listener = tokio::net::TcpListener::bind(address).await?;
+    info!(%address, "Site-only server started without gateways or scheduler");
+    axum::serve(listener, app).with_graceful_shutdown(async { let _ = signal::ctrl_c().await; }).await?;
+    Ok(())
 }
 
 async fn main_inner() -> Result<()> {

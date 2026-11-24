@@ -18,6 +18,9 @@ chrono = { workspace = true }
 toml = "0.8"
 shellexpand = { workspace = true }
 uuid = { workspace = true }
+ohagent-aaas = { path = "../ohagent-aaas" }
+async-trait = { workspace = true }
+tower-http = { version = "0.6", features = ["fs", "set-header"] }
 ohagent-core = { path = "../ohagent-core" }
 ohagent-document-api = { path = "../ohagent-document-api" }
 ohagent-plugins = { path = "../ohagent-plugins" }

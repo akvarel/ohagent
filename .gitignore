@@ -3,6 +3,9 @@
 **/*.rs.bk
 *.pdb
 
+# JavaScript dependencies
+**/node_modules/
+
 # Dashboard incremental TypeScript build cache
 *.tsbuildinfo
 
