@@ -93,10 +93,18 @@ if (process.env.PLAYWRIGHT_EXECUTABLE_PATH) browserOptions.executablePath = proc
       await page.waitForFunction(() => document.querySelector('meta[name="robots"]')?.content === 'noindex, nofollow');
       assert.ok((await page.locator('body').textContent()).length > 5);
       checks++;
-      await page.goto(base + '/missing-page');
-      await page.locator('.oh-public h1').waitFor();
-      assert.ok((await page.locator('.oh-eyebrow').textContent()).includes('404'));
-      assert.equal(await page.locator('meta[name="robots"]').getAttribute('content'), 'noindex, nofollow');
+      const missing = await page.goto(base + '/missing-page');
+      assert.ok(missing, 'missing route must produce a document response');
+      if (missing.status() === 404) {
+        // The compiled same-origin server deliberately refuses unknown routes.
+        assert.equal(missing.headers()['x-content-type-options'], 'nosniff');
+      } else {
+        // Vite's development fallback loads the client-side localized 404.
+        assert.equal(missing.status(), 200);
+        await page.locator('.oh-public h1').waitFor();
+        assert.ok((await page.locator('.oh-eyebrow').textContent()).includes('404'));
+        assert.equal(await page.locator('meta[name="robots"]').getAttribute('content'), 'noindex, nofollow');
+      }
       checks++;
       if (process.env.PUBLIC_UI_ARTIFACTS) {
         await page.goto(base + '/');

@@ -10,7 +10,13 @@
 - Owner clarification: ohAgent is the runtime for Standard Agent Specification, composing domain-specific agents into a universe. Never confuse a workflow stage, definition and actual runtime instance.
 
 ## Milestones
-M0 in progress. M1-M4 pending. No completion claimed without acceptance evidence.
+| Milestone | Status | Evidence / remaining gate |
+| --- | --- | --- |
+| M0 | PASS | Repository baseline, existing runtime/auth mapping, typed catalog and bounded pilot contract recorded. |
+| M1 | BLOCKED for staged delivery | Site/product/demo implemented and browser-tested EN/LV/RU. Approved staging origin and verified company contact are missing. |
+| M2 | BLOCKED for customer acceptance | Actual Jcode/provider produces separate verified results for two private test principals with distinct goals/materials. Deployed OIDC and real browser sign-in are not established. |
+| M3 | Partial, not accepted complete | Fixed four-role fork/join, atomic journal, cursor recovery, restart fencing and actual logical SDK cancellation tested. Retry/approval continuations are not supported by this profile. |
+| M4 | BLOCKED | Feature branch and draft PR published. Local checks and labelled recording exist. Full staging identity/revocation/reconnect demonstration and remaining release gaps are open. |
 
 ## Initial evidence
 - Rust JcodeBridge uses public jcode-sdk and private runtime homes per tenant, not a separate web executor.
@@ -25,3 +31,24 @@ Keep existing engine, provider routing, secret policy and legacy routes. No prod
 
 ## Delegation routing
 Catalog verified with `jcode model list -p openai`: gpt-6.1-sol is present. Authorized automatic first route: openai:gpt-6.1-sol. Tool swarm list_models output exceeded tool context guard, and spawn schema has no model selector, so explicit CLI workers use `jcode run -p openai -m gpt-6.1-sol` to avoid an implicit inherited route. Catalog presence is not proof of successful inference.
+
+## Integration map and final local evidence
+
+| Existing component | Confirmed boundary | Minimal integration |
+| --- | --- | --- |
+| React/Vite dashboard | Legacy operator routes and API-key access | Add public routes and lazy PKCE customer subtree, preserve existing pages. |
+| JcodeBridge/public SDK | Real per-tenant child runtime and sessions | Dedicated deny-all-tools customer bridge, independent SDK attachment per invocation, acceptance/cancel barrier and guarded cleanup. |
+| Existing daemon | Messaging/scheduler plus operator-key router | Merge tenant AaaS outside operator middleware; add safe `--site-only` and explicit static document routes. |
+| Standard Agent package | Pinned official definitions and provider factory types | Strict trusted build-time text-profile export; no arbitrary package execution or second model/router. |
+| Durable workflow state | No prior customer AaaS journal | Add tenant-scoped SQLite snapshots/journal in one transaction, immutable process versions, idempotency and producer fencing. |
+
+Production code checked: `8a9b26e3c2e2a761c5d79e769115ff31f48e9da3`.
+Draft PR: https://github.com/akvarel/ohagent/pull/8.
+
+Actual Jcode/provider checks passed for two private test identities, distinct caller goals/materials, four roles each and overlapping analyst/evidence-checker branches. Both artifacts passed required-field and exact-quotation verification. Actual logical SDK cancellation also passed. This does not establish deployed customer authentication or physical provider termination.
+
+Final local checks: 19 backend regressions, 2 separately opted-in actual-runtime tests, 6 verifier tests, core policy/boundary 2 + 7, 11 protocol tests, 3 official package tests/typecheck, strict changed-crate Clippy, daemon build and 41 compiled-site browser scenarios. Four actual same-origin HTTP tests passed. The complete repository strict lint remains blocked by existing unrelated dependency lints.
+
+See `AAAS_ACCEPTANCE.md` for every exact A01-A18 PASS/FAIL/BLOCKED row and evidence provenance, `AAAS_RUNBOOK.md` for launch/schema/staging/rollback, and `evidence/aaas-001` for real sanitized traces, results and clearly labelled component recording. The recording is not a 60–120 second live authenticated workflow. Independent review reports remain historical evidence, not blanket approval of later work.
+
+No production deployment, DNS/identity/credential mutation or Jcode submodule change occurred. Unrelated `TEAM_MEMORY/SESSION_LOG.md` remains untouched. Full task acceptance is still open, including retry attempts, monetary usage/budget controls, live membership revocation, AaaS monitoring and staged browser/performance verification. Owner inputs needed: approved staging origin, dedicated public OIDC configuration/accounts or explicit identity-client creation approval, and verified public contact/legal data.
