@@ -28,7 +28,7 @@ spec:
         fsGroup: 10001
       containers:
         - name: site
-          image: rg.pl-waw.scw.cloud/orangehat/ohagent@sha256:f0b274f726c1992eb277e1ec1dc2cb24821d93f4de5da053331828f9ec8029d5
+          image: rg.pl-waw.scw.cloud/orangehat/ohagent@sha256:0a32837b41981121c391dd6b7bb3efe7fba75c10aee1783e4dcb98f3e5cc026f
           imagePullPolicy: Never
           command: [ohagent-daemon, --site-only, --health-port, "9090"]
           ports:
