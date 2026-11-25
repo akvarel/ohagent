@@ -1,8 +1,12 @@
 # ORANGEHAT-AAAS-001 delivery
 
+## Repository separation, 2026-11-25
+
+Corporate source, public screenshots and stage packaging have moved to the dedicated landing repository. See [landing extraction](LANDING_EXTRACTION.md). The staging record below describes the pre-extraction image, which remains running unchanged.
+
 ## Staging update, 2026-11-25
 
-The owner-authorized public preview is deployed at https://stage.orangehat.ai using the actual site-only daemon in isolated namespace `ohagent-stage`. Deployment workflow and limitations: [staging runbook](../deploy/stage/README.md). Private inference remains deliberately disabled and the demo is labelled. This does not establish full authenticated customer acceptance or authorize production deployment. See `docs/evidence/aaas-001/stage-deployment.json` for executed checks and the local negative-DNS-cache limitation.
+The owner-authorized public preview is deployed at https://stage.orangehat.ai using the actual site-only daemon in isolated namespace `ohagent-stage`. Deployment workflow and limitations now reside in `~/git/orangehat/landing/deploy/stage/README.md`. Private inference remains deliberately disabled and the demo is labelled. This does not establish full authenticated customer acceptance or authorize production deployment. See the landing repository's `docs/evidence/aaas-001/stage-deployment.json` for executed checks and the local negative-DNS-cache limitation.
 
 ## Baseline
 - Repository: /sharedssd/git/orangehat/ohAgent

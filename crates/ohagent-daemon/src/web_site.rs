@@ -22,8 +22,6 @@ pub fn attach(app: Router) -> anyhow::Result<Router> {
     let mut app = app;
     for path in [
         "/",
-        "/agent-as-a-service",
-        "/agent-as-a-service/demo",
         "/agent-as-a-service/app",
         "/agent-as-a-service/app/{*path}",
         "/operator",
@@ -44,10 +42,10 @@ pub fn attach(app: Router) -> anyhow::Result<Router> {
 
 async fn headers(request: Request<axum::body::Body>, next: Next) -> Response {
     let path = request.uri().path();
-    let private = path.starts_with("/api/")
+    let private = path == "/"
+        || path.starts_with("/api/")
         || path.starts_with("/operator")
         || path.starts_with("/agent-as-a-service/app")
-        || path == "/agent-as-a-service/demo"
         || ["/progress", "/skills", "/memory", "/keys", "/usage"]
             .iter()
             .any(|p| path.starts_with(p));

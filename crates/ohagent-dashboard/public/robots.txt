@@ -1,12 +1,2 @@
 User-agent: *
-Allow: /
-Disallow: /agent-as-a-service/app
-Disallow: /agent-as-a-service/demo
-Disallow: /operator
-Disallow: /api/
-Disallow: /progress
-Disallow: /skills
-Disallow: /memory
-Disallow: /keys
-Disallow: /usage
-Sitemap: https://orangehat.ai/sitemap.xml
+Disallow: /

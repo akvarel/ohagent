@@ -1,5 +1,7 @@
 # ORANGEHAT-AAAS-001 acceptance matrix
 
+Historical revision-specific evidence: on November 25, 2026, corporate landing code, tests and public-only artifacts moved to the separate landing repository. Paths below describe the checked revision, not the current tree. See [repository separation](LANDING_EXTRACTION.md).
+
 Date: November 24, 2026, UTC. **Overall: NOT ACCEPTED for staged customer delivery.** Local implementation and real model execution are verified, but this is not a claim that two real customers completed a deployed OIDC workflow.
 
 Production-code revision checked: `8a9b26e3c2e2a761c5d79e769115ff31f48e9da3`. It includes backend `6728c49`, UI `f956d29`, artifact hardening and actual cancellation acceptance. Later evidence/documentation/test-harness commits do not change this production behavior. Branch: `feature/orangehat-aaas-001`. Draft PR: https://github.com/akvarel/ohagent/pull/8, deliberately targeting the verified existing base branch `update/jcode-v1.1.2-20261123`, not master.

@@ -1,5 +1,7 @@
 # ORANGEHAT-AAAS-001 independent acceptance security review
 
+Historical review: corporate UI paths below refer to the reviewed revision. That UI moved to `~/git/orangehat/landing` on November 25, 2026. See [repository separation](LANDING_EXTRACTION.md). This note does not change the original review findings.
+
 Review started 2026-11-24 21:08 UTC. Independent reviewer, not implementation author. Root owns integration and final acceptance. Source is read-only and this report is the sole authorized write. No production, credentials, submodule or Git mutations authorized or performed.
 
 ## Scope and disposition at 21:13 UTC
