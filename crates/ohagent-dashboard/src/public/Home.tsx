@@ -13,9 +13,15 @@ export default function Home() {
     <section id="ecosystem" className="oh-catalog-section"><div className="oh-wrap oh-section">
       <SectionIntro eyebrow={t.catalog} title={t.catalogTitle} body={t.catalogIntro} />
       <div className="oh-product-grid">{productCatalog.filter(entry => entry.publish).map(entry => <article className={`oh-product-card oh-product-${entry.id}`} key={entry.id}>
-        <div className="oh-card-top"><span className="oh-tag">{t[entry.categoryKey]}</span><span className="oh-product-mark" aria-hidden="true">{entry.id === 'ohagent' ? 'oh' : entry.id === 'bugzero' ? 'b₀' : 'g↗'}</span></div>
+        <div className="oh-card-top"><span className="oh-tag">{t[entry.categoryKey]}</span><span className="oh-product-mark" aria-hidden="true">{entry.mark}</span></div>
         <h3>{entry.displayName}</h3><p>{t[entry.summaryKey]}</p><p>{t[entry.targetUserKey]}</p><p className="oh-caption">{t[entry.statusKey]}</p>
-        <div className="oh-card-links">{entry.primaryUrl.startsWith('/') ? <Link className="oh-text-link" to={entry.primaryUrl}>{t[entry.ctaLabelKey]}<Arrow /></Link> : <a className="oh-text-link" href={entry.primaryUrl} target="_blank" rel="noopener noreferrer">{t[entry.ctaLabelKey]}<Arrow /></a>}{entry.primaryUrl !== entry.evidence.href && <a className="oh-source-link" href={entry.evidence.href} target="_blank" rel="noopener noreferrer">{t.internalEvidence}<Arrow /></a>}</div>
+        <div className="oh-card-links">
+          {entry.primaryUrl ? entry.primaryUrl.startsWith('/')
+            ? <Link className="oh-text-link" to={entry.primaryUrl}>{t[entry.ctaLabelKey]}<Arrow /></Link>
+            : <a className="oh-text-link" href={entry.primaryUrl} target="_blank" rel="noopener noreferrer">{t[entry.ctaLabelKey]}<Arrow /></a>
+            : <span className="oh-caption">{t[entry.ctaLabelKey]}</span>}
+          {entry.evidence.href && entry.primaryUrl !== entry.evidence.href && <a className="oh-source-link" href={entry.evidence.href} target="_blank" rel="noopener noreferrer">{t.internalEvidence}<Arrow /></a>}
+        </div>
         <small>{t.checked}: <time dateTime={entry.evidence.reviewedOn}>{new Intl.DateTimeFormat(language, { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(entry.evidence.reviewedOn))}</time></small>
       </article>)}</div>
       <p className="oh-evidence-note">{t.evidenceNote}</p>

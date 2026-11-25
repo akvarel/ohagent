@@ -1,5 +1,18 @@
 # ORANGEHAT-AAAS-001 M1 public UI handoff
 
+## Portfolio update, 2026-11-25
+
+The owner requested four additional entries. The landing now preserves ohAgent, BugZero and Graphify and adds:
+
+- **Celotleti.lv**: explicitly classified as a client reference for flight search and airline-ticket booking, linked to `https://celotleti.lv/`.
+- **Flatly.lv**: property/household management product, linked to `https://flatly.lv/`.
+- **Accounting**: AI-powered accounting product. Description checked against the registered OHAccounting project's README. No public URL was supplied or invented.
+- **Medicine Reminder**: medication reminders in Telegram. Description checked against the registered oh-health-bot project instructions. No bot username, treatment claim or public URL was invented.
+
+Both named public domains were reviewed read-only. The owner supplies the portfolio relationship, not a claim of live ohAgent integration. Descriptions, audience and missing-website labels support EN/LV/RU. Card marks are explicit catalog data rather than an ID fallback that would incorrectly reuse Graphify's mark. Optional URLs render a readable non-link label and never link to private project paths.
+
+`tests/public-ui.cjs` exercises all seven cards across the existing 390px/1440px and EN/LV/RU matrix, verifies translated descriptions and safe external links, preserves old entries and rejects fabricated links for the two products without a supplied website. RED against the old deployed site failed with `3 !== 7`, committed as `07ac40d`. GREEN against the actual local compiled daemon passed all 41 scenarios. Staging deployment uses the existing smoke-gated pipeline, with customer inference remaining disabled. Follow-up evidence is recorded in `docs/evidence/aaas-001/portfolio-update.md`.
+
 ## Scope
 
 This packet changes only `crates/ohagent-dashboard`, excluding `src/aaas`, which belongs to the product-app worker. No backend, submodule, production, credential, or secret changes were made by this packet. No commit or push was made because the coordinator owns integration.
