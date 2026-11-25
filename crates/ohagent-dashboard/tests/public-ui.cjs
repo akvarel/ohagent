@@ -43,8 +43,9 @@ if (process.env.PLAYWRIGHT_HOST_RESOLVER_RULES) browserOptions.args = [`--host-r
           assert.ok((await page.locator('meta[name="description"]').getAttribute('content')).length > 30);
           assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `${language} ${width} ${route} has horizontal overflow`);
           if (route === '/') {
-            assert.equal(await page.locator('.oh-product-card').count(), 7, 'Portfolio must preserve three entries and add four owner-requested products/references');
+            assert.equal(await page.locator('.oh-product-card').count(), 8, 'Portfolio must preserve seven entries and add Karmina');
             const additions = [
+              ['karmina', 'Karmina', null, { en: /animation and photorealistic filmmaking.*author and director/, lv: /animācijas un fotoreālistiska kino.*autora un režisora/, ru: /анимационного и фотореалистичного кино.*автора и режиссёра/ }],
               ['celotleti', 'Celotleti.lv', 'https://celotleti.lv/', { en: /Flight search and airline ticket booking/, lv: /Lidojumu meklēšana un aviobiļešu rezervēšana/, ru: /Поиск рейсов и бронирование авиабилетов/ }],
               ['flatly', 'Flatly.lv', 'https://flatly.lv/', { en: /Property and household management/, lv: /Īpašumu un mājsaimniecību pārvaldība/, ru: /Управление недвижимостью и домохозяйствами/ }],
               ['accounting', 'Accounting', null, { en: /accounting platform/, lv: /grāmatvedības platforma/, ru: /бухгалтерского учёта/ }],
@@ -54,6 +55,9 @@ if (process.env.PLAYWRIGHT_HOST_RESOLVER_RULES) browserOptions.args = [`--host-r
               const card = page.locator(`.oh-product-${id}`);
               assert.equal(await card.locator('h3').textContent(), name);
               assert.match(await card.textContent(), descriptions[language]);
+              if (id === 'karmina') {
+                assert.match(await card.textContent(), { en: /specialized agents, each focused on its own niche/, lv: /specializētu MI aģentu.*Katrs aģents darbojas savā nišā/, ru: /специализированных агентов.*Каждый агент заточен под свою нишу/ }[language]);
+              }
               assert.notEqual(await card.locator('.oh-product-mark').textContent(), 'g↗');
               if (url) {
                 const link = card.locator('a.oh-text-link');

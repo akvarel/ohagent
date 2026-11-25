@@ -7,7 +7,7 @@ export interface ProductEvidence {
   scope: 'description-only';
 }
 export interface ProductEntry {
-  id: 'ohagent' | 'bugzero' | 'celotleti' | 'flatly' | 'accounting' | 'medicine-reminder' | 'graphify';
+  id: 'ohagent' | 'bugzero' | 'celotleti' | 'flatly' | 'accounting' | 'medicine-reminder' | 'karmina' | 'graphify';
   displayName: string;
   mark: string;
   kind: 'runtime' | 'product' | 'reference' | 'technology';
@@ -52,6 +52,11 @@ export const productCatalog: readonly ProductEntry[] = [
   },
   {
     id: 'medicine-reminder', displayName: 'Medicine Reminder', mark: 'm+', kind: 'product', categoryKey: 'portfolioProduct', summaryKey: 'medicineDescription', targetUserKey: 'medicineUseCase',
+    verifiedStatus: 'availability-unverified', statusKey: 'availabilityUnverified', relationship: 'orangehat-product', ctaLabelKey: 'websiteNotPublished', publish: true,
+    evidence: { kind: 'project-documentation', reviewedOn: '2026-11-25', scope: 'description-only' },
+  },
+  {
+    id: 'karmina', displayName: 'Karmina', mark: 'ka', kind: 'product', categoryKey: 'portfolioProduct', summaryKey: 'karminaDescription', targetUserKey: 'karminaUseCase',
     verifiedStatus: 'availability-unverified', statusKey: 'availabilityUnverified', relationship: 'orangehat-product', ctaLabelKey: 'websiteNotPublished', publish: true,
     evidence: { kind: 'project-documentation', reviewedOn: '2026-11-25', scope: 'description-only' },
   },
