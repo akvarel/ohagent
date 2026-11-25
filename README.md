@@ -1,6 +1,8 @@
 # ohAgent — 24/7 Personal AI Super-Agent
 
 **ohAgent** is a self-hosted, always-on AI agent built on the public Jcode SDK v0.76.0.
+
+The OrangeHat corporate landing for `orangehat.ai` is maintained separately in `git@ssh.bitbucket.org:toposoft/landing.git` (`~/git/orangehat/landing`). This repository contains the runtime and its operator/customer workspaces, not the corporate website. See [landing extraction](docs/LANDING_EXTRACTION.md) for ownership and validation.
 It lives in your Telegram, remembers everything, learns from your tasks,
 processes receipts with sub-cent OCR, and scales to thousands of users.
 

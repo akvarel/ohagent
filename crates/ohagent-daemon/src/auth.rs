@@ -37,8 +37,7 @@ impl AuthConfig {
                     .map(char::from)
                     .collect();
                 tracing::info!(
-                    generated_api_key = %key,
-                    "No OHAGENT_API_KEY set — generated random key"
+                    "No OHAGENT_API_KEY set: generated an ephemeral operator key (not logged)"
                 );
                 key
             });

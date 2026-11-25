@@ -12,5 +12,7 @@ export default defineConfig({
   },
   build: {
     outDir: '../../target/dashboard-dist',
+    // This dedicated directory contains generated site assets only.
+    emptyOutDir: true,
   },
 });

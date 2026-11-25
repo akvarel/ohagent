@@ -1,0 +1,2914 @@
+{
+  "executed_at": "2026-11-24T21:40:53.684679154+00:00",
+  "kind": "actual-jcode-provider-with-test-identities",
+  "runs": [
+    {
+      "artifact_markdown": "# Release Readiness Review: ALPHA\\-ACCEPTANCE\\-71\n\nThe supplied material states that the integration test suite passed on 2026\\-11\\-24 and gives a delivery target of 2026\\-12\\-03, but it records no release\\-owner deployment approval and no budget\\. Release readiness is therefore not established\\. The material does not define readiness criteria, describe an approval process, or state whether approval or budget gates deployment\\.\n\n## Findings\n\nSupported status: the integration test suite is reported as passed; the delivery target is stated; deployment approval is absent; budget is absent\\. Delivery risk: approval is unresolved, and no approval timeline or decision date is provided relative to the delivery target\\. The budget is also unresolved, and the material does not state whether it is a release dependency\\. Because the source does not define readiness or state that approval is a precondition, the draft's 'primary blocker' and elevated\\-risk ranking should be removed or explicitly labeled as inference\\. The draft's 'not granted' wording should be corrected to 'not approved' or 'no approval recorded,' since no denial is stated\\. The nine\\-day interval between the test date and delivery target is a derived calculation, not a source statement\\. Information not supplied includes the release\\-owner decision and date, approval process and criteria, test scope and environment, budget status and dependency, deployment and rollback provisions, and the definition of ready\\. The material also self\\-describes as synthetic acceptance material, so conclusions apply only to that text\\.\n\n## Limitations\n\nThis review uses only the supplied material and does not verify test results, approval records, budgets, schedules, or deployment artifacts\\. The source does not define release readiness, identify the release owner, describe the approval workflow, or state whether approval and budget are gating requirements\\. No conclusion about technical quality, security, compliance, or actual delivery date is possible\\. The material is self\\-described as synthetic, and its provenance beyond that description is unknown\\.\n\n## Source quotations\n\n> Project ALPHA\\-ACCEPTANCE\\-71\\.\n\n> The integration test suite passed on November 24, 2026\\.\n\n> Delivery target: 2026\\-12\\-03\\.\n\n> The release owner has not approved the deployment\\.\n\n> The budget has not been provided\\.\n\n> This is synthetic acceptance material, not customer data\\.\n\n---\nVerification: required fields and exact source quotations checked deterministically. Semantic accuracy is not certified.\n",
+      "events": [
+        {
+          "event_id": "c009b3e7-7221-4141-a4d8-166ed610c55a",
+          "occurred_at": "2026-11-24T21:40:22.971156145+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.971041096+00:00",
+              "edges": [
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "aef58701-f873-4e38-8c71-1b4723cbec9d",
+                  "status": "planned",
+                  "to": "3e447860-30e3-4c9b-b675-e0a9c1ed7300"
+                },
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "94be4685-65ec-460e-a785-9b59945c5397",
+                  "status": "planned",
+                  "to": "ebdd8929-c1a0-45c3-8c4a-5356178838c7"
+                },
+                {
+                  "from": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "id": "111939bc-2e03-4502-a049-eee358e34da3",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                },
+                {
+                  "from": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "id": "67d11004-2503-40de-8111-0a4970a7c61f",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                }
+              ],
+              "goal": "Assess release readiness and deployment approval gaps in English using only my supplied materials.",
+              "id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+              "process_id": "4cdba1b9-f80c-4465-b69d-b1c7ba444dc5",
+              "process_version": 1,
+              "status": "queued",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+                  "id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+                  "id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+                  "id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+                  "id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:40:22.971151811+00:00",
+              "version": 1,
+              "watermark": 1
+            },
+            "status": "queued",
+            "version": 1
+          },
+          "recorded_at": "2026-11-24T21:40:22.971157105+00:00",
+          "run_id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+          "run_seq": 1,
+          "schema_version": 1,
+          "type": "run.created"
+        },
+        {
+          "agent_definition_id": "coordinator",
+          "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+          "event_id": "bd048edc-589e-4fa8-828b-9022efca451b",
+          "occurred_at": "2026-11-24T21:40:22.979479858+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.971041096+00:00",
+              "edges": [
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "aef58701-f873-4e38-8c71-1b4723cbec9d",
+                  "status": "planned",
+                  "to": "3e447860-30e3-4c9b-b675-e0a9c1ed7300"
+                },
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "94be4685-65ec-460e-a785-9b59945c5397",
+                  "status": "planned",
+                  "to": "ebdd8929-c1a0-45c3-8c4a-5356178838c7"
+                },
+                {
+                  "from": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "id": "111939bc-2e03-4502-a049-eee358e34da3",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                },
+                {
+                  "from": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "id": "67d11004-2503-40de-8111-0a4970a7c61f",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                }
+              ],
+              "goal": "Assess release readiness and deployment approval gaps in English using only my supplied materials.",
+              "id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+              "process_id": "4cdba1b9-f80c-4465-b69d-b1c7ba444dc5",
+              "process_version": 1,
+              "status": "queued",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+                  "id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+                  "id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+                  "id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+                  "id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:40:22.979468143+00:00",
+              "version": 2,
+              "watermark": 2
+            },
+            "status": "queued",
+            "version": 2
+          },
+          "recorded_at": "2026-11-24T21:40:22.979481508+00:00",
+          "run_id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+          "run_seq": 2,
+          "schema_version": 1,
+          "task_id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+          "type": "task.dispatched"
+        },
+        {
+          "agent_definition_id": "coordinator",
+          "agent_instance_id": "session_snake_1795556423590_250c30fdea9ec353",
+          "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+          "event_id": "fa4a3cec-8e28-4759-9e0e-28335084e5f3",
+          "occurred_at": "2026-11-24T21:40:23.625974274+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.971041096+00:00",
+              "edges": [
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "aef58701-f873-4e38-8c71-1b4723cbec9d",
+                  "status": "planned",
+                  "to": "3e447860-30e3-4c9b-b675-e0a9c1ed7300"
+                },
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "94be4685-65ec-460e-a785-9b59945c5397",
+                  "status": "planned",
+                  "to": "ebdd8929-c1a0-45c3-8c4a-5356178838c7"
+                },
+                {
+                  "from": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "id": "111939bc-2e03-4502-a049-eee358e34da3",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                },
+                {
+                  "from": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "id": "67d11004-2503-40de-8111-0a4970a7c61f",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                }
+              ],
+              "goal": "Assess release readiness and deployment approval gaps in English using only my supplied materials.",
+              "id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+              "process_id": "4cdba1b9-f80c-4465-b69d-b1c7ba444dc5",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_snake_1795556423590_250c30fdea9ec353",
+                  "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+                  "id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "started_at": "2026-11-24T21:40:23.625925173+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+                  "id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+                  "id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+                  "id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:40:23.625968785+00:00",
+              "version": 3,
+              "watermark": 3
+            },
+            "status": "running",
+            "version": 3
+          },
+          "recorded_at": "2026-11-24T21:40:23.625975183+00:00",
+          "run_id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+          "run_seq": 3,
+          "schema_version": 1,
+          "task_id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+          "type": "task.started"
+        },
+        {
+          "agent_definition_id": "coordinator",
+          "agent_instance_id": "session_snake_1795556423590_250c30fdea9ec353",
+          "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+          "event_id": "3ad4a990-c700-417a-becc-71d7f0e08a0f",
+          "occurred_at": "2026-11-24T21:40:28.258482563+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.971041096+00:00",
+              "edges": [
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "aef58701-f873-4e38-8c71-1b4723cbec9d",
+                  "status": "planned",
+                  "to": "3e447860-30e3-4c9b-b675-e0a9c1ed7300"
+                },
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "94be4685-65ec-460e-a785-9b59945c5397",
+                  "status": "planned",
+                  "to": "ebdd8929-c1a0-45c3-8c4a-5356178838c7"
+                },
+                {
+                  "from": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "id": "111939bc-2e03-4502-a049-eee358e34da3",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                },
+                {
+                  "from": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "id": "67d11004-2503-40de-8111-0a4970a7c61f",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                }
+              ],
+              "goal": "Assess release readiness and deployment approval gaps in English using only my supplied materials.",
+              "id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+              "process_id": "4cdba1b9-f80c-4465-b69d-b1c7ba444dc5",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_snake_1795556423590_250c30fdea9ec353",
+                  "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+                  "completed_at": "2026-11-24T21:40:28.258467015+00:00",
+                  "id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "started_at": "2026-11-24T21:40:23.625925173+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+                  "id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+                  "id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+                  "id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:40:28.258477129+00:00",
+              "version": 4,
+              "watermark": 4
+            },
+            "status": "running",
+            "version": 4
+          },
+          "recorded_at": "2026-11-24T21:40:28.258483410+00:00",
+          "run_id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+          "run_seq": 4,
+          "schema_version": 1,
+          "task_id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+          "type": "task.completed"
+        },
+        {
+          "agent_definition_id": "analyst",
+          "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+          "event_id": "e30b9f72-ca6f-4318-9507-aca75c6b0032",
+          "occurred_at": "2026-11-24T21:40:28.262978585+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.971041096+00:00",
+              "edges": [
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "aef58701-f873-4e38-8c71-1b4723cbec9d",
+                  "status": "dispatched",
+                  "to": "3e447860-30e3-4c9b-b675-e0a9c1ed7300"
+                },
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "94be4685-65ec-460e-a785-9b59945c5397",
+                  "status": "planned",
+                  "to": "ebdd8929-c1a0-45c3-8c4a-5356178838c7"
+                },
+                {
+                  "from": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "id": "111939bc-2e03-4502-a049-eee358e34da3",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                },
+                {
+                  "from": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "id": "67d11004-2503-40de-8111-0a4970a7c61f",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                }
+              ],
+              "goal": "Assess release readiness and deployment approval gaps in English using only my supplied materials.",
+              "id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+              "process_id": "4cdba1b9-f80c-4465-b69d-b1c7ba444dc5",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_snake_1795556423590_250c30fdea9ec353",
+                  "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+                  "completed_at": "2026-11-24T21:40:28.258467015+00:00",
+                  "id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "started_at": "2026-11-24T21:40:23.625925173+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+                  "id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+                  "id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+                  "id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:40:28.262971436+00:00",
+              "version": 5,
+              "watermark": 5
+            },
+            "status": "running",
+            "version": 5
+          },
+          "recorded_at": "2026-11-24T21:40:28.262979621+00:00",
+          "run_id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+          "run_seq": 5,
+          "schema_version": 1,
+          "task_id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+          "type": "task.dispatched"
+        },
+        {
+          "agent_definition_id": "evidence_checker",
+          "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+          "event_id": "70235a30-cfa1-4a15-8fb8-34515a72d450",
+          "occurred_at": "2026-11-24T21:40:28.267540922+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.971041096+00:00",
+              "edges": [
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "aef58701-f873-4e38-8c71-1b4723cbec9d",
+                  "status": "dispatched",
+                  "to": "3e447860-30e3-4c9b-b675-e0a9c1ed7300"
+                },
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "94be4685-65ec-460e-a785-9b59945c5397",
+                  "status": "dispatched",
+                  "to": "ebdd8929-c1a0-45c3-8c4a-5356178838c7"
+                },
+                {
+                  "from": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "id": "111939bc-2e03-4502-a049-eee358e34da3",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                },
+                {
+                  "from": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "id": "67d11004-2503-40de-8111-0a4970a7c61f",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                }
+              ],
+              "goal": "Assess release readiness and deployment approval gaps in English using only my supplied materials.",
+              "id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+              "process_id": "4cdba1b9-f80c-4465-b69d-b1c7ba444dc5",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_snake_1795556423590_250c30fdea9ec353",
+                  "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+                  "completed_at": "2026-11-24T21:40:28.258467015+00:00",
+                  "id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "started_at": "2026-11-24T21:40:23.625925173+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+                  "id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+                  "id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+                  "id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:40:28.267528391+00:00",
+              "version": 6,
+              "watermark": 6
+            },
+            "status": "running",
+            "version": 6
+          },
+          "recorded_at": "2026-11-24T21:40:28.267542019+00:00",
+          "run_id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+          "run_seq": 6,
+          "schema_version": 1,
+          "task_id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+          "type": "task.dispatched"
+        },
+        {
+          "agent_definition_id": "analyst",
+          "agent_instance_id": "session_squid_1795556428776_96c352e6e616ee76",
+          "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+          "event_id": "e299c806-1885-4a93-a70d-7002fbe40a80",
+          "occurred_at": "2026-11-24T21:40:30.551204066+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.971041096+00:00",
+              "edges": [
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "aef58701-f873-4e38-8c71-1b4723cbec9d",
+                  "status": "dispatched",
+                  "to": "3e447860-30e3-4c9b-b675-e0a9c1ed7300"
+                },
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "94be4685-65ec-460e-a785-9b59945c5397",
+                  "status": "dispatched",
+                  "to": "ebdd8929-c1a0-45c3-8c4a-5356178838c7"
+                },
+                {
+                  "from": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "id": "111939bc-2e03-4502-a049-eee358e34da3",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                },
+                {
+                  "from": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "id": "67d11004-2503-40de-8111-0a4970a7c61f",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                }
+              ],
+              "goal": "Assess release readiness and deployment approval gaps in English using only my supplied materials.",
+              "id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+              "process_id": "4cdba1b9-f80c-4465-b69d-b1c7ba444dc5",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_snake_1795556423590_250c30fdea9ec353",
+                  "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+                  "completed_at": "2026-11-24T21:40:28.258467015+00:00",
+                  "id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "started_at": "2026-11-24T21:40:23.625925173+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_squid_1795556428776_96c352e6e616ee76",
+                  "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+                  "id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "started_at": "2026-11-24T21:40:30.551148955+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+                  "id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+                  "id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:40:30.551198190+00:00",
+              "version": 7,
+              "watermark": 7
+            },
+            "status": "running",
+            "version": 7
+          },
+          "recorded_at": "2026-11-24T21:40:30.551205017+00:00",
+          "run_id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+          "run_seq": 7,
+          "schema_version": 1,
+          "task_id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+          "type": "task.started"
+        },
+        {
+          "agent_definition_id": "evidence_checker",
+          "agent_instance_id": "session_spider_1795556428776_23aa9a0818525b63",
+          "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+          "event_id": "c2a4e4b9-1a72-4096-9706-4c560a416b77",
+          "occurred_at": "2026-11-24T21:40:30.558310010+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.971041096+00:00",
+              "edges": [
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "aef58701-f873-4e38-8c71-1b4723cbec9d",
+                  "status": "dispatched",
+                  "to": "3e447860-30e3-4c9b-b675-e0a9c1ed7300"
+                },
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "94be4685-65ec-460e-a785-9b59945c5397",
+                  "status": "dispatched",
+                  "to": "ebdd8929-c1a0-45c3-8c4a-5356178838c7"
+                },
+                {
+                  "from": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "id": "111939bc-2e03-4502-a049-eee358e34da3",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                },
+                {
+                  "from": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "id": "67d11004-2503-40de-8111-0a4970a7c61f",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                }
+              ],
+              "goal": "Assess release readiness and deployment approval gaps in English using only my supplied materials.",
+              "id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+              "process_id": "4cdba1b9-f80c-4465-b69d-b1c7ba444dc5",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_snake_1795556423590_250c30fdea9ec353",
+                  "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+                  "completed_at": "2026-11-24T21:40:28.258467015+00:00",
+                  "id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "started_at": "2026-11-24T21:40:23.625925173+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_squid_1795556428776_96c352e6e616ee76",
+                  "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+                  "id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "started_at": "2026-11-24T21:40:30.551148955+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_spider_1795556428776_23aa9a0818525b63",
+                  "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+                  "id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "started_at": "2026-11-24T21:40:30.558259182+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+                  "id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:40:30.558303702+00:00",
+              "version": 8,
+              "watermark": 8
+            },
+            "status": "running",
+            "version": 8
+          },
+          "recorded_at": "2026-11-24T21:40:30.558310943+00:00",
+          "run_id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+          "run_seq": 8,
+          "schema_version": 1,
+          "task_id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+          "type": "task.started"
+        },
+        {
+          "agent_definition_id": "analyst",
+          "agent_instance_id": "session_squid_1795556428776_96c352e6e616ee76",
+          "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+          "event_id": "67442ed6-d315-4089-9d03-e4309a7c1dd5",
+          "occurred_at": "2026-11-24T21:40:36.067985374+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.971041096+00:00",
+              "edges": [
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "aef58701-f873-4e38-8c71-1b4723cbec9d",
+                  "status": "completed",
+                  "to": "3e447860-30e3-4c9b-b675-e0a9c1ed7300"
+                },
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "94be4685-65ec-460e-a785-9b59945c5397",
+                  "status": "dispatched",
+                  "to": "ebdd8929-c1a0-45c3-8c4a-5356178838c7"
+                },
+                {
+                  "from": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "id": "111939bc-2e03-4502-a049-eee358e34da3",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                },
+                {
+                  "from": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "id": "67d11004-2503-40de-8111-0a4970a7c61f",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                }
+              ],
+              "goal": "Assess release readiness and deployment approval gaps in English using only my supplied materials.",
+              "id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+              "process_id": "4cdba1b9-f80c-4465-b69d-b1c7ba444dc5",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_snake_1795556423590_250c30fdea9ec353",
+                  "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+                  "completed_at": "2026-11-24T21:40:28.258467015+00:00",
+                  "id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "started_at": "2026-11-24T21:40:23.625925173+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_squid_1795556428776_96c352e6e616ee76",
+                  "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+                  "completed_at": "2026-11-24T21:40:36.067969713+00:00",
+                  "id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "started_at": "2026-11-24T21:40:30.551148955+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_spider_1795556428776_23aa9a0818525b63",
+                  "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+                  "id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "started_at": "2026-11-24T21:40:30.558259182+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+                  "id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:40:36.067979410+00:00",
+              "version": 9,
+              "watermark": 9
+            },
+            "status": "running",
+            "version": 9
+          },
+          "recorded_at": "2026-11-24T21:40:36.067986215+00:00",
+          "run_id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+          "run_seq": 9,
+          "schema_version": 1,
+          "task_id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+          "type": "task.completed"
+        },
+        {
+          "agent_definition_id": "evidence_checker",
+          "agent_instance_id": "session_spider_1795556428776_23aa9a0818525b63",
+          "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+          "event_id": "421567ca-1641-4589-9fc1-6e17de64d0b1",
+          "occurred_at": "2026-11-24T21:40:41.855553378+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.971041096+00:00",
+              "edges": [
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "aef58701-f873-4e38-8c71-1b4723cbec9d",
+                  "status": "completed",
+                  "to": "3e447860-30e3-4c9b-b675-e0a9c1ed7300"
+                },
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "94be4685-65ec-460e-a785-9b59945c5397",
+                  "status": "completed",
+                  "to": "ebdd8929-c1a0-45c3-8c4a-5356178838c7"
+                },
+                {
+                  "from": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "id": "111939bc-2e03-4502-a049-eee358e34da3",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                },
+                {
+                  "from": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "id": "67d11004-2503-40de-8111-0a4970a7c61f",
+                  "status": "planned",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                }
+              ],
+              "goal": "Assess release readiness and deployment approval gaps in English using only my supplied materials.",
+              "id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+              "process_id": "4cdba1b9-f80c-4465-b69d-b1c7ba444dc5",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_snake_1795556423590_250c30fdea9ec353",
+                  "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+                  "completed_at": "2026-11-24T21:40:28.258467015+00:00",
+                  "id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "started_at": "2026-11-24T21:40:23.625925173+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_squid_1795556428776_96c352e6e616ee76",
+                  "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+                  "completed_at": "2026-11-24T21:40:36.067969713+00:00",
+                  "id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "started_at": "2026-11-24T21:40:30.551148955+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_spider_1795556428776_23aa9a0818525b63",
+                  "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+                  "completed_at": "2026-11-24T21:40:41.855537935+00:00",
+                  "id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "started_at": "2026-11-24T21:40:30.558259182+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+                  "id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:40:41.855547568+00:00",
+              "version": 10,
+              "watermark": 10
+            },
+            "status": "running",
+            "version": 10
+          },
+          "recorded_at": "2026-11-24T21:40:41.855554241+00:00",
+          "run_id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+          "run_seq": 10,
+          "schema_version": 1,
+          "task_id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+          "type": "task.completed"
+        },
+        {
+          "agent_definition_id": "reviewer",
+          "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+          "event_id": "39f2f51d-a68f-4893-8912-03393f6717f9",
+          "occurred_at": "2026-11-24T21:40:41.859407876+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.971041096+00:00",
+              "edges": [
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "aef58701-f873-4e38-8c71-1b4723cbec9d",
+                  "status": "completed",
+                  "to": "3e447860-30e3-4c9b-b675-e0a9c1ed7300"
+                },
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "94be4685-65ec-460e-a785-9b59945c5397",
+                  "status": "completed",
+                  "to": "ebdd8929-c1a0-45c3-8c4a-5356178838c7"
+                },
+                {
+                  "from": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "id": "111939bc-2e03-4502-a049-eee358e34da3",
+                  "status": "dispatched",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                },
+                {
+                  "from": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "id": "67d11004-2503-40de-8111-0a4970a7c61f",
+                  "status": "dispatched",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                }
+              ],
+              "goal": "Assess release readiness and deployment approval gaps in English using only my supplied materials.",
+              "id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+              "process_id": "4cdba1b9-f80c-4465-b69d-b1c7ba444dc5",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_snake_1795556423590_250c30fdea9ec353",
+                  "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+                  "completed_at": "2026-11-24T21:40:28.258467015+00:00",
+                  "id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "started_at": "2026-11-24T21:40:23.625925173+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_squid_1795556428776_96c352e6e616ee76",
+                  "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+                  "completed_at": "2026-11-24T21:40:36.067969713+00:00",
+                  "id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "started_at": "2026-11-24T21:40:30.551148955+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_spider_1795556428776_23aa9a0818525b63",
+                  "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+                  "completed_at": "2026-11-24T21:40:41.855537935+00:00",
+                  "id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "started_at": "2026-11-24T21:40:30.558259182+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+                  "id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:40:41.859401308+00:00",
+              "version": 11,
+              "watermark": 11
+            },
+            "status": "running",
+            "version": 11
+          },
+          "recorded_at": "2026-11-24T21:40:41.859408871+00:00",
+          "run_id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+          "run_seq": 11,
+          "schema_version": 1,
+          "task_id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+          "type": "task.dispatched"
+        },
+        {
+          "agent_definition_id": "reviewer",
+          "agent_instance_id": "session_swan_1795556441869_6f65c6faebb67a2f",
+          "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+          "event_id": "b9164c5b-5e70-4cec-86b8-268c005d996b",
+          "occurred_at": "2026-11-24T21:40:41.887535564+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.971041096+00:00",
+              "edges": [
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "aef58701-f873-4e38-8c71-1b4723cbec9d",
+                  "status": "completed",
+                  "to": "3e447860-30e3-4c9b-b675-e0a9c1ed7300"
+                },
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "94be4685-65ec-460e-a785-9b59945c5397",
+                  "status": "completed",
+                  "to": "ebdd8929-c1a0-45c3-8c4a-5356178838c7"
+                },
+                {
+                  "from": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "id": "111939bc-2e03-4502-a049-eee358e34da3",
+                  "status": "dispatched",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                },
+                {
+                  "from": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "id": "67d11004-2503-40de-8111-0a4970a7c61f",
+                  "status": "dispatched",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                }
+              ],
+              "goal": "Assess release readiness and deployment approval gaps in English using only my supplied materials.",
+              "id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+              "process_id": "4cdba1b9-f80c-4465-b69d-b1c7ba444dc5",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_snake_1795556423590_250c30fdea9ec353",
+                  "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+                  "completed_at": "2026-11-24T21:40:28.258467015+00:00",
+                  "id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "started_at": "2026-11-24T21:40:23.625925173+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_squid_1795556428776_96c352e6e616ee76",
+                  "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+                  "completed_at": "2026-11-24T21:40:36.067969713+00:00",
+                  "id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "started_at": "2026-11-24T21:40:30.551148955+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_spider_1795556428776_23aa9a0818525b63",
+                  "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+                  "completed_at": "2026-11-24T21:40:41.855537935+00:00",
+                  "id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "started_at": "2026-11-24T21:40:30.558259182+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "agent_instance_id": "session_swan_1795556441869_6f65c6faebb67a2f",
+                  "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+                  "id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+                  "started_at": "2026-11-24T21:40:41.887461557+00:00",
+                  "status": "running",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:40:41.887528316+00:00",
+              "version": 12,
+              "watermark": 12
+            },
+            "status": "running",
+            "version": 12
+          },
+          "recorded_at": "2026-11-24T21:40:41.887537094+00:00",
+          "run_id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+          "run_seq": 12,
+          "schema_version": 1,
+          "task_id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+          "type": "task.started"
+        },
+        {
+          "agent_definition_id": "reviewer",
+          "agent_instance_id": "session_swan_1795556441869_6f65c6faebb67a2f",
+          "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+          "event_id": "54293281-c835-433f-b353-f2a11656c8a6",
+          "occurred_at": "2026-11-24T21:40:53.562526477+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.971041096+00:00",
+              "edges": [
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "aef58701-f873-4e38-8c71-1b4723cbec9d",
+                  "status": "completed",
+                  "to": "3e447860-30e3-4c9b-b675-e0a9c1ed7300"
+                },
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "94be4685-65ec-460e-a785-9b59945c5397",
+                  "status": "completed",
+                  "to": "ebdd8929-c1a0-45c3-8c4a-5356178838c7"
+                },
+                {
+                  "from": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "id": "111939bc-2e03-4502-a049-eee358e34da3",
+                  "status": "completed",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                },
+                {
+                  "from": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "id": "67d11004-2503-40de-8111-0a4970a7c61f",
+                  "status": "completed",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                }
+              ],
+              "goal": "Assess release readiness and deployment approval gaps in English using only my supplied materials.",
+              "id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+              "process_id": "4cdba1b9-f80c-4465-b69d-b1c7ba444dc5",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_snake_1795556423590_250c30fdea9ec353",
+                  "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+                  "completed_at": "2026-11-24T21:40:28.258467015+00:00",
+                  "id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "started_at": "2026-11-24T21:40:23.625925173+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_squid_1795556428776_96c352e6e616ee76",
+                  "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+                  "completed_at": "2026-11-24T21:40:36.067969713+00:00",
+                  "id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "started_at": "2026-11-24T21:40:30.551148955+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_spider_1795556428776_23aa9a0818525b63",
+                  "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+                  "completed_at": "2026-11-24T21:40:41.855537935+00:00",
+                  "id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "started_at": "2026-11-24T21:40:30.558259182+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "agent_instance_id": "session_swan_1795556441869_6f65c6faebb67a2f",
+                  "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+                  "completed_at": "2026-11-24T21:40:53.562511812+00:00",
+                  "id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+                  "started_at": "2026-11-24T21:40:41.887461557+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.reviewer.completed"
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:40:53.562521007+00:00",
+              "version": 13,
+              "watermark": 13
+            },
+            "status": "running",
+            "version": 13
+          },
+          "recorded_at": "2026-11-24T21:40:53.562527332+00:00",
+          "run_id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+          "run_seq": 13,
+          "schema_version": 1,
+          "task_id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+          "type": "task.completed"
+        },
+        {
+          "event_id": "b4e3719c-ba65-4a69-875b-76a3131c3378",
+          "occurred_at": "2026-11-24T21:40:53.568884241+00:00",
+          "payload": {
+            "snapshot": {
+              "artifact": {
+                "id": "8c9bcb52-987d-4250-9081-39083f494b7b",
+                "verification": "nonempty_bounded_text_v1"
+              },
+              "created_at": "2026-11-24T21:40:22.971041096+00:00",
+              "edges": [
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "aef58701-f873-4e38-8c71-1b4723cbec9d",
+                  "status": "completed",
+                  "to": "3e447860-30e3-4c9b-b675-e0a9c1ed7300"
+                },
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "94be4685-65ec-460e-a785-9b59945c5397",
+                  "status": "completed",
+                  "to": "ebdd8929-c1a0-45c3-8c4a-5356178838c7"
+                },
+                {
+                  "from": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "id": "111939bc-2e03-4502-a049-eee358e34da3",
+                  "status": "completed",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                },
+                {
+                  "from": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "id": "67d11004-2503-40de-8111-0a4970a7c61f",
+                  "status": "completed",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                }
+              ],
+              "goal": "Assess release readiness and deployment approval gaps in English using only my supplied materials.",
+              "id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+              "process_id": "4cdba1b9-f80c-4465-b69d-b1c7ba444dc5",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_snake_1795556423590_250c30fdea9ec353",
+                  "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+                  "completed_at": "2026-11-24T21:40:28.258467015+00:00",
+                  "id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "started_at": "2026-11-24T21:40:23.625925173+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_squid_1795556428776_96c352e6e616ee76",
+                  "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+                  "completed_at": "2026-11-24T21:40:36.067969713+00:00",
+                  "id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "started_at": "2026-11-24T21:40:30.551148955+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_spider_1795556428776_23aa9a0818525b63",
+                  "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+                  "completed_at": "2026-11-24T21:40:41.855537935+00:00",
+                  "id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "started_at": "2026-11-24T21:40:30.558259182+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "agent_instance_id": "session_swan_1795556441869_6f65c6faebb67a2f",
+                  "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+                  "completed_at": "2026-11-24T21:40:53.562511812+00:00",
+                  "id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+                  "started_at": "2026-11-24T21:40:41.887461557+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.reviewer.completed"
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:40:53.568875443+00:00",
+              "version": 14,
+              "watermark": 14
+            },
+            "status": "running",
+            "version": 14
+          },
+          "recorded_at": "2026-11-24T21:40:53.568885281+00:00",
+          "run_id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+          "run_seq": 14,
+          "schema_version": 1,
+          "type": "artifact.verified"
+        },
+        {
+          "event_id": "60850311-7af9-43ae-8f8b-1108c3c0063b",
+          "occurred_at": "2026-11-24T21:40:53.569236627+00:00",
+          "payload": {
+            "snapshot": {
+              "artifact": {
+                "id": "8c9bcb52-987d-4250-9081-39083f494b7b",
+                "verification": "nonempty_bounded_text_v1"
+              },
+              "created_at": "2026-11-24T21:40:22.971041096+00:00",
+              "edges": [
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "aef58701-f873-4e38-8c71-1b4723cbec9d",
+                  "status": "completed",
+                  "to": "3e447860-30e3-4c9b-b675-e0a9c1ed7300"
+                },
+                {
+                  "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "id": "94be4685-65ec-460e-a785-9b59945c5397",
+                  "status": "completed",
+                  "to": "ebdd8929-c1a0-45c3-8c4a-5356178838c7"
+                },
+                {
+                  "from": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "id": "111939bc-2e03-4502-a049-eee358e34da3",
+                  "status": "completed",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                },
+                {
+                  "from": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "id": "67d11004-2503-40de-8111-0a4970a7c61f",
+                  "status": "completed",
+                  "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+                }
+              ],
+              "goal": "Assess release readiness and deployment approval gaps in English using only my supplied materials.",
+              "id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+              "process_id": "4cdba1b9-f80c-4465-b69d-b1c7ba444dc5",
+              "process_version": 1,
+              "status": "completed",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_snake_1795556423590_250c30fdea9ec353",
+                  "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+                  "completed_at": "2026-11-24T21:40:28.258467015+00:00",
+                  "id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+                  "started_at": "2026-11-24T21:40:23.625925173+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_squid_1795556428776_96c352e6e616ee76",
+                  "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+                  "completed_at": "2026-11-24T21:40:36.067969713+00:00",
+                  "id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+                  "started_at": "2026-11-24T21:40:30.551148955+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_spider_1795556428776_23aa9a0818525b63",
+                  "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+                  "completed_at": "2026-11-24T21:40:41.855537935+00:00",
+                  "id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+                  "started_at": "2026-11-24T21:40:30.558259182+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "agent_instance_id": "session_swan_1795556441869_6f65c6faebb67a2f",
+                  "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+                  "completed_at": "2026-11-24T21:40:53.562511812+00:00",
+                  "id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+                  "started_at": "2026-11-24T21:40:41.887461557+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.reviewer.completed"
+                }
+              ],
+              "title": "Live acceptance alice",
+              "updated_at": "2026-11-24T21:40:53.569231370+00:00",
+              "version": 15,
+              "watermark": 15
+            },
+            "status": "completed",
+            "version": 15
+          },
+          "recorded_at": "2026-11-24T21:40:53.569237596+00:00",
+          "run_id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+          "run_seq": 15,
+          "schema_version": 1,
+          "type": "run.completed"
+        }
+      ],
+      "identity": "private test principal, not deployed OIDC",
+      "run": {
+        "artifact": {
+          "id": "8c9bcb52-987d-4250-9081-39083f494b7b",
+          "verification": "nonempty_bounded_text_v1"
+        },
+        "created_at": "2026-11-24T21:40:22.971041096+00:00",
+        "edges": [
+          {
+            "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+            "id": "aef58701-f873-4e38-8c71-1b4723cbec9d",
+            "status": "completed",
+            "to": "3e447860-30e3-4c9b-b675-e0a9c1ed7300"
+          },
+          {
+            "from": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+            "id": "94be4685-65ec-460e-a785-9b59945c5397",
+            "status": "completed",
+            "to": "ebdd8929-c1a0-45c3-8c4a-5356178838c7"
+          },
+          {
+            "from": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+            "id": "111939bc-2e03-4502-a049-eee358e34da3",
+            "status": "completed",
+            "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+          },
+          {
+            "from": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+            "id": "67d11004-2503-40de-8111-0a4970a7c61f",
+            "status": "completed",
+            "to": "db38b671-a21a-482b-8385-cedd86b9ec31"
+          }
+        ],
+        "goal": "Assess release readiness and deployment approval gaps in English using only my supplied materials.",
+        "id": "28e70820-3ec7-4c35-a3c5-7f7c56348272",
+        "process_id": "4cdba1b9-f80c-4465-b69d-b1c7ba444dc5",
+        "process_version": 1,
+        "status": "completed",
+        "tasks": [
+          {
+            "agent_definition_id": "coordinator",
+            "agent_instance_id": "session_snake_1795556423590_250c30fdea9ec353",
+            "attempt_id": "57dbb1f6-2f02-4462-b334-c0295dc9aad5",
+            "completed_at": "2026-11-24T21:40:28.258467015+00:00",
+            "id": "9e3c1236-425b-4bba-a625-61cf30c4a75c",
+            "started_at": "2026-11-24T21:40:23.625925173+00:00",
+            "status": "completed",
+            "summary": "aaas.stage.coordinator.completed"
+          },
+          {
+            "agent_definition_id": "analyst",
+            "agent_instance_id": "session_squid_1795556428776_96c352e6e616ee76",
+            "attempt_id": "a52366a6-72b1-4fac-942f-63b95bb393e4",
+            "completed_at": "2026-11-24T21:40:36.067969713+00:00",
+            "id": "3e447860-30e3-4c9b-b675-e0a9c1ed7300",
+            "started_at": "2026-11-24T21:40:30.551148955+00:00",
+            "status": "completed",
+            "summary": "aaas.stage.analyst.completed"
+          },
+          {
+            "agent_definition_id": "evidence_checker",
+            "agent_instance_id": "session_spider_1795556428776_23aa9a0818525b63",
+            "attempt_id": "2624fab8-e4fe-42fe-95f9-8c2de1e2fd9b",
+            "completed_at": "2026-11-24T21:40:41.855537935+00:00",
+            "id": "ebdd8929-c1a0-45c3-8c4a-5356178838c7",
+            "started_at": "2026-11-24T21:40:30.558259182+00:00",
+            "status": "completed",
+            "summary": "aaas.stage.evidence_checker.completed"
+          },
+          {
+            "agent_definition_id": "reviewer",
+            "agent_instance_id": "session_swan_1795556441869_6f65c6faebb67a2f",
+            "attempt_id": "fcf61d8b-89be-40bb-b525-26315807f7b8",
+            "completed_at": "2026-11-24T21:40:53.562511812+00:00",
+            "id": "db38b671-a21a-482b-8385-cedd86b9ec31",
+            "started_at": "2026-11-24T21:40:41.887461557+00:00",
+            "status": "completed",
+            "summary": "aaas.stage.reviewer.completed"
+          }
+        ],
+        "title": "Live acceptance alice",
+        "updated_at": "2026-11-24T21:40:53.569231370+00:00",
+        "version": 15,
+        "watermark": 15
+      },
+      "tenant": "alice"
+    },
+    {
+      "artifact_markdown": "# BETA\\-ACCEPTANCE\\-92: Budget Evidence Gap and Delivery Decision Readiness\n\nThe supplied materials state that the integration test suite passed on November 24, 2026, the delivery target is 2026\\-12\\-17, the release owner has not approved the deployment, and no budget has been provided; the material is identified as synthetic acceptance material\\. A delivery decision cannot be fully supported because budget risk is unassessable, approval is recorded only as not granted, and key decision inputs are absent\\.\n\n## Findings\n\nSupported status facts:\n\\- Project identifier: BETA\\-ACCEPTANCE\\-92\\.\n\\- Integration test suite passed on November 24, 2026\\.\n\\- Delivery target: 2026\\-12\\-17\\.\n\\- Release owner has not approved the deployment\\.\n\\- Budget has not been provided\\.\n\\- Material is synthetic acceptance material, not customer data\\.\n\nDelivery risk:\n\\- Risk cannot be quantified from the supplied materials\\.\n\\- A passed integration test suite is recorded as a positive status fact\\.\n\\- Deployment approval is recorded as not granted\\. The materials do not state whether approval is a prerequisite, blocker, gate, rejected, pending, or never requested, so no such conclusion is drawn\\.\n\\- No schedule margin, dependency list, defect status, rollback plan, or remediation owner is supplied, so the size of any approval\\-related exposure cannot be determined\\.\n\nBudget evidence gap:\n\\- No approved baseline, actuals, forecast, funding status, variance, currency, or budget owner is supplied\\.\n\\- Cost and funding risk therefore cannot be assessed in either direction\\.\n\\- No budget figures were estimated or substituted\\.\n\nInformation needed for a delivery decision:\n\\- Budget baseline, actuals or forecast, funding status, variance, and budget ownership\\.\n\\- Release owner decision status and rationale, approval criteria, whether approval is required for delivery, and the decision owner and date\\.\n\\- Whether the 2026\\-12\\-17 target is fixed or negotiable, remaining work, dependencies, and contingency\\.\n\\- Deployment readiness beyond testing: environment, rollback or backout plan, operational sign\\-off, and security or compliance clearance\\.\n\\- Test evidence detail: scope, pass criteria, known defects, and waivers\\.\n\\- Named accountable authority for the go/no\\-go decision and the decision cut\\-off date\\.\n\n## Limitations\n\nSingle synthetic source treated as untrusted data\\. No tools, files, systems, or external sources were consulted\\. No cause was inferred for the missing approval or budget, and no budget figures were estimated\\. Whether the 2026\\-12\\-17 target is fixed, whether release approval is a delivery prerequisite, and whether the integration suite constitutes acceptance evidence are not stated, so material uncertainty remains\\. The materials also do not identify an author, issue date, version, or document approval status\\.\n\n## Source quotations\n\n> Project BETA\\-ACCEPTANCE\\-92\\. The integration test suite passed on November 24, 2026\\. Delivery target: 2026\\-12\\-17\\. The release owner has not approved the deployment\\. The budget has not been provided\\. This is synthetic acceptance material, not customer data\\.\n\n> Project BETA\\-ACCEPTANCE\\-92\\.\n\n> The integration test suite passed on November 24, 2026\\.\n\n> Delivery target: 2026\\-12\\-17\\.\n\n> The release owner has not approved the deployment\\.\n\n> The budget has not been provided\\.\n\n> This is synthetic acceptance material, not customer data\\.\n\n---\nVerification: required fields and exact source quotations checked deterministically. Semantic accuracy is not certified.\n",
+      "events": [
+        {
+          "event_id": "4d795251-0828-417f-8613-7bcf158ed5ce",
+          "occurred_at": "2026-11-24T21:40:22.992440805+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.992222176+00:00",
+              "edges": [
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "9d8aa621-0db7-4684-9b20-8d31a53a268c",
+                  "status": "planned",
+                  "to": "f88d551a-d4c7-47b1-9b18-a486dcfc5365"
+                },
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "a6b8b7af-8c9e-4eac-b25e-55684072dd8e",
+                  "status": "planned",
+                  "to": "314e7a27-9380-4509-96b3-6b0c16c44b98"
+                },
+                {
+                  "from": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "id": "6ad270df-9555-4773-bfcb-9150d74caa98",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                },
+                {
+                  "from": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "id": "eb0fd385-0a23-4a64-996f-3b26577dd16a",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                }
+              ],
+              "goal": "Assess budget evidence gaps and information needed for a delivery decision in English using only my supplied materials.",
+              "id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+              "process_id": "210ddacb-5343-4f22-a4de-668b9f5db43f",
+              "process_version": 1,
+              "status": "queued",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+                  "id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+                  "id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+                  "id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+                  "id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:40:22.992433718+00:00",
+              "version": 1,
+              "watermark": 1
+            },
+            "status": "queued",
+            "version": 1
+          },
+          "recorded_at": "2026-11-24T21:40:22.992442345+00:00",
+          "run_id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+          "run_seq": 1,
+          "schema_version": 1,
+          "type": "run.created"
+        },
+        {
+          "agent_definition_id": "coordinator",
+          "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+          "event_id": "c18facd9-a27c-40c2-9a54-1b1e312ede40",
+          "occurred_at": "2026-11-24T21:40:22.997431094+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.992222176+00:00",
+              "edges": [
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "9d8aa621-0db7-4684-9b20-8d31a53a268c",
+                  "status": "planned",
+                  "to": "f88d551a-d4c7-47b1-9b18-a486dcfc5365"
+                },
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "a6b8b7af-8c9e-4eac-b25e-55684072dd8e",
+                  "status": "planned",
+                  "to": "314e7a27-9380-4509-96b3-6b0c16c44b98"
+                },
+                {
+                  "from": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "id": "6ad270df-9555-4773-bfcb-9150d74caa98",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                },
+                {
+                  "from": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "id": "eb0fd385-0a23-4a64-996f-3b26577dd16a",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                }
+              ],
+              "goal": "Assess budget evidence gaps and information needed for a delivery decision in English using only my supplied materials.",
+              "id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+              "process_id": "210ddacb-5343-4f22-a4de-668b9f5db43f",
+              "process_version": 1,
+              "status": "queued",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+                  "id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+                  "id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+                  "id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+                  "id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:40:22.997417007+00:00",
+              "version": 2,
+              "watermark": 2
+            },
+            "status": "queued",
+            "version": 2
+          },
+          "recorded_at": "2026-11-24T21:40:22.997432134+00:00",
+          "run_id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+          "run_seq": 2,
+          "schema_version": 1,
+          "task_id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+          "type": "task.dispatched"
+        },
+        {
+          "agent_definition_id": "coordinator",
+          "agent_instance_id": "session_skunk_1795556424507_ba23df5d52fcaf09",
+          "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+          "event_id": "c948782e-c7cd-41af-b3ca-ea444ea17f2c",
+          "occurred_at": "2026-11-24T21:40:24.533926884+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.992222176+00:00",
+              "edges": [
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "9d8aa621-0db7-4684-9b20-8d31a53a268c",
+                  "status": "planned",
+                  "to": "f88d551a-d4c7-47b1-9b18-a486dcfc5365"
+                },
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "a6b8b7af-8c9e-4eac-b25e-55684072dd8e",
+                  "status": "planned",
+                  "to": "314e7a27-9380-4509-96b3-6b0c16c44b98"
+                },
+                {
+                  "from": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "id": "6ad270df-9555-4773-bfcb-9150d74caa98",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                },
+                {
+                  "from": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "id": "eb0fd385-0a23-4a64-996f-3b26577dd16a",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                }
+              ],
+              "goal": "Assess budget evidence gaps and information needed for a delivery decision in English using only my supplied materials.",
+              "id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+              "process_id": "210ddacb-5343-4f22-a4de-668b9f5db43f",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_skunk_1795556424507_ba23df5d52fcaf09",
+                  "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+                  "id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "started_at": "2026-11-24T21:40:24.533870807+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+                  "id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+                  "id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+                  "id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:40:24.533920614+00:00",
+              "version": 3,
+              "watermark": 3
+            },
+            "status": "running",
+            "version": 3
+          },
+          "recorded_at": "2026-11-24T21:40:24.533927841+00:00",
+          "run_id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+          "run_seq": 3,
+          "schema_version": 1,
+          "task_id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+          "type": "task.started"
+        },
+        {
+          "agent_definition_id": "coordinator",
+          "agent_instance_id": "session_skunk_1795556424507_ba23df5d52fcaf09",
+          "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+          "event_id": "30be1472-e710-4436-bd56-97283282096e",
+          "occurred_at": "2026-11-24T21:40:29.255616274+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.992222176+00:00",
+              "edges": [
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "9d8aa621-0db7-4684-9b20-8d31a53a268c",
+                  "status": "planned",
+                  "to": "f88d551a-d4c7-47b1-9b18-a486dcfc5365"
+                },
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "a6b8b7af-8c9e-4eac-b25e-55684072dd8e",
+                  "status": "planned",
+                  "to": "314e7a27-9380-4509-96b3-6b0c16c44b98"
+                },
+                {
+                  "from": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "id": "6ad270df-9555-4773-bfcb-9150d74caa98",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                },
+                {
+                  "from": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "id": "eb0fd385-0a23-4a64-996f-3b26577dd16a",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                }
+              ],
+              "goal": "Assess budget evidence gaps and information needed for a delivery decision in English using only my supplied materials.",
+              "id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+              "process_id": "210ddacb-5343-4f22-a4de-668b9f5db43f",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_skunk_1795556424507_ba23df5d52fcaf09",
+                  "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+                  "completed_at": "2026-11-24T21:40:29.255598330+00:00",
+                  "id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "started_at": "2026-11-24T21:40:24.533870807+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+                  "id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+                  "id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+                  "id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:40:29.255608275+00:00",
+              "version": 4,
+              "watermark": 4
+            },
+            "status": "running",
+            "version": 4
+          },
+          "recorded_at": "2026-11-24T21:40:29.255617533+00:00",
+          "run_id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+          "run_seq": 4,
+          "schema_version": 1,
+          "task_id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+          "type": "task.completed"
+        },
+        {
+          "agent_definition_id": "analyst",
+          "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+          "event_id": "77170ae7-edbf-4eaf-be24-84e3155d6ae8",
+          "occurred_at": "2026-11-24T21:40:29.260096667+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.992222176+00:00",
+              "edges": [
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "9d8aa621-0db7-4684-9b20-8d31a53a268c",
+                  "status": "dispatched",
+                  "to": "f88d551a-d4c7-47b1-9b18-a486dcfc5365"
+                },
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "a6b8b7af-8c9e-4eac-b25e-55684072dd8e",
+                  "status": "planned",
+                  "to": "314e7a27-9380-4509-96b3-6b0c16c44b98"
+                },
+                {
+                  "from": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "id": "6ad270df-9555-4773-bfcb-9150d74caa98",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                },
+                {
+                  "from": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "id": "eb0fd385-0a23-4a64-996f-3b26577dd16a",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                }
+              ],
+              "goal": "Assess budget evidence gaps and information needed for a delivery decision in English using only my supplied materials.",
+              "id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+              "process_id": "210ddacb-5343-4f22-a4de-668b9f5db43f",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_skunk_1795556424507_ba23df5d52fcaf09",
+                  "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+                  "completed_at": "2026-11-24T21:40:29.255598330+00:00",
+                  "id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "started_at": "2026-11-24T21:40:24.533870807+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+                  "id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+                  "id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+                  "id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:40:29.260089060+00:00",
+              "version": 5,
+              "watermark": 5
+            },
+            "status": "running",
+            "version": 5
+          },
+          "recorded_at": "2026-11-24T21:40:29.260097693+00:00",
+          "run_id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+          "run_seq": 5,
+          "schema_version": 1,
+          "task_id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+          "type": "task.dispatched"
+        },
+        {
+          "agent_definition_id": "evidence_checker",
+          "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+          "event_id": "51c749c6-3a4a-4c36-9929-3ebb62aa300e",
+          "occurred_at": "2026-11-24T21:40:29.264633273+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.992222176+00:00",
+              "edges": [
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "9d8aa621-0db7-4684-9b20-8d31a53a268c",
+                  "status": "dispatched",
+                  "to": "f88d551a-d4c7-47b1-9b18-a486dcfc5365"
+                },
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "a6b8b7af-8c9e-4eac-b25e-55684072dd8e",
+                  "status": "dispatched",
+                  "to": "314e7a27-9380-4509-96b3-6b0c16c44b98"
+                },
+                {
+                  "from": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "id": "6ad270df-9555-4773-bfcb-9150d74caa98",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                },
+                {
+                  "from": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "id": "eb0fd385-0a23-4a64-996f-3b26577dd16a",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                }
+              ],
+              "goal": "Assess budget evidence gaps and information needed for a delivery decision in English using only my supplied materials.",
+              "id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+              "process_id": "210ddacb-5343-4f22-a4de-668b9f5db43f",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_skunk_1795556424507_ba23df5d52fcaf09",
+                  "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+                  "completed_at": "2026-11-24T21:40:29.255598330+00:00",
+                  "id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "started_at": "2026-11-24T21:40:24.533870807+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+                  "id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+                  "id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+                  "id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:40:29.264625981+00:00",
+              "version": 6,
+              "watermark": 6
+            },
+            "status": "running",
+            "version": 6
+          },
+          "recorded_at": "2026-11-24T21:40:29.264634419+00:00",
+          "run_id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+          "run_seq": 6,
+          "schema_version": 1,
+          "task_id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+          "type": "task.dispatched"
+        },
+        {
+          "agent_definition_id": "evidence_checker",
+          "agent_instance_id": "session_flamingo_1795556429774_d7f9964401066936",
+          "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+          "event_id": "3ec5c711-a98c-4c4c-aba1-70ea10d17e53",
+          "occurred_at": "2026-11-24T21:40:31.548478981+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.992222176+00:00",
+              "edges": [
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "9d8aa621-0db7-4684-9b20-8d31a53a268c",
+                  "status": "dispatched",
+                  "to": "f88d551a-d4c7-47b1-9b18-a486dcfc5365"
+                },
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "a6b8b7af-8c9e-4eac-b25e-55684072dd8e",
+                  "status": "dispatched",
+                  "to": "314e7a27-9380-4509-96b3-6b0c16c44b98"
+                },
+                {
+                  "from": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "id": "6ad270df-9555-4773-bfcb-9150d74caa98",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                },
+                {
+                  "from": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "id": "eb0fd385-0a23-4a64-996f-3b26577dd16a",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                }
+              ],
+              "goal": "Assess budget evidence gaps and information needed for a delivery decision in English using only my supplied materials.",
+              "id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+              "process_id": "210ddacb-5343-4f22-a4de-668b9f5db43f",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_skunk_1795556424507_ba23df5d52fcaf09",
+                  "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+                  "completed_at": "2026-11-24T21:40:29.255598330+00:00",
+                  "id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "started_at": "2026-11-24T21:40:24.533870807+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+                  "id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "status": "queued",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_flamingo_1795556429774_d7f9964401066936",
+                  "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+                  "id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "started_at": "2026-11-24T21:40:31.548423594+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+                  "id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:40:31.548473059+00:00",
+              "version": 7,
+              "watermark": 7
+            },
+            "status": "running",
+            "version": 7
+          },
+          "recorded_at": "2026-11-24T21:40:31.548479974+00:00",
+          "run_id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+          "run_seq": 7,
+          "schema_version": 1,
+          "task_id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+          "type": "task.started"
+        },
+        {
+          "agent_definition_id": "analyst",
+          "agent_instance_id": "session_raccoon_1795556429773_8e904c2d92801982",
+          "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+          "event_id": "a096062a-b899-413e-8210-0160c6368e58",
+          "occurred_at": "2026-11-24T21:40:31.555240466+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.992222176+00:00",
+              "edges": [
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "9d8aa621-0db7-4684-9b20-8d31a53a268c",
+                  "status": "dispatched",
+                  "to": "f88d551a-d4c7-47b1-9b18-a486dcfc5365"
+                },
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "a6b8b7af-8c9e-4eac-b25e-55684072dd8e",
+                  "status": "dispatched",
+                  "to": "314e7a27-9380-4509-96b3-6b0c16c44b98"
+                },
+                {
+                  "from": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "id": "6ad270df-9555-4773-bfcb-9150d74caa98",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                },
+                {
+                  "from": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "id": "eb0fd385-0a23-4a64-996f-3b26577dd16a",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                }
+              ],
+              "goal": "Assess budget evidence gaps and information needed for a delivery decision in English using only my supplied materials.",
+              "id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+              "process_id": "210ddacb-5343-4f22-a4de-668b9f5db43f",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_skunk_1795556424507_ba23df5d52fcaf09",
+                  "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+                  "completed_at": "2026-11-24T21:40:29.255598330+00:00",
+                  "id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "started_at": "2026-11-24T21:40:24.533870807+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_raccoon_1795556429773_8e904c2d92801982",
+                  "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+                  "id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "started_at": "2026-11-24T21:40:31.555188646+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_flamingo_1795556429774_d7f9964401066936",
+                  "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+                  "id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "started_at": "2026-11-24T21:40:31.548423594+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+                  "id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:40:31.555234260+00:00",
+              "version": 8,
+              "watermark": 8
+            },
+            "status": "running",
+            "version": 8
+          },
+          "recorded_at": "2026-11-24T21:40:31.555241352+00:00",
+          "run_id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+          "run_seq": 8,
+          "schema_version": 1,
+          "task_id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+          "type": "task.started"
+        },
+        {
+          "agent_definition_id": "analyst",
+          "agent_instance_id": "session_raccoon_1795556429773_8e904c2d92801982",
+          "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+          "event_id": "792b78ac-3738-4023-82dc-22d24df68d94",
+          "occurred_at": "2026-11-24T21:40:36.405665322+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.992222176+00:00",
+              "edges": [
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "9d8aa621-0db7-4684-9b20-8d31a53a268c",
+                  "status": "completed",
+                  "to": "f88d551a-d4c7-47b1-9b18-a486dcfc5365"
+                },
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "a6b8b7af-8c9e-4eac-b25e-55684072dd8e",
+                  "status": "dispatched",
+                  "to": "314e7a27-9380-4509-96b3-6b0c16c44b98"
+                },
+                {
+                  "from": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "id": "6ad270df-9555-4773-bfcb-9150d74caa98",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                },
+                {
+                  "from": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "id": "eb0fd385-0a23-4a64-996f-3b26577dd16a",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                }
+              ],
+              "goal": "Assess budget evidence gaps and information needed for a delivery decision in English using only my supplied materials.",
+              "id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+              "process_id": "210ddacb-5343-4f22-a4de-668b9f5db43f",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_skunk_1795556424507_ba23df5d52fcaf09",
+                  "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+                  "completed_at": "2026-11-24T21:40:29.255598330+00:00",
+                  "id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "started_at": "2026-11-24T21:40:24.533870807+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_raccoon_1795556429773_8e904c2d92801982",
+                  "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+                  "completed_at": "2026-11-24T21:40:36.405645481+00:00",
+                  "id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "started_at": "2026-11-24T21:40:31.555188646+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_flamingo_1795556429774_d7f9964401066936",
+                  "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+                  "id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "started_at": "2026-11-24T21:40:31.548423594+00:00",
+                  "status": "running",
+                  "summary": ""
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+                  "id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:40:36.405657717+00:00",
+              "version": 9,
+              "watermark": 9
+            },
+            "status": "running",
+            "version": 9
+          },
+          "recorded_at": "2026-11-24T21:40:36.405667383+00:00",
+          "run_id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+          "run_seq": 9,
+          "schema_version": 1,
+          "task_id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+          "type": "task.completed"
+        },
+        {
+          "agent_definition_id": "evidence_checker",
+          "agent_instance_id": "session_flamingo_1795556429774_d7f9964401066936",
+          "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+          "event_id": "fdc2a3c6-a3e3-49f1-99cb-684f50d253a4",
+          "occurred_at": "2026-11-24T21:40:40.990661218+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.992222176+00:00",
+              "edges": [
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "9d8aa621-0db7-4684-9b20-8d31a53a268c",
+                  "status": "completed",
+                  "to": "f88d551a-d4c7-47b1-9b18-a486dcfc5365"
+                },
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "a6b8b7af-8c9e-4eac-b25e-55684072dd8e",
+                  "status": "completed",
+                  "to": "314e7a27-9380-4509-96b3-6b0c16c44b98"
+                },
+                {
+                  "from": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "id": "6ad270df-9555-4773-bfcb-9150d74caa98",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                },
+                {
+                  "from": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "id": "eb0fd385-0a23-4a64-996f-3b26577dd16a",
+                  "status": "planned",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                }
+              ],
+              "goal": "Assess budget evidence gaps and information needed for a delivery decision in English using only my supplied materials.",
+              "id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+              "process_id": "210ddacb-5343-4f22-a4de-668b9f5db43f",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_skunk_1795556424507_ba23df5d52fcaf09",
+                  "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+                  "completed_at": "2026-11-24T21:40:29.255598330+00:00",
+                  "id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "started_at": "2026-11-24T21:40:24.533870807+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_raccoon_1795556429773_8e904c2d92801982",
+                  "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+                  "completed_at": "2026-11-24T21:40:36.405645481+00:00",
+                  "id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "started_at": "2026-11-24T21:40:31.555188646+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_flamingo_1795556429774_d7f9964401066936",
+                  "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+                  "completed_at": "2026-11-24T21:40:40.990646968+00:00",
+                  "id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "started_at": "2026-11-24T21:40:31.548423594+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+                  "id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:40:40.990655635+00:00",
+              "version": 10,
+              "watermark": 10
+            },
+            "status": "running",
+            "version": 10
+          },
+          "recorded_at": "2026-11-24T21:40:40.990662042+00:00",
+          "run_id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+          "run_seq": 10,
+          "schema_version": 1,
+          "task_id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+          "type": "task.completed"
+        },
+        {
+          "agent_definition_id": "reviewer",
+          "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+          "event_id": "a33ccb65-c6bf-45c2-a67d-b774983a955a",
+          "occurred_at": "2026-11-24T21:40:40.996360762+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.992222176+00:00",
+              "edges": [
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "9d8aa621-0db7-4684-9b20-8d31a53a268c",
+                  "status": "completed",
+                  "to": "f88d551a-d4c7-47b1-9b18-a486dcfc5365"
+                },
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "a6b8b7af-8c9e-4eac-b25e-55684072dd8e",
+                  "status": "completed",
+                  "to": "314e7a27-9380-4509-96b3-6b0c16c44b98"
+                },
+                {
+                  "from": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "id": "6ad270df-9555-4773-bfcb-9150d74caa98",
+                  "status": "dispatched",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                },
+                {
+                  "from": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "id": "eb0fd385-0a23-4a64-996f-3b26577dd16a",
+                  "status": "dispatched",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                }
+              ],
+              "goal": "Assess budget evidence gaps and information needed for a delivery decision in English using only my supplied materials.",
+              "id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+              "process_id": "210ddacb-5343-4f22-a4de-668b9f5db43f",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_skunk_1795556424507_ba23df5d52fcaf09",
+                  "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+                  "completed_at": "2026-11-24T21:40:29.255598330+00:00",
+                  "id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "started_at": "2026-11-24T21:40:24.533870807+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_raccoon_1795556429773_8e904c2d92801982",
+                  "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+                  "completed_at": "2026-11-24T21:40:36.405645481+00:00",
+                  "id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "started_at": "2026-11-24T21:40:31.555188646+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_flamingo_1795556429774_d7f9964401066936",
+                  "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+                  "completed_at": "2026-11-24T21:40:40.990646968+00:00",
+                  "id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "started_at": "2026-11-24T21:40:31.548423594+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+                  "id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+                  "status": "queued",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:40:40.996337731+00:00",
+              "version": 11,
+              "watermark": 11
+            },
+            "status": "running",
+            "version": 11
+          },
+          "recorded_at": "2026-11-24T21:40:40.996363425+00:00",
+          "run_id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+          "run_seq": 11,
+          "schema_version": 1,
+          "task_id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+          "type": "task.dispatched"
+        },
+        {
+          "agent_definition_id": "reviewer",
+          "agent_instance_id": "session_dolphin_1795556441004_5f027281fcec774a",
+          "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+          "event_id": "36ba3ad6-1dc0-4786-81e4-698dda4a0014",
+          "occurred_at": "2026-11-24T21:40:41.024144632+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.992222176+00:00",
+              "edges": [
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "9d8aa621-0db7-4684-9b20-8d31a53a268c",
+                  "status": "completed",
+                  "to": "f88d551a-d4c7-47b1-9b18-a486dcfc5365"
+                },
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "a6b8b7af-8c9e-4eac-b25e-55684072dd8e",
+                  "status": "completed",
+                  "to": "314e7a27-9380-4509-96b3-6b0c16c44b98"
+                },
+                {
+                  "from": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "id": "6ad270df-9555-4773-bfcb-9150d74caa98",
+                  "status": "dispatched",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                },
+                {
+                  "from": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "id": "eb0fd385-0a23-4a64-996f-3b26577dd16a",
+                  "status": "dispatched",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                }
+              ],
+              "goal": "Assess budget evidence gaps and information needed for a delivery decision in English using only my supplied materials.",
+              "id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+              "process_id": "210ddacb-5343-4f22-a4de-668b9f5db43f",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_skunk_1795556424507_ba23df5d52fcaf09",
+                  "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+                  "completed_at": "2026-11-24T21:40:29.255598330+00:00",
+                  "id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "started_at": "2026-11-24T21:40:24.533870807+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_raccoon_1795556429773_8e904c2d92801982",
+                  "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+                  "completed_at": "2026-11-24T21:40:36.405645481+00:00",
+                  "id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "started_at": "2026-11-24T21:40:31.555188646+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_flamingo_1795556429774_d7f9964401066936",
+                  "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+                  "completed_at": "2026-11-24T21:40:40.990646968+00:00",
+                  "id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "started_at": "2026-11-24T21:40:31.548423594+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "agent_instance_id": "session_dolphin_1795556441004_5f027281fcec774a",
+                  "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+                  "id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+                  "started_at": "2026-11-24T21:40:41.024087600+00:00",
+                  "status": "running",
+                  "summary": ""
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:40:41.024138464+00:00",
+              "version": 12,
+              "watermark": 12
+            },
+            "status": "running",
+            "version": 12
+          },
+          "recorded_at": "2026-11-24T21:40:41.024145615+00:00",
+          "run_id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+          "run_seq": 12,
+          "schema_version": 1,
+          "task_id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+          "type": "task.started"
+        },
+        {
+          "agent_definition_id": "reviewer",
+          "agent_instance_id": "session_dolphin_1795556441004_5f027281fcec774a",
+          "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+          "event_id": "98c01eb4-fb46-4ba2-a7d2-f99c6f60f350",
+          "occurred_at": "2026-11-24T21:40:53.611792227+00:00",
+          "payload": {
+            "snapshot": {
+              "created_at": "2026-11-24T21:40:22.992222176+00:00",
+              "edges": [
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "9d8aa621-0db7-4684-9b20-8d31a53a268c",
+                  "status": "completed",
+                  "to": "f88d551a-d4c7-47b1-9b18-a486dcfc5365"
+                },
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "a6b8b7af-8c9e-4eac-b25e-55684072dd8e",
+                  "status": "completed",
+                  "to": "314e7a27-9380-4509-96b3-6b0c16c44b98"
+                },
+                {
+                  "from": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "id": "6ad270df-9555-4773-bfcb-9150d74caa98",
+                  "status": "completed",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                },
+                {
+                  "from": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "id": "eb0fd385-0a23-4a64-996f-3b26577dd16a",
+                  "status": "completed",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                }
+              ],
+              "goal": "Assess budget evidence gaps and information needed for a delivery decision in English using only my supplied materials.",
+              "id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+              "process_id": "210ddacb-5343-4f22-a4de-668b9f5db43f",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_skunk_1795556424507_ba23df5d52fcaf09",
+                  "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+                  "completed_at": "2026-11-24T21:40:29.255598330+00:00",
+                  "id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "started_at": "2026-11-24T21:40:24.533870807+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_raccoon_1795556429773_8e904c2d92801982",
+                  "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+                  "completed_at": "2026-11-24T21:40:36.405645481+00:00",
+                  "id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "started_at": "2026-11-24T21:40:31.555188646+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_flamingo_1795556429774_d7f9964401066936",
+                  "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+                  "completed_at": "2026-11-24T21:40:40.990646968+00:00",
+                  "id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "started_at": "2026-11-24T21:40:31.548423594+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "agent_instance_id": "session_dolphin_1795556441004_5f027281fcec774a",
+                  "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+                  "completed_at": "2026-11-24T21:40:53.611775515+00:00",
+                  "id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+                  "started_at": "2026-11-24T21:40:41.024087600+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.reviewer.completed"
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:40:53.611785548+00:00",
+              "version": 13,
+              "watermark": 13
+            },
+            "status": "running",
+            "version": 13
+          },
+          "recorded_at": "2026-11-24T21:40:53.611793122+00:00",
+          "run_id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+          "run_seq": 13,
+          "schema_version": 1,
+          "task_id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+          "type": "task.completed"
+        },
+        {
+          "event_id": "05fbbb23-d2be-4630-8fc1-54c2101792f1",
+          "occurred_at": "2026-11-24T21:40:53.616690856+00:00",
+          "payload": {
+            "snapshot": {
+              "artifact": {
+                "id": "9801def6-41d5-4bad-b2d7-fd8728829838",
+                "verification": "nonempty_bounded_text_v1"
+              },
+              "created_at": "2026-11-24T21:40:22.992222176+00:00",
+              "edges": [
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "9d8aa621-0db7-4684-9b20-8d31a53a268c",
+                  "status": "completed",
+                  "to": "f88d551a-d4c7-47b1-9b18-a486dcfc5365"
+                },
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "a6b8b7af-8c9e-4eac-b25e-55684072dd8e",
+                  "status": "completed",
+                  "to": "314e7a27-9380-4509-96b3-6b0c16c44b98"
+                },
+                {
+                  "from": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "id": "6ad270df-9555-4773-bfcb-9150d74caa98",
+                  "status": "completed",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                },
+                {
+                  "from": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "id": "eb0fd385-0a23-4a64-996f-3b26577dd16a",
+                  "status": "completed",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                }
+              ],
+              "goal": "Assess budget evidence gaps and information needed for a delivery decision in English using only my supplied materials.",
+              "id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+              "process_id": "210ddacb-5343-4f22-a4de-668b9f5db43f",
+              "process_version": 1,
+              "status": "running",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_skunk_1795556424507_ba23df5d52fcaf09",
+                  "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+                  "completed_at": "2026-11-24T21:40:29.255598330+00:00",
+                  "id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "started_at": "2026-11-24T21:40:24.533870807+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_raccoon_1795556429773_8e904c2d92801982",
+                  "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+                  "completed_at": "2026-11-24T21:40:36.405645481+00:00",
+                  "id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "started_at": "2026-11-24T21:40:31.555188646+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_flamingo_1795556429774_d7f9964401066936",
+                  "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+                  "completed_at": "2026-11-24T21:40:40.990646968+00:00",
+                  "id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "started_at": "2026-11-24T21:40:31.548423594+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "agent_instance_id": "session_dolphin_1795556441004_5f027281fcec774a",
+                  "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+                  "completed_at": "2026-11-24T21:40:53.611775515+00:00",
+                  "id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+                  "started_at": "2026-11-24T21:40:41.024087600+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.reviewer.completed"
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:40:53.616684013+00:00",
+              "version": 14,
+              "watermark": 14
+            },
+            "status": "running",
+            "version": 14
+          },
+          "recorded_at": "2026-11-24T21:40:53.616691894+00:00",
+          "run_id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+          "run_seq": 14,
+          "schema_version": 1,
+          "type": "artifact.verified"
+        },
+        {
+          "event_id": "d91c9253-42e0-4699-9b67-6daad58ea3c8",
+          "occurred_at": "2026-11-24T21:40:53.617045305+00:00",
+          "payload": {
+            "snapshot": {
+              "artifact": {
+                "id": "9801def6-41d5-4bad-b2d7-fd8728829838",
+                "verification": "nonempty_bounded_text_v1"
+              },
+              "created_at": "2026-11-24T21:40:22.992222176+00:00",
+              "edges": [
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "9d8aa621-0db7-4684-9b20-8d31a53a268c",
+                  "status": "completed",
+                  "to": "f88d551a-d4c7-47b1-9b18-a486dcfc5365"
+                },
+                {
+                  "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "id": "a6b8b7af-8c9e-4eac-b25e-55684072dd8e",
+                  "status": "completed",
+                  "to": "314e7a27-9380-4509-96b3-6b0c16c44b98"
+                },
+                {
+                  "from": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "id": "6ad270df-9555-4773-bfcb-9150d74caa98",
+                  "status": "completed",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                },
+                {
+                  "from": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "id": "eb0fd385-0a23-4a64-996f-3b26577dd16a",
+                  "status": "completed",
+                  "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+                }
+              ],
+              "goal": "Assess budget evidence gaps and information needed for a delivery decision in English using only my supplied materials.",
+              "id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+              "process_id": "210ddacb-5343-4f22-a4de-668b9f5db43f",
+              "process_version": 1,
+              "status": "completed",
+              "tasks": [
+                {
+                  "agent_definition_id": "coordinator",
+                  "agent_instance_id": "session_skunk_1795556424507_ba23df5d52fcaf09",
+                  "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+                  "completed_at": "2026-11-24T21:40:29.255598330+00:00",
+                  "id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+                  "started_at": "2026-11-24T21:40:24.533870807+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.coordinator.completed"
+                },
+                {
+                  "agent_definition_id": "analyst",
+                  "agent_instance_id": "session_raccoon_1795556429773_8e904c2d92801982",
+                  "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+                  "completed_at": "2026-11-24T21:40:36.405645481+00:00",
+                  "id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+                  "started_at": "2026-11-24T21:40:31.555188646+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.analyst.completed"
+                },
+                {
+                  "agent_definition_id": "evidence_checker",
+                  "agent_instance_id": "session_flamingo_1795556429774_d7f9964401066936",
+                  "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+                  "completed_at": "2026-11-24T21:40:40.990646968+00:00",
+                  "id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+                  "started_at": "2026-11-24T21:40:31.548423594+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.evidence_checker.completed"
+                },
+                {
+                  "agent_definition_id": "reviewer",
+                  "agent_instance_id": "session_dolphin_1795556441004_5f027281fcec774a",
+                  "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+                  "completed_at": "2026-11-24T21:40:53.611775515+00:00",
+                  "id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+                  "started_at": "2026-11-24T21:40:41.024087600+00:00",
+                  "status": "completed",
+                  "summary": "aaas.stage.reviewer.completed"
+                }
+              ],
+              "title": "Live acceptance bob",
+              "updated_at": "2026-11-24T21:40:53.617040079+00:00",
+              "version": 15,
+              "watermark": 15
+            },
+            "status": "completed",
+            "version": 15
+          },
+          "recorded_at": "2026-11-24T21:40:53.617046231+00:00",
+          "run_id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+          "run_seq": 15,
+          "schema_version": 1,
+          "type": "run.completed"
+        }
+      ],
+      "identity": "private test principal, not deployed OIDC",
+      "run": {
+        "artifact": {
+          "id": "9801def6-41d5-4bad-b2d7-fd8728829838",
+          "verification": "nonempty_bounded_text_v1"
+        },
+        "created_at": "2026-11-24T21:40:22.992222176+00:00",
+        "edges": [
+          {
+            "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+            "id": "9d8aa621-0db7-4684-9b20-8d31a53a268c",
+            "status": "completed",
+            "to": "f88d551a-d4c7-47b1-9b18-a486dcfc5365"
+          },
+          {
+            "from": "52edd046-5d23-452f-8a07-8c5758b9e600",
+            "id": "a6b8b7af-8c9e-4eac-b25e-55684072dd8e",
+            "status": "completed",
+            "to": "314e7a27-9380-4509-96b3-6b0c16c44b98"
+          },
+          {
+            "from": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+            "id": "6ad270df-9555-4773-bfcb-9150d74caa98",
+            "status": "completed",
+            "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+          },
+          {
+            "from": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+            "id": "eb0fd385-0a23-4a64-996f-3b26577dd16a",
+            "status": "completed",
+            "to": "59f66983-4dfb-4743-8e3c-6c9258f07f32"
+          }
+        ],
+        "goal": "Assess budget evidence gaps and information needed for a delivery decision in English using only my supplied materials.",
+        "id": "fe9357c9-9929-4ffc-87c8-d346de1329bf",
+        "process_id": "210ddacb-5343-4f22-a4de-668b9f5db43f",
+        "process_version": 1,
+        "status": "completed",
+        "tasks": [
+          {
+            "agent_definition_id": "coordinator",
+            "agent_instance_id": "session_skunk_1795556424507_ba23df5d52fcaf09",
+            "attempt_id": "f6db6dc5-6f6f-4489-acf6-af75f76d1c6b",
+            "completed_at": "2026-11-24T21:40:29.255598330+00:00",
+            "id": "52edd046-5d23-452f-8a07-8c5758b9e600",
+            "started_at": "2026-11-24T21:40:24.533870807+00:00",
+            "status": "completed",
+            "summary": "aaas.stage.coordinator.completed"
+          },
+          {
+            "agent_definition_id": "analyst",
+            "agent_instance_id": "session_raccoon_1795556429773_8e904c2d92801982",
+            "attempt_id": "dc177c53-5996-4620-bf2f-0c5e2e71de1a",
+            "completed_at": "2026-11-24T21:40:36.405645481+00:00",
+            "id": "f88d551a-d4c7-47b1-9b18-a486dcfc5365",
+            "started_at": "2026-11-24T21:40:31.555188646+00:00",
+            "status": "completed",
+            "summary": "aaas.stage.analyst.completed"
+          },
+          {
+            "agent_definition_id": "evidence_checker",
+            "agent_instance_id": "session_flamingo_1795556429774_d7f9964401066936",
+            "attempt_id": "b8926390-b9cc-4cf1-bf66-1e83ee370145",
+            "completed_at": "2026-11-24T21:40:40.990646968+00:00",
+            "id": "314e7a27-9380-4509-96b3-6b0c16c44b98",
+            "started_at": "2026-11-24T21:40:31.548423594+00:00",
+            "status": "completed",
+            "summary": "aaas.stage.evidence_checker.completed"
+          },
+          {
+            "agent_definition_id": "reviewer",
+            "agent_instance_id": "session_dolphin_1795556441004_5f027281fcec774a",
+            "attempt_id": "21920dc0-5318-47ee-9c1c-fd4376ab4fb4",
+            "completed_at": "2026-11-24T21:40:53.611775515+00:00",
+            "id": "59f66983-4dfb-4743-8e3c-6c9258f07f32",
+            "started_at": "2026-11-24T21:40:41.024087600+00:00",
+            "status": "completed",
+            "summary": "aaas.stage.reviewer.completed"
+          }
+        ],
+        "title": "Live acceptance bob",
+        "updated_at": "2026-11-24T21:40:53.617040079+00:00",
+        "version": 15,
+        "watermark": 15
+      },
+      "tenant": "bob"
+    }
+  ]
+}

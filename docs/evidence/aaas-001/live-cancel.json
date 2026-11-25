@@ -1,0 +1,503 @@
+{
+  "events": [
+    {
+      "event_id": "ba30079a-2d16-4f62-bb70-d5f576a7674b",
+      "occurred_at": "2026-11-24T21:40:22.971156505+00:00",
+      "payload": {
+        "snapshot": {
+          "created_at": "2026-11-24T21:40:22.971042466+00:00",
+          "edges": [
+            {
+              "from": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+              "id": "d6df4632-d67b-46f6-985c-295a3934cce0",
+              "status": "planned",
+              "to": "dc439031-76c0-4a7b-9a23-ae2ed5ea6588"
+            },
+            {
+              "from": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+              "id": "e401c09a-77e8-466e-894d-b49110fdb44b",
+              "status": "planned",
+              "to": "a0edf199-0856-4f17-924e-5b6383d8e474"
+            },
+            {
+              "from": "dc439031-76c0-4a7b-9a23-ae2ed5ea6588",
+              "id": "debdc1ea-f1b8-4ff9-99f5-42fe91ced5bc",
+              "status": "planned",
+              "to": "8c718779-69bf-43b8-b2f0-5b45dca805a5"
+            },
+            {
+              "from": "a0edf199-0856-4f17-924e-5b6383d8e474",
+              "id": "f34d1b1f-d5f9-4341-86c7-19a3d6506c0d",
+              "status": "planned",
+              "to": "8c718779-69bf-43b8-b2f0-5b45dca805a5"
+            }
+          ],
+          "goal": "Prepare a detailed analytical brief using only the supplied project materials.",
+          "id": "779288be-4c33-432b-b08f-18f3d9d65997",
+          "process_id": "066cdce2-ad47-4b59-acb8-d5f92b6cfc32",
+          "process_version": 1,
+          "status": "queued",
+          "tasks": [
+            {
+              "agent_definition_id": "coordinator",
+              "attempt_id": "c3655fd6-e9df-4769-9c63-800d752c539b",
+              "id": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+              "status": "queued",
+              "summary": ""
+            },
+            {
+              "agent_definition_id": "analyst",
+              "attempt_id": "b536c23e-b71a-4559-8837-1b8d2d071863",
+              "id": "dc439031-76c0-4a7b-9a23-ae2ed5ea6588",
+              "status": "queued",
+              "summary": ""
+            },
+            {
+              "agent_definition_id": "evidence_checker",
+              "attempt_id": "30951fbf-6f31-4d09-b3c6-bfffd9d1ebe8",
+              "id": "a0edf199-0856-4f17-924e-5b6383d8e474",
+              "status": "queued",
+              "summary": ""
+            },
+            {
+              "agent_definition_id": "reviewer",
+              "attempt_id": "bf16ae64-b879-4ab7-ac4b-5bd0af77abb4",
+              "id": "8c718779-69bf-43b8-b2f0-5b45dca805a5",
+              "status": "queued",
+              "summary": ""
+            }
+          ],
+          "title": "Synthetic cancellation acceptance",
+          "updated_at": "2026-11-24T21:40:22.971152379+00:00",
+          "version": 1,
+          "watermark": 1
+        },
+        "status": "queued",
+        "version": 1
+      },
+      "recorded_at": "2026-11-24T21:40:22.971157416+00:00",
+      "run_id": "779288be-4c33-432b-b08f-18f3d9d65997",
+      "run_seq": 1,
+      "schema_version": 1,
+      "type": "run.created"
+    },
+    {
+      "agent_definition_id": "coordinator",
+      "attempt_id": "c3655fd6-e9df-4769-9c63-800d752c539b",
+      "event_id": "7f34c216-98be-4010-a73e-9156652372c3",
+      "occurred_at": "2026-11-24T21:40:22.976119404+00:00",
+      "payload": {
+        "snapshot": {
+          "created_at": "2026-11-24T21:40:22.971042466+00:00",
+          "edges": [
+            {
+              "from": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+              "id": "d6df4632-d67b-46f6-985c-295a3934cce0",
+              "status": "planned",
+              "to": "dc439031-76c0-4a7b-9a23-ae2ed5ea6588"
+            },
+            {
+              "from": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+              "id": "e401c09a-77e8-466e-894d-b49110fdb44b",
+              "status": "planned",
+              "to": "a0edf199-0856-4f17-924e-5b6383d8e474"
+            },
+            {
+              "from": "dc439031-76c0-4a7b-9a23-ae2ed5ea6588",
+              "id": "debdc1ea-f1b8-4ff9-99f5-42fe91ced5bc",
+              "status": "planned",
+              "to": "8c718779-69bf-43b8-b2f0-5b45dca805a5"
+            },
+            {
+              "from": "a0edf199-0856-4f17-924e-5b6383d8e474",
+              "id": "f34d1b1f-d5f9-4341-86c7-19a3d6506c0d",
+              "status": "planned",
+              "to": "8c718779-69bf-43b8-b2f0-5b45dca805a5"
+            }
+          ],
+          "goal": "Prepare a detailed analytical brief using only the supplied project materials.",
+          "id": "779288be-4c33-432b-b08f-18f3d9d65997",
+          "process_id": "066cdce2-ad47-4b59-acb8-d5f92b6cfc32",
+          "process_version": 1,
+          "status": "queued",
+          "tasks": [
+            {
+              "agent_definition_id": "coordinator",
+              "attempt_id": "c3655fd6-e9df-4769-9c63-800d752c539b",
+              "id": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+              "status": "queued",
+              "summary": ""
+            },
+            {
+              "agent_definition_id": "analyst",
+              "attempt_id": "b536c23e-b71a-4559-8837-1b8d2d071863",
+              "id": "dc439031-76c0-4a7b-9a23-ae2ed5ea6588",
+              "status": "queued",
+              "summary": ""
+            },
+            {
+              "agent_definition_id": "evidence_checker",
+              "attempt_id": "30951fbf-6f31-4d09-b3c6-bfffd9d1ebe8",
+              "id": "a0edf199-0856-4f17-924e-5b6383d8e474",
+              "status": "queued",
+              "summary": ""
+            },
+            {
+              "agent_definition_id": "reviewer",
+              "attempt_id": "bf16ae64-b879-4ab7-ac4b-5bd0af77abb4",
+              "id": "8c718779-69bf-43b8-b2f0-5b45dca805a5",
+              "status": "queued",
+              "summary": ""
+            }
+          ],
+          "title": "Synthetic cancellation acceptance",
+          "updated_at": "2026-11-24T21:40:22.976112570+00:00",
+          "version": 2,
+          "watermark": 2
+        },
+        "status": "queued",
+        "version": 2
+      },
+      "recorded_at": "2026-11-24T21:40:22.976120441+00:00",
+      "run_id": "779288be-4c33-432b-b08f-18f3d9d65997",
+      "run_seq": 2,
+      "schema_version": 1,
+      "task_id": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+      "type": "task.dispatched"
+    },
+    {
+      "agent_definition_id": "coordinator",
+      "agent_instance_id": "session_herb_1795556423586_f315b052f64c6da6",
+      "attempt_id": "c3655fd6-e9df-4769-9c63-800d752c539b",
+      "event_id": "1c91d63a-985d-471f-8a56-0656311fe883",
+      "occurred_at": "2026-11-24T21:40:23.616484611+00:00",
+      "payload": {
+        "snapshot": {
+          "created_at": "2026-11-24T21:40:22.971042466+00:00",
+          "edges": [
+            {
+              "from": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+              "id": "d6df4632-d67b-46f6-985c-295a3934cce0",
+              "status": "planned",
+              "to": "dc439031-76c0-4a7b-9a23-ae2ed5ea6588"
+            },
+            {
+              "from": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+              "id": "e401c09a-77e8-466e-894d-b49110fdb44b",
+              "status": "planned",
+              "to": "a0edf199-0856-4f17-924e-5b6383d8e474"
+            },
+            {
+              "from": "dc439031-76c0-4a7b-9a23-ae2ed5ea6588",
+              "id": "debdc1ea-f1b8-4ff9-99f5-42fe91ced5bc",
+              "status": "planned",
+              "to": "8c718779-69bf-43b8-b2f0-5b45dca805a5"
+            },
+            {
+              "from": "a0edf199-0856-4f17-924e-5b6383d8e474",
+              "id": "f34d1b1f-d5f9-4341-86c7-19a3d6506c0d",
+              "status": "planned",
+              "to": "8c718779-69bf-43b8-b2f0-5b45dca805a5"
+            }
+          ],
+          "goal": "Prepare a detailed analytical brief using only the supplied project materials.",
+          "id": "779288be-4c33-432b-b08f-18f3d9d65997",
+          "process_id": "066cdce2-ad47-4b59-acb8-d5f92b6cfc32",
+          "process_version": 1,
+          "status": "running",
+          "tasks": [
+            {
+              "agent_definition_id": "coordinator",
+              "agent_instance_id": "session_herb_1795556423586_f315b052f64c6da6",
+              "attempt_id": "c3655fd6-e9df-4769-9c63-800d752c539b",
+              "id": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+              "started_at": "2026-11-24T21:40:23.616425654+00:00",
+              "status": "running",
+              "summary": ""
+            },
+            {
+              "agent_definition_id": "analyst",
+              "attempt_id": "b536c23e-b71a-4559-8837-1b8d2d071863",
+              "id": "dc439031-76c0-4a7b-9a23-ae2ed5ea6588",
+              "status": "queued",
+              "summary": ""
+            },
+            {
+              "agent_definition_id": "evidence_checker",
+              "attempt_id": "30951fbf-6f31-4d09-b3c6-bfffd9d1ebe8",
+              "id": "a0edf199-0856-4f17-924e-5b6383d8e474",
+              "status": "queued",
+              "summary": ""
+            },
+            {
+              "agent_definition_id": "reviewer",
+              "attempt_id": "bf16ae64-b879-4ab7-ac4b-5bd0af77abb4",
+              "id": "8c718779-69bf-43b8-b2f0-5b45dca805a5",
+              "status": "queued",
+              "summary": ""
+            }
+          ],
+          "title": "Synthetic cancellation acceptance",
+          "updated_at": "2026-11-24T21:40:23.616478251+00:00",
+          "version": 3,
+          "watermark": 3
+        },
+        "status": "running",
+        "version": 3
+      },
+      "recorded_at": "2026-11-24T21:40:23.616485927+00:00",
+      "run_id": "779288be-4c33-432b-b08f-18f3d9d65997",
+      "run_seq": 3,
+      "schema_version": 1,
+      "task_id": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+      "type": "task.started"
+    },
+    {
+      "event_id": "cb2315fa-84c9-4d6b-9593-044dc0d31005",
+      "occurred_at": "2026-11-24T21:40:23.624776850+00:00",
+      "payload": {
+        "snapshot": {
+          "created_at": "2026-11-24T21:40:22.971042466+00:00",
+          "edges": [
+            {
+              "from": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+              "id": "d6df4632-d67b-46f6-985c-295a3934cce0",
+              "status": "planned",
+              "to": "dc439031-76c0-4a7b-9a23-ae2ed5ea6588"
+            },
+            {
+              "from": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+              "id": "e401c09a-77e8-466e-894d-b49110fdb44b",
+              "status": "planned",
+              "to": "a0edf199-0856-4f17-924e-5b6383d8e474"
+            },
+            {
+              "from": "dc439031-76c0-4a7b-9a23-ae2ed5ea6588",
+              "id": "debdc1ea-f1b8-4ff9-99f5-42fe91ced5bc",
+              "status": "planned",
+              "to": "8c718779-69bf-43b8-b2f0-5b45dca805a5"
+            },
+            {
+              "from": "a0edf199-0856-4f17-924e-5b6383d8e474",
+              "id": "f34d1b1f-d5f9-4341-86c7-19a3d6506c0d",
+              "status": "planned",
+              "to": "8c718779-69bf-43b8-b2f0-5b45dca805a5"
+            }
+          ],
+          "goal": "Prepare a detailed analytical brief using only the supplied project materials.",
+          "id": "779288be-4c33-432b-b08f-18f3d9d65997",
+          "process_id": "066cdce2-ad47-4b59-acb8-d5f92b6cfc32",
+          "process_version": 1,
+          "status": "cancellation_requested",
+          "tasks": [
+            {
+              "agent_definition_id": "coordinator",
+              "agent_instance_id": "session_herb_1795556423586_f315b052f64c6da6",
+              "attempt_id": "c3655fd6-e9df-4769-9c63-800d752c539b",
+              "id": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+              "started_at": "2026-11-24T21:40:23.616425654+00:00",
+              "status": "running",
+              "summary": ""
+            },
+            {
+              "agent_definition_id": "analyst",
+              "attempt_id": "b536c23e-b71a-4559-8837-1b8d2d071863",
+              "id": "dc439031-76c0-4a7b-9a23-ae2ed5ea6588",
+              "status": "queued",
+              "summary": ""
+            },
+            {
+              "agent_definition_id": "evidence_checker",
+              "attempt_id": "30951fbf-6f31-4d09-b3c6-bfffd9d1ebe8",
+              "id": "a0edf199-0856-4f17-924e-5b6383d8e474",
+              "status": "queued",
+              "summary": ""
+            },
+            {
+              "agent_definition_id": "reviewer",
+              "attempt_id": "bf16ae64-b879-4ab7-ac4b-5bd0af77abb4",
+              "id": "8c718779-69bf-43b8-b2f0-5b45dca805a5",
+              "status": "queued",
+              "summary": ""
+            }
+          ],
+          "title": "Synthetic cancellation acceptance",
+          "updated_at": "2026-11-24T21:40:23.624766342+00:00",
+          "version": 4,
+          "watermark": 4
+        },
+        "status": "cancellation_requested",
+        "version": 4
+      },
+      "recorded_at": "2026-11-24T21:40:23.624778939+00:00",
+      "run_id": "779288be-4c33-432b-b08f-18f3d9d65997",
+      "run_seq": 4,
+      "schema_version": 1,
+      "type": "run.cancellation_requested"
+    },
+    {
+      "event_id": "14da9a9d-0672-4b49-9b0d-e771164576a3",
+      "occurred_at": "2026-11-24T21:40:24.196960160+00:00",
+      "payload": {
+        "snapshot": {
+          "created_at": "2026-11-24T21:40:22.971042466+00:00",
+          "edges": [
+            {
+              "from": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+              "id": "d6df4632-d67b-46f6-985c-295a3934cce0",
+              "status": "planned",
+              "to": "dc439031-76c0-4a7b-9a23-ae2ed5ea6588"
+            },
+            {
+              "from": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+              "id": "e401c09a-77e8-466e-894d-b49110fdb44b",
+              "status": "planned",
+              "to": "a0edf199-0856-4f17-924e-5b6383d8e474"
+            },
+            {
+              "from": "dc439031-76c0-4a7b-9a23-ae2ed5ea6588",
+              "id": "debdc1ea-f1b8-4ff9-99f5-42fe91ced5bc",
+              "status": "planned",
+              "to": "8c718779-69bf-43b8-b2f0-5b45dca805a5"
+            },
+            {
+              "from": "a0edf199-0856-4f17-924e-5b6383d8e474",
+              "id": "f34d1b1f-d5f9-4341-86c7-19a3d6506c0d",
+              "status": "planned",
+              "to": "8c718779-69bf-43b8-b2f0-5b45dca805a5"
+            }
+          ],
+          "goal": "Prepare a detailed analytical brief using only the supplied project materials.",
+          "id": "779288be-4c33-432b-b08f-18f3d9d65997",
+          "process_id": "066cdce2-ad47-4b59-acb8-d5f92b6cfc32",
+          "process_version": 1,
+          "status": "cancelled",
+          "tasks": [
+            {
+              "agent_definition_id": "coordinator",
+              "agent_instance_id": "session_herb_1795556423586_f315b052f64c6da6",
+              "attempt_id": "c3655fd6-e9df-4769-9c63-800d752c539b",
+              "completed_at": "2026-11-24T21:40:24.196941504+00:00",
+              "id": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+              "started_at": "2026-11-24T21:40:23.616425654+00:00",
+              "status": "cancelled",
+              "summary": ""
+            },
+            {
+              "agent_definition_id": "analyst",
+              "attempt_id": "b536c23e-b71a-4559-8837-1b8d2d071863",
+              "completed_at": "2026-11-24T21:40:24.196951302+00:00",
+              "id": "dc439031-76c0-4a7b-9a23-ae2ed5ea6588",
+              "status": "cancelled",
+              "summary": ""
+            },
+            {
+              "agent_definition_id": "evidence_checker",
+              "attempt_id": "30951fbf-6f31-4d09-b3c6-bfffd9d1ebe8",
+              "completed_at": "2026-11-24T21:40:24.196952267+00:00",
+              "id": "a0edf199-0856-4f17-924e-5b6383d8e474",
+              "status": "cancelled",
+              "summary": ""
+            },
+            {
+              "agent_definition_id": "reviewer",
+              "attempt_id": "bf16ae64-b879-4ab7-ac4b-5bd0af77abb4",
+              "completed_at": "2026-11-24T21:40:24.196953133+00:00",
+              "id": "8c718779-69bf-43b8-b2f0-5b45dca805a5",
+              "status": "cancelled",
+              "summary": ""
+            }
+          ],
+          "title": "Synthetic cancellation acceptance",
+          "updated_at": "2026-11-24T21:40:24.196954388+00:00",
+          "version": 5,
+          "watermark": 5
+        },
+        "status": "cancelled",
+        "version": 5
+      },
+      "recorded_at": "2026-11-24T21:40:24.196960991+00:00",
+      "run_id": "779288be-4c33-432b-b08f-18f3d9d65997",
+      "run_seq": 5,
+      "schema_version": 1,
+      "type": "run.cancelled"
+    }
+  ],
+  "executed_at": "2026-11-24T21:40:24.245985643+00:00",
+  "kind": "actual-jcode-logical-cancellation-with-test-identity",
+  "limitation": "SDK logical TurnDone is not a physical provider termination guarantee",
+  "run": {
+    "created_at": "2026-11-24T21:40:22.971042466+00:00",
+    "edges": [
+      {
+        "from": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+        "id": "d6df4632-d67b-46f6-985c-295a3934cce0",
+        "status": "planned",
+        "to": "dc439031-76c0-4a7b-9a23-ae2ed5ea6588"
+      },
+      {
+        "from": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+        "id": "e401c09a-77e8-466e-894d-b49110fdb44b",
+        "status": "planned",
+        "to": "a0edf199-0856-4f17-924e-5b6383d8e474"
+      },
+      {
+        "from": "dc439031-76c0-4a7b-9a23-ae2ed5ea6588",
+        "id": "debdc1ea-f1b8-4ff9-99f5-42fe91ced5bc",
+        "status": "planned",
+        "to": "8c718779-69bf-43b8-b2f0-5b45dca805a5"
+      },
+      {
+        "from": "a0edf199-0856-4f17-924e-5b6383d8e474",
+        "id": "f34d1b1f-d5f9-4341-86c7-19a3d6506c0d",
+        "status": "planned",
+        "to": "8c718779-69bf-43b8-b2f0-5b45dca805a5"
+      }
+    ],
+    "goal": "Prepare a detailed analytical brief using only the supplied project materials.",
+    "id": "779288be-4c33-432b-b08f-18f3d9d65997",
+    "process_id": "066cdce2-ad47-4b59-acb8-d5f92b6cfc32",
+    "process_version": 1,
+    "status": "cancelled",
+    "tasks": [
+      {
+        "agent_definition_id": "coordinator",
+        "agent_instance_id": "session_herb_1795556423586_f315b052f64c6da6",
+        "attempt_id": "c3655fd6-e9df-4769-9c63-800d752c539b",
+        "completed_at": "2026-11-24T21:40:24.196941504+00:00",
+        "id": "f50cd16d-0a79-47ab-947d-2c10e0806ffe",
+        "started_at": "2026-11-24T21:40:23.616425654+00:00",
+        "status": "cancelled",
+        "summary": ""
+      },
+      {
+        "agent_definition_id": "analyst",
+        "attempt_id": "b536c23e-b71a-4559-8837-1b8d2d071863",
+        "completed_at": "2026-11-24T21:40:24.196951302+00:00",
+        "id": "dc439031-76c0-4a7b-9a23-ae2ed5ea6588",
+        "status": "cancelled",
+        "summary": ""
+      },
+      {
+        "agent_definition_id": "evidence_checker",
+        "attempt_id": "30951fbf-6f31-4d09-b3c6-bfffd9d1ebe8",
+        "completed_at": "2026-11-24T21:40:24.196952267+00:00",
+        "id": "a0edf199-0856-4f17-924e-5b6383d8e474",
+        "status": "cancelled",
+        "summary": ""
+      },
+      {
+        "agent_definition_id": "reviewer",
+        "attempt_id": "bf16ae64-b879-4ab7-ac4b-5bd0af77abb4",
+        "completed_at": "2026-11-24T21:40:24.196953133+00:00",
+        "id": "8c718779-69bf-43b8-b2f0-5b45dca805a5",
+        "status": "cancelled",
+        "summary": ""
+      }
+    ],
+    "title": "Synthetic cancellation acceptance",
+    "updated_at": "2026-11-24T21:40:24.196954388+00:00",
+    "version": 5,
+    "watermark": 5
+  }
+}

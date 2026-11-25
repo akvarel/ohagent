@@ -81,6 +81,17 @@ impl SessionHandle {
         content: &str,
         images: Vec<(String, String)>,
     ) -> Result<String, BridgeError> {
+        self.send_message_with_acceptance(content, images, None).await
+    }
+
+    /// Notify the caller only when Jcode accepts this specific message. This
+    /// barrier prevents cancellation of an idle session before a lazy turn starts.
+    pub async fn send_message_with_acceptance(
+        &self,
+        content: &str,
+        images: Vec<(String, String)>,
+        accepted: Option<Arc<tokio::sync::Notify>>,
+    ) -> Result<String, BridgeError> {
         let client = Arc::clone(&self.client);
         let session_id = self.session_id.clone();
         let content = content.to_string();
@@ -93,6 +104,9 @@ impl SessionHandle {
             let event_tenant = tenant_id.clone();
             let event_session = session_id.clone();
             let callback: Box<dyn Fn(&ApiEvent) + Send> = Box::new(move |event| {
+                if matches!(event, ApiEvent::MessageAccepted { session_id, .. } if session_id == &event_session) {
+                    if let Some(accepted) = &accepted { accepted.notify_one(); }
+                }
                 record_progress_event(&event_store, &event_tenant, &event_session, event);
             });
             let result = run_session_turn(
@@ -165,7 +179,7 @@ impl SessionHandle {
 
 struct TenantRuntime {
     _instance: LaunchedInstance,
-    client: Arc<JcodeClient>,
+    _client: Arc<JcodeClient>,
 }
 
 /// Main bridge between ohAgent and Jcode.
@@ -178,6 +192,8 @@ pub struct JcodeBridge {
     tool_registry: Arc<ToolRegistry>,
     mcp_pool: Option<Arc<SharedMcpPool>>,
     config: JcodeBridgeConfig,
+    /// Customer analytical agents cannot execute tools or discover host data.
+    text_only: bool,
     progress: ProgressStore,
 }
 
@@ -193,8 +209,21 @@ impl JcodeBridge {
             tool_registry: Arc::new(ToolRegistry::new()),
             mcp_pool: None,
             config: JcodeBridgeConfig::default(),
+            text_only: false,
             progress: ProgressStore::default(),
         }
+    }
+
+    /// Restrict a dedicated customer runtime to text inference. This is enforced
+    /// by Jcode's tool policy, not by instructions inside untrusted materials.
+    /// Use a separate bridge and security-domain tenant IDs from gateway sessions.
+    pub fn with_text_only_policy(mut self) -> Self {
+        self.text_only = true;
+        self
+    }
+
+    pub fn is_text_only(&self) -> bool {
+        self.text_only
     }
 
     pub fn progress(&self) -> &ProgressStore {
@@ -310,16 +339,23 @@ impl JcodeBridge {
             prepare_workspace(Path::new(working_dir)).await?;
         }
         let runtime = self.runtime_for_tenant(&config).await?;
-        let client = Arc::clone(&runtime.client);
+        // The SDK attaches one session per connection. Each invocation needs its
+        // own connection even when the tenant-private child runtime is shared.
+        let socket = runtime._instance.socket_path.clone();
+        let client = Arc::new(tokio::task::spawn_blocking(move || JcodeClient::connect(jcode_sdk::ConnectOptions {
+            socket_path: Some(socket), client_name: "ohagent-session".into(), ..Default::default()
+        })).await.map_err(|e| BridgeError::Session(e.to_string()))?
+            .map_err(|e| BridgeError::Session(e.to_string()))?);
         let working_dir = config.working_dir.clone();
+        let creation_client = Arc::clone(&client);
         let session: SessionInfo =
-            tokio::task::spawn_blocking(move || client.create_session(working_dir))
+            tokio::task::spawn_blocking(move || creation_client.create_session(working_dir))
                 .await
                 .map_err(|e| BridgeError::Session(e.to_string()))?
                 .map_err(|e| BridgeError::Session(e.to_string()))?;
 
         if let Some(model) = config.model.clone() {
-            let client = Arc::clone(&runtime.client);
+            let client = Arc::clone(&client);
             let session_id = session.session_id.clone();
             tokio::task::spawn_blocking(move || client.set_model(&session_id, &model))
                 .await
@@ -333,7 +369,7 @@ impl JcodeBridge {
 
         self.sessions.write().await.insert(
             scoped_key.clone(),
-            (config.tenant_id.clone(), Arc::clone(&runtime.client)),
+            (config.tenant_id.clone(), Arc::clone(&client)),
         );
         if let Some(context) = verified_context.as_ref() {
             self.verified_contexts
@@ -347,7 +383,7 @@ impl JcodeBridge {
         Ok(SessionHandle {
             session_id,
             tenant_id: config.tenant_id,
-            client: Arc::clone(&runtime.client),
+            client: Arc::clone(&client),
             verified_context,
             progress: self.progress.clone(),
         })
@@ -484,10 +520,22 @@ impl JcodeBridge {
             return Ok(existing);
         }
 
+        // Serialize cold launches, preventing duplicate child runtimes for one principal.
+        let mut runtimes = self.runtimes.write().await;
+        if let Some(existing) = runtimes.get(&config.tenant_id).cloned() {
+            return Ok(existing);
+        }
+        // This restricted profile is an explicitly bounded pilot. Do not let
+        // new signed subjects create an unbounded fleet of idle child processes.
+        if self.text_only && runtimes.len() >= 16 {
+            return Err(BridgeError::Session("customer_runtime_capacity".into()));
+        }
+
         let tenant_id = config.tenant_id.clone();
         let jcode_home = self.runtime_home_for_tenant(&tenant_id)?;
         let binary = self.jcode_binary();
         let inherited_working_dir = config.working_dir.as_ref().map(PathBuf::from);
+        let text_only = self.text_only;
 
         let runtime = tokio::task::spawn_blocking(move || {
             let mut launch = LaunchOptions {
@@ -499,6 +547,16 @@ impl JcodeBridge {
                 ..LaunchOptions::default()
             };
             launch.env.insert("JCODE_INHERIT_LOGINS".into(), "0".into());
+            if text_only {
+                for (key, value) in [
+                    ("JCODE_TOOL_PROFILE", "none"),
+                    ("JCODE_TOOLS", ""),
+                    ("JCODE_DISABLE_BASE_TOOLS", "true"),
+                    ("JCODE_CODEMODE", "false"),
+                ] {
+                    launch.env.insert(key.into(), value.into());
+                }
+            }
             // Monitoring credentials are daemon concerns, not agent tool inputs.
             for key in [
                 "OHAGENT_PROGRESS_PUBLISH_TOKEN",
@@ -514,7 +572,7 @@ impl JcodeBridge {
             })?;
             Ok::<_, jcode_sdk::Error>(TenantRuntime {
                 _instance: instance,
-                client: Arc::new(client),
+                _client: Arc::new(client),
             })
         })
         .await
@@ -522,7 +580,6 @@ impl JcodeBridge {
         .map_err(|e| BridgeError::Session(e.to_string()))?;
 
         let runtime = Arc::new(runtime);
-        let mut runtimes = self.runtimes.write().await;
         Ok(runtimes
             .entry(config.tenant_id.clone())
             .or_insert_with(|| Arc::clone(&runtime))
@@ -628,6 +685,41 @@ fn record_progress_event(store: &ProgressStore, tenant: &str, session: &str, eve
 #[cfg(test)]
 mod progress_tests {
     use super::*;
+
+    #[tokio::test]
+    #[ignore = "requires an explicitly selected installed Jcode binary, starts only private local child runtimes"]
+    async fn live_text_only_sdk_has_no_tools_and_releases_session_handles() {
+        struct Scratch(PathBuf);
+        impl Drop for Scratch {
+            fn drop(&mut self) { let _ = std::fs::remove_dir_all(&self.0); }
+        }
+        let binary = std::env::var_os("OHAGENT_JCODE_BINARY").expect("select installed binary explicitly");
+        let scratch = Scratch(std::env::temp_dir().join(format!("ap-{}", &uuid::Uuid::new_v4().to_string()[..8])));
+        std::fs::create_dir_all(&scratch.0).unwrap();
+        let bridge = JcodeBridge::new(Arc::new(jcode_base::provider::MultiProvider::new()))
+            .with_config(JcodeBridgeConfig { runtime_root: Some(scratch.0.join("rt")), jcode_binary: Some(binary.into()) })
+            .with_text_only_policy();
+        let config = SessionConfig { tenant_id: "aaas:local-policy-smoke".into(), model: None,
+            working_dir: Some(scratch.0.join("work").to_string_lossy().into_owned()), selfdev: false, report_back_to: None };
+        let session = bridge.create_session(config).await.expect("private Jcode session");
+        let second = bridge.create_session(SessionConfig { tenant_id: session.tenant_id().into(), model: None,
+            working_dir: Some(scratch.0.join("work2").to_string_lossy().into_owned()), selfdev: false, report_back_to: None }).await.unwrap();
+        assert_ne!(session.session_id(), second.session_id());
+        assert!(!Arc::ptr_eq(&session.client, &second.client), "each session requires its own SDK attachment");
+        let client = Arc::clone(&session.client);
+        let id = session.session_id.clone();
+        let tools = tokio::task::spawn_blocking(move || client.list_tools(&id)).await.unwrap().unwrap();
+        assert!(tools.is_empty(), "restricted installed runtime unexpectedly exposes tools");
+        bridge.detach_session(session.tenant_id(), session.session_id()).await.unwrap();
+        bridge.drop_session(session.tenant_id(), session.session_id()).await.unwrap();
+        bridge.detach_session(second.tenant_id(), second.session_id()).await.unwrap();
+        bridge.drop_session(second.tenant_id(), second.session_id()).await.unwrap();
+        drop(second);
+        assert!(bridge.list_sessions(session.tenant_id()).await.is_empty());
+        assert!(bridge.verified_contexts.read().await.is_empty());
+        drop(session);
+        drop(bridge); // LaunchedInstance Drop terminates the private children before scratch removal.
+    }
 
     #[test]
     fn sdk_events_project_metadata_without_transcript_or_tool_payloads() {
