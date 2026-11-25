@@ -7,6 +7,7 @@ const { chromium } = require('playwright');
 const base = process.env.PUBLIC_UI_BASE_URL || 'http://127.0.0.1:5184';
 const browserOptions = { headless: true };
 if (process.env.PLAYWRIGHT_EXECUTABLE_PATH) browserOptions.executablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH;
+if (process.env.PLAYWRIGHT_HOST_RESOLVER_RULES) browserOptions.args = [`--host-resolver-rules=${process.env.PLAYWRIGHT_HOST_RESOLVER_RULES}`];
 
 (async () => {
   const browser = await chromium.launch(browserOptions);

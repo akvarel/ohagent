@@ -1,5 +1,9 @@
 # ORANGEHAT-AAAS-001 delivery
 
+## Staging update, 2026-11-25
+
+The owner-authorized public preview is deployed at https://stage.orangehat.ai using the actual site-only daemon in isolated namespace `ohagent-stage`. Deployment workflow and limitations: [staging runbook](../deploy/stage/README.md). Private inference remains deliberately disabled and the demo is labelled. This does not establish full authenticated customer acceptance or authorize production deployment. See `docs/evidence/aaas-001/stage-deployment.json` for executed checks and the local negative-DNS-cache limitation.
+
 ## Baseline
 - Repository: /sharedssd/git/orangehat/ohAgent
 - Base branch: update/jcode-v1.1.2-20261123
@@ -13,7 +17,7 @@
 | Milestone | Status | Evidence / remaining gate |
 | --- | --- | --- |
 | M0 | PASS | Repository baseline, existing runtime/auth mapping, typed catalog and bounded pilot contract recorded. |
-| M1 | BLOCKED for staged delivery | Site/product/demo implemented and browser-tested EN/LV/RU. Approved staging origin and verified company contact are missing. |
+| M1 | Public staging preview deployed | Site/product/demo available at https://stage.orangehat.ai with trusted TLS and EN/LV/RU desktop/mobile checks. Verified company contact and enabled customer runtime remain separate open gates. |
 | M2 | BLOCKED for customer acceptance | Actual Jcode/provider produces separate verified results for two private test principals with distinct goals/materials. Deployed OIDC and real browser sign-in are not established. |
 | M3 | Partial, not accepted complete | Fixed four-role fork/join, atomic journal, cursor recovery, restart fencing and actual logical SDK cancellation tested. Retry/approval continuations are not supported by this profile. |
 | M4 | BLOCKED | Feature branch and draft PR published. Local checks and labelled recording exist. Full staging identity/revocation/reconnect demonstration and remaining release gaps are open. |
