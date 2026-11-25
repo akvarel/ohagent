@@ -43,7 +43,28 @@ if (process.env.PLAYWRIGHT_HOST_RESOLVER_RULES) browserOptions.args = [`--host-r
           assert.ok((await page.locator('meta[name="description"]').getAttribute('content')).length > 30);
           assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `${language} ${width} ${route} has horizontal overflow`);
           if (route === '/') {
-            assert.equal(await page.locator('.oh-product-card').count(), 3);
+            assert.equal(await page.locator('.oh-product-card').count(), 7, 'Portfolio must preserve three entries and add four owner-requested products/references');
+            const additions = [
+              ['celotleti', 'Celotleti.lv', 'https://celotleti.lv/', { en: /Flight search and airline ticket booking/, lv: /Lidojumu meklēšana un aviobiļešu rezervēšana/, ru: /Поиск рейсов и бронирование авиабилетов/ }],
+              ['flatly', 'Flatly.lv', 'https://flatly.lv/', { en: /Property and household management/, lv: /Īpašumu un mājsaimniecību pārvaldība/, ru: /Управление недвижимостью и домохозяйствами/ }],
+              ['accounting', 'Accounting', null, { en: /accounting platform/, lv: /grāmatvedības platforma/, ru: /бухгалтерского учёта/ }],
+              ['medicine-reminder', 'Medicine Reminder', null, { en: /Medication reminders/, lv: /Atgādinājumi par zāļu lietošanu/, ru: /Напоминания о приёме лекарств/ }],
+            ];
+            for (const [id, name, url, descriptions] of additions) {
+              const card = page.locator(`.oh-product-${id}`);
+              assert.equal(await card.locator('h3').textContent(), name);
+              assert.match(await card.textContent(), descriptions[language]);
+              assert.notEqual(await card.locator('.oh-product-mark').textContent(), 'g↗');
+              if (url) {
+                const link = card.locator('a.oh-text-link');
+                assert.equal(await link.getAttribute('href'), url);
+                assert.equal(await link.getAttribute('target'), '_blank');
+                assert.match(await link.getAttribute('rel'), /noopener/);
+              } else {
+                assert.equal(await card.locator('a').count(), 0, 'Do not invent a public product URL');
+                assert.ok((await card.locator('.oh-card-links').textContent()).trim().length > 0);
+              }
+            }
             assert.ok(await page.locator('a[href="https://bugzero.lv/"]').count());
             assert.ok(await page.locator('a[href="https://github.com/Graphify-Labs/graphify"]').count());
             assert.equal(await page.locator('a[href^="mailto:"]').count(), 0);
